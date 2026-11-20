@@ -2,6 +2,9 @@ package nl.playlumi.app;
 
 import android.app.Activity;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.os.Build;
+import android.view.WindowInsets;
 import android.widget.ProgressBar;
 import android.view.animation.DecelerateInterpolator;
 import android.content.res.ColorStateList;
@@ -45,6 +48,12 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        // Keep system-bar icons readable over the pastel app background.
+        getWindow().setStatusBarColor(0xffe8f8ff);
+        getWindow().setNavigationBarColor(0xfffff9db);
+        int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (Build.VERSION.SDK_INT >= 26) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        getWindow().getDecorView().setSystemUiVisibility(flags);
         game = new LearningGame(new Random());
         recent = new QuestionHistory(getPreferences(MODE_PRIVATE).getString("recent_questions", ""));
         game.setHistory(recent);
@@ -112,6 +121,8 @@ public class MainActivity extends Activity {
         b.setTypeface(Typeface.create("sans-serif-rounded", Typeface.BOLD));
         b.setLineSpacing(dp(3), 1.04f);
         b.setGravity(Gravity.CENTER);
+        b.setMaxLines(4);
+        b.setIncludeFontPadding(true);
         android.graphics.drawable.RippleDrawable ripple =
                 new android.graphics.drawable.RippleDrawable(
                         ColorStateList.valueOf(0x44ffffff), shape(background, 23), null);
@@ -127,20 +138,32 @@ public class MainActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
         for (Button item : items) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(142), 1);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(158), 1);
             params.setMargins(dp(6), dp(6), dp(6), dp(6));
             row.addView(item, params);
         }
         root.addView(row);
     }
     private void header(String title, String description) {
-        TextView logo = label("✦  P L A Y L U M I  ✦", 16, 0xff925bce);
-        logo.setLetterSpacing(.08f);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(42));
-        lp.setMargins(0, dp(2), 0, dp(4));
-        logo.setBackground(shape(0xfff1e6ff, 26));
-        root.addView(logo, lp);
-        TextView heading = label(title, page == PLAY ? 27 : 31, 0xff4e378e);
+        LinearLayout brand = new LinearLayout(this);
+        brand.setGravity(Gravity.CENTER);
+        brand.setOrientation(LinearLayout.HORIZONTAL);
+        brand.setPadding(dp(12), dp(6), dp(12), dp(6));
+        brand.setBackground(shape(0xfff1e6ff, 28));
+        ImageView mascot = new ImageView(this);
+        mascot.setImageResource(R.drawable.playlumi_icon);
+        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        mascot.setContentDescription("Playlumi ster-mascotte");
+        brand.addView(mascot, new LinearLayout.LayoutParams(dp(50), dp(50)));
+        TextView logo = label("Playlumi", 23, 0xff8150c2);
+        logo.setLetterSpacing(.02f);
+        LinearLayout.LayoutParams textP = new LinearLayout.LayoutParams(-2, -2);
+        textP.setMargins(dp(10), 0, 0, 0);
+        brand.addView(logo, textP);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(66));
+        lp.setMargins(0, dp(2), 0, dp(8));
+        root.addView(brand, lp);
+        TextView heading = label(title, page == PLAY ? 27 : 29, 0xff4e378e);
         heading.setGravity(Gravity.CENTER);
         heading.setMinHeight(dp(60));
         heading.setPadding(dp(6), dp(6), dp(6), dp(6));
@@ -187,6 +210,14 @@ public class MainActivity extends Activity {
         scroll.addView(root);
         stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         setContentView(stage);
+        // Android 15+ draws edge-to-edge: keep text and cards clear of status/nav bars.
+        stage.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top = insets.getSystemWindowInsetTop();
+            int bottom = insets.getSystemWindowInsetBottom();
+            root.setPadding(dp(18), dp(18) + top, dp(18), dp(36) + bottom);
+            return insets;
+        });
+        stage.requestApplyInsets();
         stage.setAlpha(0f);
         stage.setTranslationX(dp(18));
         stage.animate().alpha(1f).translationX(0f).setDuration(240)
@@ -208,8 +239,8 @@ public class MainActivity extends Activity {
             final int selected = i;
             Button b = tile(AGE_ICONS[i] + "  " + AGES[i],
                     i == 0 ? "Ontdekken & herkennen" : i == 1 ? "Letters, woorden & tellen" : "Lezen, rekenen & puzzelen",
-                    TILE[i], 96);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(96));
+                    TILE[i], 104);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
             p.setMargins(0, dp(6), 0, dp(6));
             root.addView(b, p);
             b.setOnClickListener(v -> {
@@ -224,7 +255,7 @@ public class MainActivity extends Activity {
     }
     private void showCategories() {
         header("🌟 Wat gaan we spelen?", "Leeftijd: " + AGES[age] + "  •  Kies een speltegel");
-        Button change = tile("🎂 Leeftijd aanpassen", "Je keuze wordt bewaard", 0xffe4f4ed, 56);
+        Button change = tile("🎂 Leeftijd aanpassen", "", 0xffe4f4ed, 66);
         root.addView(change, new LinearLayout.LayoutParams(-1, dp(66)));
         change.setOnClickListener(v -> navigate(AGE));
         addLabel("🌟 " + completed + " goede opdrachten", 15, 0xff2a8067, 14, 8);
@@ -236,10 +267,10 @@ public class MainActivity extends Activity {
             for (int j = 0; j < 2; j++) {
                 int idx = i + j;
                 if (idx >= LearningGame.GAME_NAMES.length) {
-                    buttons[j] = tile("", "", BG, 142); buttons[j].setEnabled(false);
+                    buttons[j] = tile("", "", BG, 158); buttons[j].setEnabled(false);
                 } else {
                     buttons[j] = tile(ICONS[idx] + "\n" + LearningGame.GAME_NAMES[idx],
-                            "5 spelvarianten", TILE[idx % TILE.length], 142);
+                            "5 spelvarianten", TILE[idx % TILE.length], 158);
                     buttons[j].setOnClickListener(v -> {
                         difficulty = age;
                         game.configure(idx, 0, difficulty);
@@ -263,8 +294,8 @@ public class MainActivity extends Activity {
             Button b = tile(LEVEL_ICONS[i] + "  " + LEVELS[i],
                     i == 0 ? "Korte woorden en kleine aantallen" :
                     i == 1 ? "Meer letters en grotere aantallen" : "Lange woorden en extra uitdaging",
-                    TILE[(i + 3) % TILE.length], 95);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(95));
+                    TILE[(i + 3) % TILE.length], 108);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
             p.setMargins(0, dp(6), 0, dp(6)); root.addView(b, p);
             b.setOnClickListener(v -> {
                 difficulty = chosen;
@@ -308,8 +339,8 @@ public class MainActivity extends Activity {
             final int selected = i;
             String[] variants = {"🎯", "🎲", "🧠", "✨", "🚀"};
             Button b = tile(variants[i] + "  " + names[i],
-                    "200 vragen • afwisselende opdrachten", TILE[(game.mode() + i) % TILE.length], 91);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(91));
+                    "200 vragen • afwisselende opdrachten", TILE[(game.mode() + i) % TILE.length], 112);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
             p.setMargins(0, dp(5), 0, dp(5)); root.addView(b, p);
             b.setOnClickListener(v -> {
                 game.configure(game.mode(), selected, difficulty);
