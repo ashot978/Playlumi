@@ -1,6 +1,6 @@
 # Playlumi
 
-Een eerste Android-app voor kinderen van 3 tot 5 jaar. In het telspel telt het kind de sterren en kiest het juiste cijfer. Er is geen tijdslimiet; een verkeerd antwoord mag opnieuw worden geprobeerd. Het aantal goed beantwoorde rondes wordt alleen op het toestel bewaard.
+Een eerste Android-app voor kinderen van 3 tot 5 jaar. In het telspel telt het kind sterren, bloemen of ballonnen en kiest het juiste cijfer. Er zijn niveaus tot 3, 5 en 10. Er is geen tijdslimiet; een verkeerd antwoord mag opnieuw worden geprobeerd. Het aantal goed beantwoorde rondes en de keuze van wereld en niveau worden alleen op het toestel bewaard.
 
 ## Bouwen en testen
 

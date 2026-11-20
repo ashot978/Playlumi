@@ -23,4 +23,14 @@ public class CountingGameTest {
         CountingGame game = new CountingGame(new Random(2)); game.restore(3, true);
         assertEquals(3, game.answer()); assertTrue(game.isSolved());
     }
+    @Test public void levelsStayWithinTheirRange() {
+        CountingGame game = new CountingGame(new Random(9));
+        for (int max : new int[]{3, 5, 10}) {
+            game.setMaximum(max);
+            for (int i = 0; i < 500; i++) {
+                assertTrue(game.answer() >= 1 && game.answer() <= max);
+                game.nextRound();
+            }
+        }
+    }
 }
