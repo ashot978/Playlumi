@@ -1,10 +1,11 @@
 package nl.playlumi.app;
 
 import android.app.Activity;
-import android.os.Bundle;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -14,204 +15,293 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import java.util.Random;
 
-/** Big tap targets, no time limits, local-only progress, no account or ads. */
+/** Tile-based, screen-by-screen learning experience with no ads, timers or accounts. */
 public class MainActivity extends Activity {
+    private static final int AGE = 0, CATEGORIES = 1, DIFFICULTY = 2, VARIANT = 3, PLAY = 4;
+    private static final int SESSION_ROUNDS = 100;
+    private static final int BG = 0xfff5f9fb, INK = 0xff244454, MUTED = 0xff59717b;
+    private static final int[] TILE = {0xffdeefff,0xffffe7cf,0xffeee1ff,0xffd9f5e8,0xffffe3ef,0xfffff2be};
+    private static final String[] ICONS = {"⭐","🎨","🔤","🔷","🔢","🧩","🐾",
+            "✏️","🔠","🖼️","🎶","⚖️","➕","🔢","↔️","🧠"};
+    private static final String[] AGES = {"3–4 jaar", "5–6 jaar", "7+ jaar"};
+    private static final String[] AGE_ICONS = {"🐣","🦋","🚀"};
+    private static final String[] LEVELS = {"Makkelijk","Gemiddeld","Uitdagend"};
+    private static final String[] LEVEL_ICONS = {"🌱","🌻","🏆"};
     private LearningGame game;
-    private LinearLayout root, gameButtons, levelButtons, variantButtons;
-    private TextView ageLabel, variantLabel;
-    private Button menuButton;
-    private boolean home = true;
-    private GridLayout choices;
-    private TextView prompt, picture, feedback, progress, subtitle;
-    private Button next;
-    private int completed, streak;
-    private String message = "";
+    private int page, age, difficulty, completed, streak, sessionSolved, sessionAttempts;
+    private String feedback = "";
+    private LinearLayout root;
 
-    @Override public void onCreate(Bundle saved) {
-        super.onCreate(saved);
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
         game = new LearningGame(new Random());
+        age = getPreferences(MODE_PRIVATE).getInt("chosen_age", -1);
         completed = getPreferences(MODE_PRIVATE).getInt("completed_all", 0);
         streak = getPreferences(MODE_PRIVATE).getInt("streak", 0);
+        difficulty = age < 0 ? 0 : age;
         int mode = getPreferences(MODE_PRIVATE).getInt("game_mode", 0);
         int variant = getPreferences(MODE_PRIVATE).getInt("game_variant", 0);
-        int level = getPreferences(MODE_PRIVATE).getInt("chosen_age", 0);
-        if (saved != null) { mode = saved.getInt("mode", mode); variant = saved.getInt("variant", variant); level = saved.getInt("level", level); }
-        game.configure(mode, variant, level);
-        if (saved != null) home = saved.getBoolean("home", true);
-        buildScreen();
-        render();
+        if (state != null) {
+            age = state.getInt("age", age);
+            mode = state.getInt("mode", mode);
+            variant = state.getInt("variant", variant);
+            difficulty = state.getInt("difficulty", difficulty);
+            page = state.getInt("page", age < 0 ? AGE : CATEGORIES);
+            sessionSolved = state.getInt("sessionSolved");
+            sessionAttempts = state.getInt("sessionAttempts");
+        } else page = age < 0 ? AGE : CATEGORIES;
+        game.configure(mode, variant, difficulty);
+        showPage();
     }
+
     @Override protected void onSaveInstanceState(Bundle out) {
-        out.putBoolean("home", home);
-        out.putInt("mode", game.mode()); out.putInt("variant", game.variant()); out.putInt("level", game.level());
+        out.putInt("age", age); out.putInt("mode", game.mode());
+        out.putInt("variant", game.variant()); out.putInt("difficulty", difficulty);
+        out.putInt("page", page); out.putInt("sessionSolved", sessionSolved);
+        out.putInt("sessionAttempts", sessionAttempts);
         super.onSaveInstanceState(out);
     }
+
     @Override public void onBackPressed() {
-        if (!home) { home = true; message = ""; render(); }
-        else super.onBackPressed();
+        if (page == AGE) super.onBackPressed();
+        else if (page == CATEGORIES) navigate(AGE);
+        else navigate(page == PLAY ? VARIANT : page - 1);
     }
-    private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }
-    private TextView text(String s, int sp, int color) {
-        TextView v = new TextView(this);
-        v.setText(s); v.setTextSize(sp); v.setTextColor(color); v.setGravity(Gravity.CENTER);
-        v.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        return v;
+
+    private int dp(int amount) {
+        return (int) (amount * getResources().getDisplayMetrics().density + .5f);
     }
-    private GradientDrawable bg(int color, int radius) {
-        GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d;
+    private GradientDrawable shape(int color, int radius) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color); d.setCornerRadius(dp(radius)); return d;
     }
-    private Button button(String label, int color) {
-        Button b = new Button(this); b.setText(label); b.setAllCaps(false); b.setTextSize(16);
-        b.setTextColor(Color.rgb(29, 58, 58)); b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
-        b.setPadding(dp(4), dp(4), dp(4), dp(4)); b.setMinHeight(dp(58));
+    private TextView label(String content, int size, int color) {
+        TextView text = new TextView(this);
+        text.setText(content); text.setTextColor(color); text.setTextSize(size);
+        text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        text.setGravity(Gravity.CENTER);
+        return text;
+    }
+    private void addLabel(String content, int size, int color, int top, int bottom) {
+        TextView t = label(content, size, color);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.setMargins(0, dp(top), 0, dp(bottom)); root.addView(t, p);
+    }
+    private Button tile(String title, String description, int background, int height) {
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setText(description.isEmpty() ? title : title + "\n" + description);
+        b.setTextColor(INK);
+        b.setTextSize(16);
+        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setBackgroundTintList(ColorStateList.valueOf(background));
+        b.setMinHeight(dp(height)); b.setPadding(dp(8), dp(8), dp(8), dp(8));
+        b.setContentDescription((title + " " + description).trim());
         return b;
     }
-    private void buildScreen() {
+    private void tileRow(Button[] items) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        for (Button item : items) {
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(104), 1);
+            params.setMargins(dp(4), dp(4), dp(4), dp(4));
+            row.addView(item, params);
+        }
+        root.addView(row);
+    }
+    private void header(String title, String description) {
+        addLabel("✨ Playlumi", 29, 0xff24847a, 0, 4);
+        addLabel(title, 23, INK, 12, 4);
+        addLabel(description, 15, MUTED, 0, 15);
+    }
+    private void back(int target) {
+        Button b = tile("← Terug", "", 0xffe8edf3, 49);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(49));
+        p.setMargins(0, 0, 0, dp(12)); root.addView(b, p);
+        b.setOnClickListener(v -> navigate(target));
+    }
+    private void navigate(int destination) {
+        page = destination; feedback = ""; showPage();
+    }
+    private void showPage() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true); scroll.setBackgroundColor(Color.rgb(239, 249, 244));
-        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(14), dp(18), dp(14), dp(32));
+        scroll.setFillViewport(true); scroll.setBackgroundColor(BG);
+        root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(15), dp(18), dp(15), dp(30));
         scroll.addView(root); setContentView(scroll);
-        TextView title = text("✨ Playlumi", 30, 0xff236558); root.addView(title);
-        subtitle = text("Kies een spelletje", 15, 0xff5b7771); root.addView(subtitle);
-        progress = text("", 14, 0xff4a6660);
-        progress.setPadding(0, dp(8), 0, dp(12)); root.addView(progress);
-        menuButton = button("⌂ Terug naar spelletjes", 0xffd5f1e5);
-        root.addView(menuButton, new LinearLayout.LayoutParams(-1, dp(52)));
-        menuButton.setOnClickListener(v -> { home = true; message = ""; render(); });
-        gameButtons = new LinearLayout(this); gameButtons.setOrientation(LinearLayout.VERTICAL); root.addView(gameButtons);
-        String[] icons = {"⭐", "🎨", "🔤", "🔷", "🔢", "🧩", "🐾",
-                "✏️", "🔠", "🖼️", "🎶", "⚖️", "➕", "🔢", "↔️", "🧠"};
-        for (int row = 0; row < (LearningGame.GAME_NAMES.length + 2) / 3; row++) {
-            LinearLayout line = new LinearLayout(this);
-            line.setGravity(Gravity.CENTER); gameButtons.addView(line);
-            for (int col = 0; col < 3; col++) {
-                final int index = row * 3 + col;
-                if (index >= LearningGame.GAME_NAMES.length) {
-                    View empty = new View(this);
-                    line.addView(empty, new LinearLayout.LayoutParams(0, dp(82), 1));
-                    continue;
+        switch (page) {
+            case AGE: showAge(); break;
+            case CATEGORIES: showCategories(); break;
+            case DIFFICULTY: showDifficulty(); break;
+            case VARIANT: showVariant(); break;
+            case PLAY: showPlay(); break;
+            default: throw new IllegalStateException("page");
+        }
+    }
+    private void showAge() {
+        header("Voor welke leeftijd spelen we?", "Kies één keer. Playlumi onthoudt je keuze.");
+        for (int i = 0; i < AGES.length; i++) {
+            final int selected = i;
+            Button b = tile(AGE_ICONS[i] + "  " + AGES[i],
+                    i == 0 ? "Ontdekken & herkennen" : i == 1 ? "Letters, woorden & tellen" : "Lezen, rekenen & puzzelen",
+                    TILE[i], 96);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(96));
+            p.setMargins(0, dp(6), 0, dp(6));
+            root.addView(b, p);
+            b.setOnClickListener(v -> {
+                age = selected; difficulty = selected;
+                getPreferences(MODE_PRIVATE).edit().putInt("chosen_age", age).apply();
+                game.configure(game.mode(), game.variant(), difficulty);
+                navigate(CATEGORIES);
+            });
+        }
+        if (age >= 0) addLabel("Geselecteerd: " + AGES[age], 15, MUTED, 12, 0);
+    }
+    private void showCategories() {
+        header("Wat gaan we spelen?", "Leeftijd: " + AGES[age] + "  •  Kies een speltegel");
+        Button change = tile("🎂 Leeftijd aanpassen", "Je keuze wordt bewaard", 0xffe4f4ed, 56);
+        root.addView(change, new LinearLayout.LayoutParams(-1, dp(66)));
+        change.setOnClickListener(v -> navigate(AGE));
+        addLabel("🌟 " + completed + " goede opdrachten", 15, 0xff2a8067, 14, 8);
+        for (int i = 0; i < LearningGame.GAME_NAMES.length; i += 2) {
+            Button[] buttons = new Button[2];
+            for (int j = 0; j < 2; j++) {
+                int idx = i + j;
+                if (idx >= LearningGame.GAME_NAMES.length) {
+                    buttons[j] = tile("", "", BG, 104); buttons[j].setEnabled(false);
+                } else {
+                    buttons[j] = tile(ICONS[idx] + "\n" + LearningGame.GAME_NAMES[idx],
+                            "100 vragen", TILE[idx % TILE.length], 104);
+                    buttons[j].setOnClickListener(v -> {
+                        difficulty = age;
+                        game.configure(idx, 0, difficulty);
+                        getPreferences(MODE_PRIVATE).edit().putInt("game_mode", idx).apply();
+                        navigate(DIFFICULTY);
+                    });
                 }
-                Button b = button(icons[index] + "\n" + LearningGame.GAME_NAMES[index], 0xffdcf4e9);
-                b.setTextSize(13);
-                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(82), 1);
-                p.setMargins(dp(2), dp(2), dp(2), dp(2)); line.addView(b, p);
-                b.setOnClickListener(v -> { home = false; select(index, 0, game.level()); });
             }
+            tileRow(buttons);
         }
-        ageLabel = text("Kies leeftijd (wordt onthouden)", 17, 0xff28685b);
-        ageLabel.setPadding(0, dp(12), 0, dp(3)); root.addView(ageLabel);
-        levelButtons = new LinearLayout(this); root.addView(levelButtons);
-        String[] levelNames = {"🌱 3–4 jaar", "🌼 5–6 jaar", "🚀 7+ jaar"};
-        for (int i = 0; i < 3; i++) {
+        addLabel("Geen tijdslimiet • Geen reclame • Je kunt altijd terug", 13, MUTED, 15, 0);
+    }
+    private void showDifficulty() {
+        back(CATEGORIES);
+        header(ICONS[game.mode()] + " " + LearningGame.GAME_NAMES[game.mode()],
+                "Hoe moeilijk mag het zijn?");
+        addLabel("Voorgesteld voor jouw leeftijd: " + LEVELS[age], 14, MUTED, 0, 12);
+        for (int i = 0; i < LEVELS.length; i++) {
             final int chosen = i;
-            Button b = button(levelNames[i], 0xffe6f1fa); b.setTextSize(13);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(58), 1);
-            p.setMargins(dp(2), 0, dp(2), 0); levelButtons.addView(b, p);
-            b.setOnClickListener(v -> select(game.mode(), game.variant(), chosen));
+            Button b = tile(LEVEL_ICONS[i] + "  " + LEVELS[i],
+                    i == 0 ? "Korte woorden en kleine aantallen" :
+                    i == 1 ? "Meer letters en grotere aantallen" : "Lange woorden en extra uitdaging",
+                    TILE[(i + 3) % TILE.length], 95);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(95));
+            p.setMargins(0, dp(6), 0, dp(6)); root.addView(b, p);
+            b.setOnClickListener(v -> {
+                difficulty = chosen;
+                game.configure(game.mode(), game.variant(), difficulty);
+                navigate(VARIANT);
+            });
         }
-        variantLabel = text("Speel op twee manieren", 17, 0xff28685b);
-        variantLabel.setPadding(0, dp(12), 0, dp(2)); root.addView(variantLabel);
-        variantButtons = new LinearLayout(this); root.addView(variantButtons);
+    }
+    private String[] variantNames() {
+        if (game.mode() >= ExtraGames.SPELLING)
+            return ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING];
+        if (game.mode() == LearningGame.WORDS) return new String[]{"Middelste letter", "Begin- of eindletter"};
+        switch (game.mode()) {
+            case LearningGame.COUNT: return new String[]{"Sterren & bloemen", "Andere voorwerpen"};
+            case LearningGame.COLORS: return new String[]{"Welke kleur?", "Zoek de kleur"};
+            case LearningGame.LETTERS: return new String[]{"Zoek klein", "Zoek groot"};
+            case LearningGame.SHAPES: return new String[]{"Zoek dezelfde vorm", "Noem de vorm"};
+            case LearningGame.NUMBERS: return new String[]{"Herken het cijfer", "Volgende cijfer"};
+            case LearningGame.PATTERNS: return new String[]{"Om-en-om", "Dubbel patroon"};
+            default: return new String[]{"Spel 1","Spel 2"};
+        }
+    }
+    private void showVariant() {
+        back(DIFFICULTY);
+        header(ICONS[game.mode()] + " " + LearningGame.GAME_NAMES[game.mode()],
+                LEVELS[difficulty] + "  •  Kies hoe je wilt spelen");
+        String[] names = variantNames();
         for (int i = 0; i < 2; i++) {
-            final int chosen = i;
-            Button b = button(i == 0 ? "Spel 1" : "Spel 2", 0xffffebc6);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(54), 1);
-            p.setMargins(dp(3), 0, dp(3), 0); variantButtons.addView(b, p);
-            b.setOnClickListener(v -> select(game.mode(), chosen, game.level()));
+            final int selected = i;
+            Button b = tile((i == 0 ? "🎯  " : "🎲  ") + names[i],
+                    "Een lange speelsessie met 100 opdrachten", TILE[(game.mode() + i) % TILE.length], 118);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(118));
+            p.setMargins(0, dp(10), 0, dp(10)); root.addView(b, p);
+            b.setOnClickListener(v -> {
+                game.configure(game.mode(), selected, difficulty);
+                getPreferences(MODE_PRIVATE).edit().putInt("game_variant", selected).apply();
+                sessionSolved = 0; sessionAttempts = 0;
+                navigate(PLAY);
+            });
         }
-        prompt = text("", 23, 0xff223d38);
-        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(-1, -2);
-        pp.setMargins(0, dp(18), 0, dp(10)); root.addView(prompt, pp);
-        picture = text("", 45, 0xffbd7135); picture.setMinHeight(dp(135));
-        picture.setPadding(dp(8), dp(18), dp(8), dp(18)); picture.setBackground(bg(Color.WHITE, 20));
-        root.addView(picture, new LinearLayout.LayoutParams(-1, -2));
-        feedback = text("", 18, 0xff237254); feedback.setMinHeight(dp(52)); root.addView(feedback);
-        choices = new GridLayout(this); choices.setColumnCount(3);
-        choices.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
-        root.addView(choices, new LinearLayout.LayoutParams(-1, -2));
-        next = button("🌟 Volgende vraag", 0xffffd987); next.setTextSize(20);
-        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, dp(65));
-        np.setMargins(0, dp(14), 0, 0); root.addView(next, np);
-        next.setOnClickListener(v -> { game.nextRound(); message = ""; render(); });
     }
-    private void select(int mode, int variant, int level) {
-        game.configure(mode, variant, level); message = ""; streak = 0;
-        getPreferences(MODE_PRIVATE).edit().putInt("game_mode", mode)
-                .putInt("game_variant", variant).putInt("game_level", level)
-                .putInt("chosen_age", level).putInt("streak", streak).apply();
-        render();
-    }
-    private void choose(int index) {
-        if (game.round().isSolved()) return;
-        if (game.round().choose(index)) {
-            completed++; streak++;
-            getPreferences(MODE_PRIVATE).edit().putInt("completed_all", completed).putInt("streak", streak).apply();
-            message = game.mode() == LearningGame.WORDS ? "⭐ Goed gedaan! " + game.round().display.substring(game.round().display.indexOf("\n") + 1).replace("_", game.round().answers.get(game.round().correctIndex)) : (streak > 1 && streak % 5 == 0 ? "🎉 Super! " + streak + " goed achter elkaar!" : "⭐ Goed gedaan!");
-        } else {
-            streak = 0; getPreferences(MODE_PRIVATE).edit().putInt("streak", streak).apply();
-            message = "Bijna! Probeer nog eens 💛";
-        }
-        render();
-        feedback.announceForAccessibility(message);
-    }
-    private void render() {
+    private void showPlay() {
+        back(VARIANT);
         LearningGame.Round round = game.round();
-        subtitle.setText(home ? "Kies een spelletje • je leeftijd wordt bewaard" : LearningGame.GAME_NAMES[game.mode()] + " • Spel " + (game.variant() + 1));
-        gameButtons.setVisibility(home ? View.VISIBLE : View.GONE);
-        levelButtons.setVisibility(home ? View.VISIBLE : View.GONE);
-        ageLabel.setVisibility(home ? View.VISIBLE : View.GONE);
-        variantLabel.setVisibility(home ? View.GONE : View.VISIBLE);
-        variantButtons.setVisibility(home ? View.GONE : View.VISIBLE);
-        menuButton.setVisibility(home ? View.GONE : View.VISIBLE);
-        prompt.setVisibility(home ? View.GONE : View.VISIBLE);
-        picture.setVisibility(home ? View.GONE : View.VISIBLE);
-        feedback.setVisibility(home ? View.GONE : View.VISIBLE);
-        choices.setVisibility(home ? View.GONE : View.VISIBLE);
-        next.setVisibility(home ? View.GONE : (round.isSolved() ? View.VISIBLE : View.GONE));
-        progress.setText("🌟 " + completed + " opdrachten goed  •  " + streak + " op rij");
-        for (int i = 0; i < gameButtons.getChildCount(); i++) {
-            LinearLayout line = (LinearLayout) gameButtons.getChildAt(i);
-            for (int j = 0; j < line.getChildCount(); j++) {
-                View item = line.getChildAt(j);
-                item.setAlpha(i * 3 + j == game.mode() ? 1f : 0.72f);
-            }
+        header(ICONS[game.mode()] + " " + LearningGame.GAME_NAMES[game.mode()],
+                variantNames()[game.variant()] + "  •  " + LEVELS[difficulty]);
+        addLabel("⭐ " + sessionSolved + "/" + SESSION_ROUNDS +
+                "   •   Totaal: " + completed + "   •   Reeks: " + streak,
+                15, 0xff27856e, 0, 10);
+        if (sessionSolved >= SESSION_ROUNDS) {
+            addLabel("🏆 Geweldig gespeeld!", 29, 0xff29846f, 25, 15);
+            addLabel("Je hebt 100 opdrachten goed opgelost!", 18, INK, 0, 24);
+            Button again = tile("🔄 Nog 100 vragen", "Blijf oefenen!", TILE[1], 92);
+            root.addView(again, new LinearLayout.LayoutParams(-1, dp(92)));
+            again.setOnClickListener(v -> { sessionSolved = 0; game.nextRound(); showPage(); });
+            return;
         }
-        for (int i = 0; i < levelButtons.getChildCount(); i++)
-            levelButtons.getChildAt(i).setAlpha(i == game.level() ? 1f : 0.55f);
-        for (int i = 0; i < variantButtons.getChildCount(); i++) {
-            Button b = (Button) variantButtons.getChildAt(i);
-            if (game.mode() >= ExtraGames.SPELLING) {
-                b.setText(ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING][i]);
-            } else if (game.mode() == LearningGame.WORDS) {
-                b.setText(i == 0 ? "Middelste letter" : "Begin of eind");
-            } else {
-                b.setText(i == 0 ? "Spel 1" : "Spel 2");
-            }
-            b.setAlpha(i == game.variant() ? 1f : 0.55f);
-        }
-        prompt.setText(round.prompt);
-        picture.setText(round.display); picture.setTextColor(round.displayColor);
-        picture.setContentDescription(round.prompt + ". " + round.display);
-        feedback.setText(message);
-        choices.removeAllViews();
+        addLabel(round.prompt, 23, INK, 8, 12);
+        TextView display = label(round.display, game.mode() == LearningGame.WORDS ? 40 : 44, round.displayColor);
+        display.setMinHeight(dp(138)); display.setPadding(dp(12), dp(20), dp(12), dp(20));
+        display.setBackground(shape(Color.WHITE, 22));
+        display.setContentDescription(round.prompt + " " + round.display);
+        root.addView(display, new LinearLayout.LayoutParams(-1, -2));
+        addLabel(feedback.isEmpty() ? "Kies het juiste antwoord 👇" : feedback,
+                17, feedback.startsWith("⭐") || feedback.startsWith("🎉") ? 0xff248365 : MUTED, 14, 12);
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(round.answers.size() <= 4 ? 2 : 3);
+        grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+        root.addView(grid, new LinearLayout.LayoutParams(-1, -2));
         for (int i = 0; i < round.answers.size(); i++) {
             final int selected = i;
             String value = round.answers.get(i);
-            Button b = button(value, 0xffffffff);
-            b.setTextSize(game.mode() == LearningGame.COLORS || game.mode() == LearningGame.PATTERNS ? 16 : 25);
-            if (game.mode() == LearningGame.COLORS || game.mode() == LearningGame.PATTERNS) {
-                b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xfff5f6ff));
-                b.setTextColor(round.answerColors.get(i));
-            }
-            b.setContentDescription("Kies " + value);
-            GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 0; p.height = dp(70); p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            p.setMargins(dp(3), dp(3), dp(3), dp(3));
-            choices.addView(b, p);
+            Button b = tile(value, "", TILE[(game.mode() + i) % TILE.length], 85);
+            b.setTextSize(value.length() >= 9 ? 15 : value.length() >= 6 ? 18 : 25);
             b.setEnabled(!round.isSolved());
+            b.setContentDescription("Antwoord: " + value);
+            GridLayout.LayoutParams p = new GridLayout.LayoutParams();
+            p.width = 0; p.height = dp(85);
+            p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            p.setMargins(dp(4), dp(4), dp(4), dp(4));
+            grid.addView(b, p);
             b.setOnClickListener(v -> choose(selected));
         }
-        next.setVisibility(home ? View.GONE : (round.isSolved() ? View.VISIBLE : View.GONE));
+        if (round.isSolved()) {
+            Button next = tile("🌟 Volgende opdracht", "", TILE[3], 74);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(74));
+            p.setMargins(0, dp(18), 0, 0);
+            root.addView(next, p);
+            next.setOnClickListener(v -> { game.nextRound(); feedback = ""; showPage(); });
+        }
+    }
+    private void choose(int index) {
+        if (game.round().isSolved()) return;
+        sessionAttempts++;
+        if (game.round().choose(index)) {
+            completed++; streak++; sessionSolved++;
+            getPreferences(MODE_PRIVATE).edit().putInt("completed_all", completed).putInt("streak", streak).apply();
+            feedback = sessionSolved % 10 == 0 ? "🎉 Al " + sessionSolved + " opdrachten goed!" : "⭐ Goed gedaan!";
+        } else {
+            streak = 0;
+            getPreferences(MODE_PRIVATE).edit().putInt("streak", 0).apply();
+            feedback = "Bijna! Probeer het nog eens 💛";
+        }
+        showPage();
     }
 }
