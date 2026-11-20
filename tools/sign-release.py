@@ -50,6 +50,32 @@ def v2_sign(data,key,cert):
     struct.pack_into('<I',final_eocd,16,central+len(block))
     return data[:central]+block+data[central:eocd]+final_eocd
 
+def align_native_resources(source, output):
+    """Align uncompressed resources.arsc *before* v2 signing for Android 11+."""
+    with zipfile.ZipFile(source) as old, zipfile.ZipFile(output, 'w') as new:
+        for info in old.infolist():
+            item = zipfile.ZipInfo(info.filename, date_time=info.date_time)
+            item.compress_type = info.compress_type
+            item.external_attr = info.external_attr
+            item.create_system = info.create_system
+            item.comment = info.comment
+            item.flag_bits = info.flag_bits
+            item.internal_attr = info.internal_attr
+            item.extra = info.extra
+            if info.filename == 'resources.arsc' and info.compress_type == zipfile.ZIP_STORED:
+                position = new.fp.tell() + 30 + len(info.filename.encode('utf-8')) + len(item.extra)
+                if position % 4:
+                    padding_bytes = (-position - 4) % 4
+                    item.extra += struct.pack('<HH', 0xD935, padding_bytes) + bytes(padding_bytes)
+            new.writestr(item, old.read(info.filename))
+    with zipfile.ZipFile(output) as apk:
+        assert apk.testzip() is None
+        for info in apk.infolist():
+            if info.filename == 'resources.arsc':
+                data_offset = info.header_offset + 30 + len(info.filename.encode('utf-8')) + len(info.extra)
+                if data_offset % 4:
+                    raise ValueError('resources.arsc is not aligned for Android')
+
 def sign(unsigned,keystore,passwordfile,output):
     password=Path(passwordfile).read_text().strip()
     key,cert,_=pkcs12.load_key_and_certificates(Path(keystore).read_bytes(),password.encode())
@@ -61,7 +87,12 @@ def sign(unsigned,keystore,passwordfile,output):
             '-storepass',password,'-keypass',password,'-sigalg','SHA256withRSA',
             '-digestalg','SHA-256','-signedjar',str(v1),str(unsigned),'playlumi-release'],
             check=True,stdout=subprocess.DEVNULL)
-        final=v2_sign(v1.read_bytes(),key,cert)
+        aligned=Path(tmp)/'aligned.apk'
+        align_native_resources(v1,aligned)
+        # ZIP entry content remains unchanged, so JAR/v1 signatures stay valid.
+        subprocess.run(['jarsigner','-verify',str(aligned)],check=True,
+                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        final=v2_sign(aligned.read_bytes(),key,cert)
         Path(output).write_bytes(final)
     with zipfile.ZipFile(output) as apk:
         assert apk.testzip() is None, 'Corrupted ZIP'
