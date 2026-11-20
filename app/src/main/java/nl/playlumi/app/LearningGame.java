@@ -8,7 +8,7 @@ import java.util.Random;
 /** Android-independent engine for six learning activities with two variants each. */
 public final class LearningGame {
     public static final int COUNT = 0, COLORS = 1, LETTERS = 2, SHAPES = 3, NUMBERS = 4, PATTERNS = 5, WORDS = 6;
-    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen", "Woordjes"};
+    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen", "Woordjes", "Spelling", "Begin & eind", "Woord & plaatje", "Rijmen", "Meer of minder", "Sommen", "Getallenrij", "Tegenstellingen", "Wat hoort erbij?"};
     public static final String[] VARIANT_NAMES = {"Herkennen", "Anders oefenen"};
     public static final String[] COLOR_NAMES = {"rood", "blauw", "groen", "geel", "paars", "oranje"};
     public static final int[] COLOR_VALUES = {0xffd93646, 0xff2472c8, 0xff2b994f, 0xffd0a000, 0xff894bc1, 0xffdf7623};
@@ -65,6 +65,10 @@ public final class LearningGame {
             case NUMBERS: makeNumbers(); break;
             case PATTERNS: makePatterns(); break;
             case WORDS: makeWords(); break;
+            case ExtraGames.SPELLING: case ExtraGames.FIRST_LAST: case ExtraGames.PICTURES:
+            case ExtraGames.RHYMES: case ExtraGames.COMPARE: case ExtraGames.MATH:
+            case ExtraGames.SEQUENCES: case ExtraGames.OPPOSITES: case ExtraGames.CATEGORIES:
+                current = ExtraGames.next(mode, variant, level, random); break;
             default: throw new IllegalStateException("mode");
         }
     }
