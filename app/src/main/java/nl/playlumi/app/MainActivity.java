@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private TextView feedbackView;
     private java.util.ArrayList<Button> answerButtons = new java.util.ArrayList<>();
     private boolean resolvingAnswer;
+    private boolean switchingScreen;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -107,7 +108,11 @@ public class MainActivity extends Activity {
         b.setTextSize(16);
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         b.setGravity(Gravity.CENTER);
-        b.setBackgroundTintList(ColorStateList.valueOf(background));
+        android.graphics.drawable.RippleDrawable ripple =
+                new android.graphics.drawable.RippleDrawable(
+                        ColorStateList.valueOf(0x44ffffff), shape(background, 23), null);
+        b.setBackground(ripple);
+        b.setElevation(dp(3));
         b.setMinHeight(dp(height)); b.setPadding(dp(8), dp(8), dp(8), dp(8));
         b.setContentDescription((title + " " + description).trim());
         PlaylumiMotion.tactile(b);
@@ -139,7 +144,20 @@ public class MainActivity extends Activity {
         getPreferences(MODE_PRIVATE).edit().putString("recent_questions", recent.serialize()).apply();
     }
     private void navigate(int destination) {
-        page = destination; feedback = ""; showPage();
+        if (switchingScreen) return;
+        if (stage == null) { page = destination; feedback = ""; showPage(); return; }
+        switchingScreen = true;
+        FrameLayout exiting = stage;
+        exiting.animate().cancel();
+        exiting.animate().alpha(0f).translationX(-dp(18)).setDuration(135)
+                .setInterpolator(new DecelerateInterpolator())
+                .withEndAction(() -> {
+                    if (stage != exiting) { switchingScreen = false; return; }
+                    page = destination;
+                    feedback = "";
+                    switchingScreen = false;
+                    showPage();
+                }).start();
     }
     private void showPage() {
         stage = new FrameLayout(this);
@@ -156,6 +174,10 @@ public class MainActivity extends Activity {
         scroll.addView(root);
         stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         setContentView(stage);
+        stage.setAlpha(0f);
+        stage.setTranslationX(dp(18));
+        stage.animate().alpha(1f).translationX(0f).setDuration(240)
+                .setInterpolator(new DecelerateInterpolator()).start();
         final LinearLayout screen = root;
         screen.post(() -> { if (root == screen) PlaylumiMotion.reveal(screen); });
         switch (page) {
