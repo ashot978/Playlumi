@@ -7,8 +7,8 @@ import java.util.Random;
 
 /** Android-independent engine for six learning activities with two variants each. */
 public final class LearningGame {
-    public static final int COUNT = 0, COLORS = 1, LETTERS = 2, SHAPES = 3, NUMBERS = 4, PATTERNS = 5;
-    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen"};
+    public static final int COUNT = 0, COLORS = 1, LETTERS = 2, SHAPES = 3, NUMBERS = 4, PATTERNS = 5, WORDS = 6;
+    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen", "Woordjes"};
     public static final String[] VARIANT_NAMES = {"Herkennen", "Anders oefenen"};
     public static final String[] COLOR_NAMES = {"rood", "blauw", "groen", "geel", "paars", "oranje"};
     public static final int[] COLOR_VALUES = {0xffd93646, 0xff2472c8, 0xff2b994f, 0xffd0a000, 0xff894bc1, 0xffdf7623};
@@ -64,6 +64,7 @@ public final class LearningGame {
             case SHAPES: makeShapes(); break;
             case NUMBERS: makeNumbers(); break;
             case PATTERNS: makePatterns(); break;
+            case WORDS: makeWords(); break;
             default: throw new IllegalStateException("mode");
         }
     }
@@ -147,4 +148,32 @@ public final class LearningGame {
         }
         make("Welke kleur komt hierna?", pattern, 0xff333e53, answers, paints, correct);
     }
+    private static final String[][] ANIMALS = {
+        {"koe","kat","vis","mus","kip","mol","uil","aap","bok","das"},
+        {"hond","beer","muis","geit","haan","poes","eend","duif","slak","wolf"},
+        {"konijn","paard","leeuw","tijger","schaap","varken","dolfijn","olifant","giraf","panda"}
+    };
+    private static final String[][] ICONS = {
+        {"🐮","🐱","🐟","🐦","🐔","🐾","🦉","🐵","🐐","🦡"},
+        {"🐶","🐻","🐭","🐐","🐓","🐱","🦆","🕊","🐌","🐺"},
+        {"🐰","🐴","🦁","🐯","🐑","🐷","🐬","🐘","🦒","🐼"}
+    };
+    private void makeWords() {
+        int index = pick(ANIMALS[level].length);
+        String word = ANIMALS[level][index];
+        int missing = variant == 0 ? word.length() / 2 : (level == 0 ? 0 : word.length() - 1);
+        String correct = String.valueOf(word.charAt(missing));
+        String display = ICONS[level][index] + "\n" + word.substring(0, missing) + "_" + word.substring(missing + 1);
+        List<String> answers = new ArrayList<>();
+        answers.add(correct);
+        String alphabet = "abcdefghijklmnopqrstuvwxyz";
+        int count = level == 0 ? 3 : level == 1 ? 4 : 6;
+        while (answers.size() < count) {
+            String letter = String.valueOf(alphabet.charAt(pick(alphabet.length())));
+            if (!answers.contains(letter)) answers.add(letter);
+        }
+        Collections.shuffle(answers, random);
+        make("Welke letter ontbreekt?", display, 0xff59418a, answers, clearColors(answers.size()), correct);
+    }
+
 }
