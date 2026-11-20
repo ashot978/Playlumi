@@ -1,8 +1,11 @@
 name: Android
 on: [push, pull_request, workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -15,9 +18,63 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - run: gradle testDebugUnitTest lintDebug assembleDebug
+
+      - name: Test all games, lint and compile
+        run: gradle testDebugUnitTest lintDebug assembleDebug
+
+      # The real keystore and password are available only as encrypted GitHub secrets.
+      # No generated or temporary debug key is ever used for the published APK.
+      - name: Check release signing secrets
+        id: signing
+        env:
+          RELEASE_KEY_BASE64: ${{ secrets.PLAYLUMI_KEYSTORE_BASE64 }}
+          RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          if [[ -z "$RELEASE_KEY_BASE64" || -z "$RELEASE_PASSWORD" ]]; then
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo "::warning::Signed APK not built: configure PLAYLUMI_KEYSTORE_BASE64 and PLAYLUMI_SIGNING_PASSWORD in GitHub Actions secrets."
+          else
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare private release keystore
+        if: steps.signing.outputs.available == 'true' && github.event_name != 'pull_request'
+        env:
+          RELEASE_KEY_BASE64: ${{ secrets.PLAYLUMI_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          echo "$RELEASE_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/playlumi-release.p12"
+          chmod 600 "$RUNNER_TEMP/playlumi-release.p12"
+
+      - name: Build signed updateable release APK
+        if: steps.signing.outputs.available == 'true' && github.event_name != 'pull_request'
+        shell: bash
+        env:
+          PLAYLUMI_SIGNING_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+        run: |
+          echo "PLAYLUMI_STORE_FILE=$RUNNER_TEMP/playlumi-release.p12" >> "$GITHUB_ENV"
+          echo "PLAYLUMI_BUILD_CODE=$((10000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          export PLAYLUMI_STORE_FILE="$RUNNER_TEMP/playlumi-release.p12"
+          export PLAYLUMI_BUILD_CODE="$((10000 + GITHUB_RUN_NUMBER))"
+          gradle assembleRelease
+          test -f app/build/outputs/apk/release/app-release.apk
+
+      - name: Check APK certificate
+        if: steps.signing.outputs.available == 'true' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+
       - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.available == 'true' && github.event_name != 'pull_request'
         with:
-          name: playlumi-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: playlumi-signed-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove temporary keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/playlumi-release.p12"
