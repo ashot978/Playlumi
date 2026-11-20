@@ -195,7 +195,7 @@ public final class ExtraGames {
         answers.add(correct);
         int needed = bound(level);
         while (answers.size() < needed) {
-            int guess = Math.max(0, Math.min(max, result + random.nextInt(9) - 4));
+            int guess = random.nextInt(max + 1);
             uniqueAdd(answers, String.valueOf(guess));
         }
         return round(variant == 0 ? "Hoeveel is dit samen?" : "Hoeveel blijven er over?",
