@@ -21,6 +21,7 @@ public final class LearningGame {
     private final Random random;
     private int mode, variant, level;
     private Round current;
+    private QuestionHistory history;
 
     public static final class Round {
         public final String prompt, display;
@@ -47,8 +48,9 @@ public final class LearningGame {
     public int variant() { return variant; }
     public int level() { return level; }
     public Round round() { return current; }
+    public void setHistory(QuestionHistory history) { this.history = history; }
     public void configure(int mode, int variant, int level) {
-        if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > 1 || level < 0 || level > 2)
+        if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > 4 || level < 0 || level > 2)
             throw new IllegalArgumentException("Invalid game configuration");
         this.mode = mode; this.variant = variant; this.level = level;
         nextRound();
@@ -57,6 +59,20 @@ public final class LearningGame {
     private int pick(int bound) { return random.nextInt(bound); }
 
     public void nextRound() {
+        if (history == null) { generateRound(); return; }
+        Round best = null;
+        int oldest = Integer.MAX_VALUE;
+        for (int attempt = 0; attempt < 60; attempt++) {
+            generateRound();
+            int recency = history.recency(current);
+            if (recency == 0) { best = current; break; }
+            if (recency < oldest) { oldest = recency; best = current; }
+        }
+        current = best;
+        history.remember(current);
+    }
+    private void generateRound() {
+        if (variant >= 2) { current = VariantGames.next(mode, variant, level, random); return; }
         switch (mode) {
             case COUNT: makeCount(); break;
             case COLORS: makeColors(); break;
