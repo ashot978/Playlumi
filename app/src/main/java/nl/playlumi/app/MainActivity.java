@@ -28,6 +28,7 @@ public class MainActivity extends Activity {
     private static final String[] LEVELS = {"Makkelijk","Gemiddeld","Uitdagend"};
     private static final String[] LEVEL_ICONS = {"🌱","🌻","🏆"};
     private LearningGame game;
+    private QuestionHistory recent;
     private int page, age, difficulty, completed, streak, sessionSolved, sessionAttempts;
     private String feedback = "";
     private LinearLayout root;
@@ -35,6 +36,8 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         game = new LearningGame(new Random());
+        recent = new QuestionHistory(getPreferences(MODE_PRIVATE).getString("recent_questions", ""));
+        game.setHistory(recent);
         age = getPreferences(MODE_PRIVATE).getInt("chosen_age", -1);
         completed = getPreferences(MODE_PRIVATE).getInt("completed_all", 0);
         streak = getPreferences(MODE_PRIVATE).getInt("streak", 0);
@@ -51,6 +54,7 @@ public class MainActivity extends Activity {
             sessionAttempts = state.getInt("sessionAttempts");
         } else page = age < 0 ? AGE : CATEGORIES;
         game.configure(mode, variant, difficulty);
+        saveRecent();
         showPage();
     }
 
@@ -122,6 +126,9 @@ public class MainActivity extends Activity {
         p.setMargins(0, 0, 0, dp(12)); root.addView(b, p);
         b.setOnClickListener(v -> navigate(target));
     }
+    private void saveRecent() {
+        getPreferences(MODE_PRIVATE).edit().putString("recent_questions", recent.serialize()).apply();
+    }
     private void navigate(int destination) {
         page = destination; feedback = ""; showPage();
     }
@@ -155,6 +162,7 @@ public class MainActivity extends Activity {
                 age = selected; difficulty = selected;
                 getPreferences(MODE_PRIVATE).edit().putInt("chosen_age", age).apply();
                 game.configure(game.mode(), game.variant(), difficulty);
+                saveRecent();
                 navigate(CATEGORIES);
             });
         }
@@ -174,10 +182,11 @@ public class MainActivity extends Activity {
                     buttons[j] = tile("", "", BG, 104); buttons[j].setEnabled(false);
                 } else {
                     buttons[j] = tile(ICONS[idx] + "\n" + LearningGame.GAME_NAMES[idx],
-                            "100 vragen", TILE[idx % TILE.length], 104);
+                            "5 spelvarianten", TILE[idx % TILE.length], 104);
                     buttons[j].setOnClickListener(v -> {
                         difficulty = age;
                         game.configure(idx, 0, difficulty);
+                        saveRecent();
                         getPreferences(MODE_PRIVATE).edit().putInt("game_mode", idx).apply();
                         navigate(DIFFICULTY);
                     });
@@ -203,37 +212,48 @@ public class MainActivity extends Activity {
             b.setOnClickListener(v -> {
                 difficulty = chosen;
                 game.configure(game.mode(), game.variant(), difficulty);
+                saveRecent();
                 navigate(VARIANT);
             });
         }
     }
     private String[] variantNames() {
-        if (game.mode() >= ExtraGames.SPELLING)
-            return ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING];
-        if (game.mode() == LearningGame.WORDS) return new String[]{"Middelste letter", "Begin- of eindletter"};
-        switch (game.mode()) {
-            case LearningGame.COUNT: return new String[]{"Sterren & bloemen", "Andere voorwerpen"};
-            case LearningGame.COLORS: return new String[]{"Welke kleur?", "Zoek de kleur"};
-            case LearningGame.LETTERS: return new String[]{"Zoek klein", "Zoek groot"};
-            case LearningGame.SHAPES: return new String[]{"Zoek dezelfde vorm", "Noem de vorm"};
-            case LearningGame.NUMBERS: return new String[]{"Herken het cijfer", "Volgende cijfer"};
-            case LearningGame.PATTERNS: return new String[]{"Om-en-om", "Dubbel patroon"};
-            default: return new String[]{"Spel 1","Spel 2"};
+        String[] first;
+        if (game.mode() >= ExtraGames.SPELLING) {
+            first = ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING];
+        } else if (game.mode() == LearningGame.WORDS) {
+            first = new String[]{"Middelste letter", "Begin- of eindletter"};
+        } else {
+            switch (game.mode()) {
+                case LearningGame.COUNT: first = new String[]{"Voorwerpen tellen", "Andere voorwerpen"}; break;
+                case LearningGame.COLORS: first = new String[]{"Welke kleur?", "Zoek de kleur"}; break;
+                case LearningGame.LETTERS: first = new String[]{"Zoek klein", "Zoek groot"}; break;
+                case LearningGame.SHAPES: first = new String[]{"Zoek dezelfde vorm", "Noem de vorm"}; break;
+                case LearningGame.NUMBERS: first = new String[]{"Herken het cijfer", "Volgende cijfer"}; break;
+                case LearningGame.PATTERNS: first = new String[]{"Om-en-om", "Dubbel patroon"}; break;
+                default: first = new String[]{"Spel 1","Spel 2"};
+            }
         }
+        String[] names = new String[5];
+        names[0] = first[0]; names[1] = first[1];
+        for (int i = 0; i < 3; i++) names[i+2] = VariantGames.NAMES[game.mode()][i];
+        return names;
     }
     private void showVariant() {
         back(DIFFICULTY);
         header(ICONS[game.mode()] + " " + LearningGame.GAME_NAMES[game.mode()],
                 LEVELS[difficulty] + "  •  Kies hoe je wilt spelen");
         String[] names = variantNames();
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < names.length; i++) {
             final int selected = i;
-            Button b = tile((i == 0 ? "🎯  " : "🎲  ") + names[i],
-                    "Een lange speelsessie met 100 opdrachten", TILE[(game.mode() + i) % TILE.length], 118);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(118));
-            p.setMargins(0, dp(10), 0, dp(10)); root.addView(b, p);
+            String[] variants = {"🎯", "🎲", "🧠", "✨", "🚀"};
+            Button b = tile(variants[i] + "  " + names[i],
+                    "100 vragen • afwisselende opdrachten", TILE[(game.mode() + i) % TILE.length], 91);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(91));
+            p.setMargins(0, dp(5), 0, dp(5)); root.addView(b, p);
             b.setOnClickListener(v -> {
                 game.configure(game.mode(), selected, difficulty);
+                saveRecent();
                 getPreferences(MODE_PRIVATE).edit().putInt("game_variant", selected).apply();
                 sessionSolved = 0; sessionAttempts = 0;
                 navigate(PLAY);
@@ -253,7 +273,7 @@ public class MainActivity extends Activity {
             addLabel("Je hebt 100 opdrachten goed opgelost!", 18, INK, 0, 24);
             Button again = tile("🔄 Nog 100 vragen", "Blijf oefenen!", TILE[1], 92);
             root.addView(again, new LinearLayout.LayoutParams(-1, dp(92)));
-            again.setOnClickListener(v -> { sessionSolved = 0; game.nextRound(); showPage(); });
+            again.setOnClickListener(v -> { sessionSolved = 0; game.nextRound(); saveRecent(); showPage(); });
             return;
         }
         addLabel(round.prompt, 23, INK, 8, 12);
@@ -287,7 +307,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(74));
             p.setMargins(0, dp(18), 0, 0);
             root.addView(next, p);
-            next.setOnClickListener(v -> { game.nextRound(); feedback = ""; showPage(); });
+            next.setOnClickListener(v -> { game.nextRound(); saveRecent(); feedback = ""; showPage(); });
         }
     }
     private void choose(int index) {
