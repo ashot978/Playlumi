@@ -22,8 +22,8 @@ import java.util.Random;
 public class MainActivity extends Activity {
     private static final int AGE = 0, CATEGORIES = 1, DIFFICULTY = 2, VARIANT = 3, PLAY = 4;
     private static final int SESSION_ROUNDS = 200;
-    private static final int BG = 0xfff5f9fb, INK = 0xff244454, MUTED = 0xff59717b;
-    private static final int[] TILE = {0xffdeefff,0xffffe7cf,0xffeee1ff,0xffd9f5e8,0xffffe3ef,0xfffff2be};
+    private static final int BG = 0xfff9f5ff, INK = 0xff343056, MUTED = 0xff6a6590;
+    private static final int[] TILE = {0xffd9f3ff,0xffffe1ae,0xffe8d7ff,0xffcef8dd,0xffffd4e6,0xfffff3a9};
     private static final String[] ICONS = {"⭐","🎨","🔤","🔷","🔢","🧩","🐾",
             "✏️","🔠","🖼️","🎶","⚖️","➕","🔢","↔️","🧠",
             "🕒","🌦️","🧭","🏠","🥕","🦁","📏","💡"};
@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
     private java.util.ArrayList<Button> answerButtons = new java.util.ArrayList<>();
     private boolean resolvingAnswer;
     private boolean switchingScreen;
+    private int questionColor = 0xff7650c6;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -91,7 +92,9 @@ public class MainActivity extends Activity {
     private TextView label(String content, int size, int color) {
         TextView text = new TextView(this);
         text.setText(content); text.setTextColor(color); text.setTextSize(size);
-        text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        text.setTypeface(Typeface.create("sans-serif-rounded", Typeface.BOLD));
+        text.setIncludeFontPadding(true);
+        text.setLineSpacing(dp(2), 1.06f);
         text.setGravity(Gravity.CENTER);
         return text;
     }
@@ -103,17 +106,18 @@ public class MainActivity extends Activity {
     private Button tile(String title, String description, int background, int height) {
         Button b = new Button(this);
         b.setAllCaps(false);
-        b.setText(description.isEmpty() ? title : title + "\n" + description);
+        b.setText(PlaylumiType.tileText(title, description));
         b.setTextColor(INK);
-        b.setTextSize(16);
-        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setTextSize(description.isEmpty() ? 19 : 17);
+        b.setTypeface(Typeface.create("sans-serif-rounded", Typeface.BOLD));
+        b.setLineSpacing(dp(3), 1.04f);
         b.setGravity(Gravity.CENTER);
         android.graphics.drawable.RippleDrawable ripple =
                 new android.graphics.drawable.RippleDrawable(
                         ColorStateList.valueOf(0x44ffffff), shape(background, 23), null);
         b.setBackground(ripple);
-        b.setElevation(dp(3));
-        b.setMinHeight(dp(height)); b.setPadding(dp(8), dp(8), dp(8), dp(8));
+        b.setElevation(dp(6));
+        b.setMinHeight(dp(height)); b.setPadding(dp(12), dp(10), dp(12), dp(10));
         b.setContentDescription((title + " " + description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -123,16 +127,25 @@ public class MainActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
         for (Button item : items) {
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(104), 1);
-            params.setMargins(dp(4), dp(4), dp(4), dp(4));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(142), 1);
+            params.setMargins(dp(6), dp(6), dp(6), dp(6));
             row.addView(item, params);
         }
         root.addView(row);
     }
     private void header(String title, String description) {
-        addLabel("✨ Playlumi", 29, 0xff24847a, 0, 4);
-        addLabel(title, 23, INK, 12, 4);
-        addLabel(description, 15, MUTED, 0, 15);
+        TextView logo = label("✦  P L A Y L U M I  ✦", 16, 0xff925bce);
+        logo.setLetterSpacing(.08f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(42));
+        lp.setMargins(0, dp(2), 0, dp(4));
+        logo.setBackground(shape(0xfff1e6ff, 26));
+        root.addView(logo, lp);
+        TextView heading = label(title, page == PLAY ? 27 : 31, 0xff4e378e);
+        heading.setGravity(Gravity.CENTER);
+        heading.setMinHeight(dp(60));
+        heading.setPadding(dp(6), dp(6), dp(6), dp(6));
+        root.addView(heading, new LinearLayout.LayoutParams(-1, -2));
+        addLabel(description, 15, MUTED, 1, 16);
     }
     private void back(int target) {
         Button b = tile("← Terug", "", 0xffe8edf3, 49);
@@ -164,13 +177,13 @@ public class MainActivity extends Activity {
         android.graphics.drawable.GradientDrawable gradient =
                 new android.graphics.drawable.GradientDrawable(
                         android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                        new int[]{0xffecfaff, 0xfffdf3ff, 0xfffff8ed});
+                        new int[]{0xffe8f8ff, 0xfffff4fa, 0xfffff9db});
         stage.setBackground(gradient);
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(15), dp(18), dp(15), dp(30));
+        root.setPadding(dp(18), dp(18), dp(18), dp(36));
         scroll.addView(root);
         stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         setContentView(stage);
@@ -190,7 +203,7 @@ public class MainActivity extends Activity {
         }
     }
     private void showAge() {
-        header("Voor welke leeftijd spelen we?", "Kies één keer. Playlumi onthoudt je keuze.");
+        header("🎈 Hoe oud ben jij?", "Kies jouw avontuur! We bewaren je keuze.");
         for (int i = 0; i < AGES.length; i++) {
             final int selected = i;
             Button b = tile(AGE_ICONS[i] + "  " + AGES[i],
@@ -210,7 +223,7 @@ public class MainActivity extends Activity {
         if (age >= 0) addLabel("Geselecteerd: " + AGES[age], 15, MUTED, 12, 0);
     }
     private void showCategories() {
-        header("Wat gaan we spelen?", "Leeftijd: " + AGES[age] + "  •  Kies een speltegel");
+        header("🌟 Wat gaan we spelen?", "Leeftijd: " + AGES[age] + "  •  Kies een speltegel");
         Button change = tile("🎂 Leeftijd aanpassen", "Je keuze wordt bewaard", 0xffe4f4ed, 56);
         root.addView(change, new LinearLayout.LayoutParams(-1, dp(66)));
         change.setOnClickListener(v -> navigate(AGE));
@@ -223,10 +236,10 @@ public class MainActivity extends Activity {
             for (int j = 0; j < 2; j++) {
                 int idx = i + j;
                 if (idx >= LearningGame.GAME_NAMES.length) {
-                    buttons[j] = tile("", "", BG, 104); buttons[j].setEnabled(false);
+                    buttons[j] = tile("", "", BG, 142); buttons[j].setEnabled(false);
                 } else {
                     buttons[j] = tile(ICONS[idx] + "\n" + LearningGame.GAME_NAMES[idx],
-                            "5 spelvarianten", TILE[idx % TILE.length], 104);
+                            "5 spelvarianten", TILE[idx % TILE.length], 142);
                     buttons[j].setOnClickListener(v -> {
                         difficulty = age;
                         game.configure(idx, 0, difficulty);
@@ -243,7 +256,7 @@ public class MainActivity extends Activity {
     private void showDifficulty() {
         back(CATEGORIES);
         header(ICONS[game.mode()] + " " + LearningGame.GAME_NAMES[game.mode()],
-                "Hoe moeilijk mag het zijn?");
+                "🌈 Kies jouw uitdaging!");
         addLabel("Voorgesteld voor jouw leeftijd: " + LEVELS[age], 14, MUTED, 0, 12);
         for (int i = 0; i < LEVELS.length; i++) {
             final int chosen = i;
@@ -331,13 +344,20 @@ public class MainActivity extends Activity {
             again.setOnClickListener(v -> { sessionSolved = 0; game.nextRound(); saveRecent(); showPage(); });
             return;
         }
-        addLabel(round.prompt, 23, INK, 8, 12);
-        TextView display = label(round.display, game.mode() == LearningGame.WORDS ? 40 : 44, round.displayColor);
-        display.setMinHeight(dp(138)); display.setPadding(dp(12), dp(20), dp(12), dp(20));
-        display.setBackground(shape(Color.WHITE, 22));
+        TextView question = label(round.prompt, 29, 0xff523092);
+        question.setMinHeight(dp(78));
+        question.setPadding(dp(12), dp(13), dp(12), dp(13));
+        question.setBackground(shape(0xfff1e5ff, 24));
+        LinearLayout.LayoutParams qlp = new LinearLayout.LayoutParams(-1, -2);
+        qlp.setMargins(0, dp(14), 0, dp(17));
+        root.addView(question, qlp);
+        TextView display = label(round.display, game.mode() == LearningGame.WORDS ? 52 : 48, round.displayColor);
+        display.setMinHeight(dp(180)); display.setPadding(dp(12), dp(22), dp(12), dp(22));
+        display.setBackground(shape(Color.WHITE, 32));
+        display.setElevation(dp(5));
         display.setContentDescription(round.prompt + " " + round.display);
         root.addView(display, new LinearLayout.LayoutParams(-1, -2));
-        feedbackView = label(feedback.isEmpty() ? "Kies het juiste antwoord 👇" : feedback, 17,
+        feedbackView = label(feedback.isEmpty() ? "👇 Tik op het goede antwoord!" : feedback, 20,
                 feedback.startsWith("⭐") || feedback.startsWith("🎉") ? 0xff248365 : MUTED);
         LinearLayout.LayoutParams feedbackLayout = new LinearLayout.LayoutParams(-1, -2);
         feedbackLayout.setMargins(0, dp(14), 0, dp(12));
@@ -351,14 +371,14 @@ public class MainActivity extends Activity {
         for (int i = 0; i < round.answers.size(); i++) {
             final int selected = i;
             String value = round.answers.get(i);
-            Button b = tile(value, "", TILE[(game.mode() + i) % TILE.length], 85);
-            b.setTextSize(value.length() >= 9 ? 15 : value.length() >= 6 ? 18 : 25);
+            Button b = tile(value, "", TILE[(game.mode() + i) % TILE.length], 96);
+            b.setTextSize(value.length() >= 12 ? 16 : value.length() >= 8 ? 19 : value.length() >= 5 ? 23 : 30);
             b.setEnabled(!round.isSolved());
             b.setContentDescription("Antwoord: " + value);
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 0; p.height = dp(85);
+            p.width = 0; p.height = dp(96);
             p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            p.setMargins(dp(4), dp(4), dp(4), dp(4));
+            p.setMargins(dp(6), dp(6), dp(6), dp(6));
             grid.addView(b, p);
             answerButtons.add(b);
             b.setOnClickListener(v -> choose(selected, b));
