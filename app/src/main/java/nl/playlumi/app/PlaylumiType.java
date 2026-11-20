@@ -15,25 +15,30 @@ public final class PlaylumiType {
     public static SpannableString tileText(String title, String description) {
         String body = description.isEmpty() ? title : title + "\n" + description;
         SpannableString styled = new SpannableString(body);
-        int newline = body.indexOf('\n');
-        int firstLineEnd = newline < 0 ? body.length() : newline;
-        if (firstLineEnd > 0) {
-            styled.setSpan(new StyleSpan(Typeface.BOLD), 0, firstLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        if (newline >= 0) {
-            String prefix = body.substring(0, newline);
-            // A leading pictograph gets to be the visual icon, not another small letter.
-            if (containsEmoji(prefix)) {
-                int iconEnd = prefix.indexOf(' ');
-                if (iconEnd < 0) iconEnd = prefix.length();
-                if (iconEnd > 0) styled.setSpan(new RelativeSizeSpan(1.8f), 0, iconEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        int firstBreak = body.indexOf('\n');
+        int secondBreak = firstBreak < 0 ? -1 : body.indexOf('\n', firstBreak + 1);
+        if (secondBreak >= 0) {
+            // Category cards: giant illustration, large category name, small explanation.
+            styled.setSpan(new RelativeSizeSpan(2.0f), 0, firstBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new RelativeSizeSpan(1.08f), firstBreak + 1, secondBreak,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new StyleSpan(Typeface.BOLD), firstBreak + 1, secondBreak,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new RelativeSizeSpan(.70f), secondBreak + 1, body.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new ForegroundColorSpan(0xff68617d), secondBreak + 1, body.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else if (firstBreak >= 0) {
+            styled.setSpan(new StyleSpan(Typeface.BOLD), 0, firstBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (containsEmoji(body.substring(0, firstBreak))) {
+                int split = body.indexOf(' ');
+                if (split < 0 || split > firstBreak) split = firstBreak;
+                styled.setSpan(new RelativeSizeSpan(1.55f), 0, split, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
-            if (newline + 1 < body.length()) {
-                styled.setSpan(new RelativeSizeSpan(description.isEmpty() ? 1.12f : .76f),
-                        newline + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                if (!description.isEmpty()) styled.setSpan(new ForegroundColorSpan(Color.rgb(76, 93, 113)),
-                        newline + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
+            styled.setSpan(new RelativeSizeSpan(description.isEmpty() ? 1.1f : .78f),
+                    firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (!description.isEmpty()) styled.setSpan(new ForegroundColorSpan(0xff68617d),
+                    firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (containsEmoji(body)) {
             int split=body.indexOf(' ');
             if(split>0)styled.setSpan(new RelativeSizeSpan(1.5f),0,split,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
