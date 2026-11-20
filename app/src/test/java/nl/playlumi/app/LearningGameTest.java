@@ -28,6 +28,23 @@ public class LearningGameTest {
                     }
                 }
     }
+    @Test public void wordPuzzlesAlwaysHaveOneMissingLetterAndCorrectChoice() {
+        LearningGame game = new LearningGame(new Random(23));
+        for (int level = 0; level < 3; level++) {
+            for (int variant = 0; variant < 2; variant++) {
+                game.configure(LearningGame.WORDS, variant, level);
+                for (int i = 0; i < 100; i++) {
+                    LearningGame.Round round = game.round();
+                    assertTrue(round.display.contains("_"));
+                    assertEquals(1, round.display.length() - round.display.replace("_", "").length());
+                    assertEquals(level == 0 ? 3 : level == 1 ? 4 : 6, round.answers.size());
+                    assertEquals(1, round.answers.get(round.correctIndex).length());
+                    assertTrue(round.choose(round.correctIndex));
+                    game.nextRound();
+                }
+            }
+        }
+    }
     @Test(expected = IllegalArgumentException.class)
     public void invalidModeRejected() { new LearningGame(new Random()).configure(99, 0, 0); }
     @Test(expected = IllegalArgumentException.class)
