@@ -3,3 +3,10 @@ build/
 app/build/
 local.properties
 .idea/
+
+# Never commit Android signing keys or passwords
+*.p12
+*.jks
+*.keystore
+*signing-password*
+*keystore-base64*
