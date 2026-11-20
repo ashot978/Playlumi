@@ -1,14 +1,42 @@
 plugins { id 'com.android.application' }
 
+// The PKCS12 key is NEVER checked into the repository.
+// Configure both variables through GitHub Actions encrypted repository secrets.
+def releaseStorePath = System.getenv('PLAYLUMI_STORE_FILE')
+def releasePassword = System.getenv('PLAYLUMI_SIGNING_PASSWORD')
+def releaseReady = releaseStorePath != null && !releaseStorePath.isEmpty() &&
+        releasePassword != null && !releasePassword.isEmpty()
+def buildCode = System.getenv('PLAYLUMI_BUILD_CODE')
+
 android {
     namespace 'nl.playlumi.app'
     compileSdk 35
+
     defaultConfig {
         applicationId 'nl.playlumi.app'
         minSdk 23
         targetSdk 35
-        versionCode 9
-        versionName '0.9.0'
+        // GitHub Actions uses a monotonically increasing run number for each release.
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 10
+        versionName '0.9.1'
+    }
+
+    signingConfigs {
+        playlumiRelease {
+            if (releaseReady) {
+                storeFile file(releaseStorePath)
+                storePassword releasePassword
+                keyAlias 'playlumi-release'
+                keyPassword releasePassword
+                storeType 'pkcs12'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (releaseReady) signingConfig signingConfigs.playlumiRelease
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
