@@ -18,6 +18,9 @@ import java.util.Random;
 public class MainActivity extends Activity {
     private LearningGame game;
     private LinearLayout root, gameButtons, levelButtons, variantButtons;
+    private TextView ageLabel, variantLabel;
+    private Button menuButton;
+    private boolean home = true;
     private GridLayout choices;
     private TextView prompt, picture, feedback, progress, subtitle;
     private Button next;
@@ -31,13 +34,15 @@ public class MainActivity extends Activity {
         streak = getPreferences(MODE_PRIVATE).getInt("streak", 0);
         int mode = getPreferences(MODE_PRIVATE).getInt("game_mode", 0);
         int variant = getPreferences(MODE_PRIVATE).getInt("game_variant", 0);
-        int level = getPreferences(MODE_PRIVATE).getInt("game_level", 0);
+        int level = getPreferences(MODE_PRIVATE).getInt("chosen_age", 0);
         if (saved != null) { mode = saved.getInt("mode", mode); variant = saved.getInt("variant", variant); level = saved.getInt("level", level); }
         game.configure(mode, variant, level);
+        if (saved != null) home = saved.getBoolean("home", true);
         buildScreen();
         render();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
+        out.putBoolean("home", home);
         out.putInt("mode", game.mode()); out.putInt("variant", game.variant()); out.putInt("level", game.level());
         super.onSaveInstanceState(out);
     }
@@ -67,21 +72,24 @@ public class MainActivity extends Activity {
         subtitle = text("Kies een spelletje", 15, 0xff5b7771); root.addView(subtitle);
         progress = text("", 14, 0xff4a6660);
         progress.setPadding(0, dp(8), 0, dp(12)); root.addView(progress);
+        menuButton = button("⌂ Terug naar spelletjes", 0xffd5f1e5);
+        root.addView(menuButton, new LinearLayout.LayoutParams(-1, dp(52)));
+        menuButton.setOnClickListener(v -> { home = true; message = ""; render(); });
         gameButtons = new LinearLayout(this); gameButtons.setOrientation(LinearLayout.VERTICAL); root.addView(gameButtons);
-        for (int row = 0; row < 2; row++) {
+        for (int row = 0; row < 3; row++) {
             LinearLayout line = new LinearLayout(this); line.setGravity(Gravity.CENTER); gameButtons.addView(line);
-            for (int col = 0; col < 3; col++) {
+            for (int col = 0; col < (row == 2 ? 1 : 3); col++) {
                 final int index = row * 3 + col;
-                String[] icons = {"⭐", "🎨", "🔤", "🔷", "🔢", "🧩"};
+                String[] icons = {"⭐", "🎨", "🔤", "🔷", "🔢", "🧩", "🐾"};
                 Button b = button(icons[index] + "\n" + LearningGame.GAME_NAMES[index], 0xffdcf4e9);
                 b.setTextSize(14);
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(78), 1);
                 p.setMargins(dp(2), dp(2), dp(2), dp(2)); line.addView(b, p);
-                b.setOnClickListener(v -> select(index, 0, game.level()));
+                b.setOnClickListener(v -> { home = false; select(index, 0, game.level()); });
             }
         }
-        TextView levelLabel = text("Moeilijkheid", 17, 0xff28685b);
-        levelLabel.setPadding(0, dp(12), 0, dp(3)); root.addView(levelLabel);
+        ageLabel = text("Kies leeftijd (wordt onthouden)", 17, 0xff28685b);
+        ageLabel.setPadding(0, dp(12), 0, dp(3)); root.addView(ageLabel);
         levelButtons = new LinearLayout(this); root.addView(levelButtons);
         String[] levelNames = {"🌱 3–4 jaar", "🌼 5–6 jaar", "🚀 7+ jaar"};
         for (int i = 0; i < 3; i++) {
@@ -91,7 +99,7 @@ public class MainActivity extends Activity {
             p.setMargins(dp(2), 0, dp(2), 0); levelButtons.addView(b, p);
             b.setOnClickListener(v -> select(game.mode(), game.variant(), chosen));
         }
-        TextView variantLabel = text("Speel op twee manieren", 17, 0xff28685b);
+        variantLabel = text("Speel op twee manieren", 17, 0xff28685b);
         variantLabel.setPadding(0, dp(12), 0, dp(2)); root.addView(variantLabel);
         variantButtons = new LinearLayout(this); root.addView(variantButtons);
         for (int i = 0; i < 2; i++) {
@@ -119,7 +127,8 @@ public class MainActivity extends Activity {
     private void select(int mode, int variant, int level) {
         game.configure(mode, variant, level); message = ""; streak = 0;
         getPreferences(MODE_PRIVATE).edit().putInt("game_mode", mode)
-                .putInt("game_variant", variant).putInt("game_level", level).putInt("streak", streak).apply();
+                .putInt("game_variant", variant).putInt("game_level", level)
+                .putInt("chosen_age", level).putInt("streak", streak).apply();
         render();
     }
     private void choose(int index) {
@@ -127,7 +136,7 @@ public class MainActivity extends Activity {
         if (game.round().choose(index)) {
             completed++; streak++;
             getPreferences(MODE_PRIVATE).edit().putInt("completed_all", completed).putInt("streak", streak).apply();
-            message = streak > 1 && streak % 5 == 0 ? "🎉 Super! " + streak + " goed achter elkaar!" : "⭐ Goed gedaan!";
+            message = game.mode() == LearningGame.WORDS ? "⭐ Goed gedaan! " + game.round().display.substring(game.round().display.indexOf("\\n") + 1).replace("_", game.round().answers.get(game.round().correctIndex)) : (streak > 1 && streak % 5 == 0 ? "🎉 Super! " + streak + " goed achter elkaar!" : "⭐ Goed gedaan!");
         } else {
             streak = 0; getPreferences(MODE_PRIVATE).edit().putInt("streak", streak).apply();
             message = "Bijna! Probeer nog eens 💛";
@@ -137,7 +146,18 @@ public class MainActivity extends Activity {
     }
     private void render() {
         LearningGame.Round round = game.round();
-        subtitle.setText(LearningGame.GAME_NAMES[game.mode()] + " • Spel " + (game.variant() + 1));
+        subtitle.setText(home ? "Kies een spelletje • je leeftijd wordt bewaard" : LearningGame.GAME_NAMES[game.mode()] + " • Spel " + (game.variant() + 1));
+        gameButtons.setVisibility(home ? View.VISIBLE : View.GONE);
+        levelButtons.setVisibility(home ? View.VISIBLE : View.GONE);
+        ageLabel.setVisibility(home ? View.VISIBLE : View.GONE);
+        variantLabel.setVisibility(home ? View.GONE : View.VISIBLE);
+        variantButtons.setVisibility(home ? View.GONE : View.VISIBLE);
+        menuButton.setVisibility(home ? View.GONE : View.VISIBLE);
+        prompt.setVisibility(home ? View.GONE : View.VISIBLE);
+        picture.setVisibility(home ? View.GONE : View.VISIBLE);
+        feedback.setVisibility(home ? View.GONE : View.VISIBLE);
+        choices.setVisibility(home ? View.GONE : View.VISIBLE);
+        next.setVisibility(home ? View.GONE : (round.isSolved() ? View.VISIBLE : View.GONE));
         progress.setText("🌟 " + completed + " opdrachten goed  •  " + streak + " op rij");
         for (int i = 0; i < gameButtons.getChildCount(); i++) {
             LinearLayout line = (LinearLayout) gameButtons.getChildAt(i);
@@ -172,6 +192,6 @@ public class MainActivity extends Activity {
             b.setEnabled(!round.isSolved());
             b.setOnClickListener(v -> choose(selected));
         }
-        next.setVisibility(round.isSolved() ? View.VISIBLE : View.GONE);
+        next.setVisibility(home ? View.GONE : (round.isSolved() ? View.VISIBLE : View.GONE));
     }
 }
