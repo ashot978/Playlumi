@@ -176,6 +176,9 @@ public class MainActivity extends Activity {
         change.setOnClickListener(v -> navigate(AGE));
         addLabel("🌟 " + completed + " goede opdrachten", 15, 0xff2a8067, 14, 8);
         for (int i = 0; i < LearningGame.GAME_NAMES.length; i += 2) {
+            if (i == 0) addLabel("🌈 Ontdekken & leren", 20, INK, 14, 8);
+            if (i == 8) addLabel("🔤 Taal & slim denken", 20, INK, 20, 8);
+            if (i == 16) addLabel("🌍 De wereld om je heen", 20, INK, 20, 8);
             Button[] buttons = new Button[2];
             for (int j = 0; j < 2; j++) {
                 int idx = i + j;
