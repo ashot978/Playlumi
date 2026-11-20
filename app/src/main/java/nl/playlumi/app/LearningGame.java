@@ -8,7 +8,7 @@ import java.util.Random;
 /** Android-independent engine for six learning activities with two variants each. */
 public final class LearningGame {
     public static final int COUNT = 0, COLORS = 1, LETTERS = 2, SHAPES = 3, NUMBERS = 4, PATTERNS = 5, WORDS = 6;
-    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen", "Woordjes", "Spelling", "Begin & eind", "Woord & plaatje", "Rijmen", "Meer of minder", "Sommen", "Getallenrij", "Tegenstellingen", "Wat hoort erbij?"};
+    public static final String[] GAME_NAMES = {"Tellen", "Kleuren", "Letters", "Vormen", "Cijfers", "Patronen", "Woordjes", "Spelling", "Begin & eind", "Woord & plaatje", "Rijmen", "Meer of minder", "Sommen", "Getallenrij", "Tegenstellingen", "Wat hoort erbij?", "Klokkijken", "Weer & seizoenen", "Plaats & richting", "Dagelijkse dingen", "Eten & drinken", "Dierenwereld", "Meten & vergelijken", "Slim nadenken"};
     public static final String[] VARIANT_NAMES = {"Herkennen", "Anders oefenen"};
     public static final String[] COLOR_NAMES = {"rood", "blauw", "groen", "geel", "paars", "oranje"};
     public static final int[] COLOR_VALUES = {0xffd93646, 0xff2472c8, 0xff2b994f, 0xffd0a000, 0xff894bc1, 0xffdf7623};
@@ -72,6 +72,7 @@ public final class LearningGame {
         history.remember(current);
     }
     private void generateRound() {
+        if (mode >= NewWorldGames.FIRST) { current = NewWorldGames.next(mode, variant, level, random); return; }
         if (variant >= 2) { current = VariantGames.next(mode, variant, level, random); return; }
         switch (mode) {
             case COUNT: makeCount(); break;
