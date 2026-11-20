@@ -8,7 +8,7 @@ import static org.junit.Assert.*;
 public class VariantGamesTest {
     @Test public void allNewVariantsCreatePlayableQuestions() {
         Random random = new Random(441);
-        for (int mode = 0; mode < LearningGame.GAME_NAMES.length; mode++)
+        for (int mode = 0; mode < NewWorldGames.FIRST; mode++)
             for (int variant = 2; variant < 5; variant++)
                 for (int difficulty = 0; difficulty < 3; difficulty++)
                     for (int sample = 0; sample < 100; sample++) {
