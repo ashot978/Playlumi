@@ -76,14 +76,21 @@ public class MainActivity extends Activity {
         root.addView(menuButton, new LinearLayout.LayoutParams(-1, dp(52)));
         menuButton.setOnClickListener(v -> { home = true; message = ""; render(); });
         gameButtons = new LinearLayout(this); gameButtons.setOrientation(LinearLayout.VERTICAL); root.addView(gameButtons);
-        for (int row = 0; row < 3; row++) {
-            LinearLayout line = new LinearLayout(this); line.setGravity(Gravity.CENTER); gameButtons.addView(line);
-            for (int col = 0; col < (row == 2 ? 1 : 3); col++) {
+        String[] icons = {"⭐", "🎨", "🔤", "🔷", "🔢", "🧩", "🐾",
+                "✏️", "🔠", "🖼️", "🎶", "⚖️", "➕", "🔢", "↔️", "🧠"};
+        for (int row = 0; row < (LearningGame.GAME_NAMES.length + 2) / 3; row++) {
+            LinearLayout line = new LinearLayout(this);
+            line.setGravity(Gravity.CENTER); gameButtons.addView(line);
+            for (int col = 0; col < 3; col++) {
                 final int index = row * 3 + col;
-                String[] icons = {"⭐", "🎨", "🔤", "🔷", "🔢", "🧩", "🐾"};
+                if (index >= LearningGame.GAME_NAMES.length) {
+                    View empty = new View(this);
+                    line.addView(empty, new LinearLayout.LayoutParams(0, dp(82), 1));
+                    continue;
+                }
                 Button b = button(icons[index] + "\n" + LearningGame.GAME_NAMES[index], 0xffdcf4e9);
-                b.setTextSize(14);
-                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(78), 1);
+                b.setTextSize(13);
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(82), 1);
                 p.setMargins(dp(2), dp(2), dp(2), dp(2)); line.addView(b, p);
                 b.setOnClickListener(v -> { home = false; select(index, 0, game.level()); });
             }
@@ -162,14 +169,23 @@ public class MainActivity extends Activity {
         for (int i = 0; i < gameButtons.getChildCount(); i++) {
             LinearLayout line = (LinearLayout) gameButtons.getChildAt(i);
             for (int j = 0; j < line.getChildCount(); j++) {
-                Button b = (Button) line.getChildAt(j);
-                b.setAlpha(i * 3 + j == game.mode() ? 1f : 0.62f);
+                View item = line.getChildAt(j);
+                item.setAlpha(i * 3 + j == game.mode() ? 1f : 0.72f);
             }
         }
         for (int i = 0; i < levelButtons.getChildCount(); i++)
             levelButtons.getChildAt(i).setAlpha(i == game.level() ? 1f : 0.55f);
-        for (int i = 0; i < variantButtons.getChildCount(); i++)
-            variantButtons.getChildAt(i).setAlpha(i == game.variant() ? 1f : 0.55f);
+        for (int i = 0; i < variantButtons.getChildCount(); i++) {
+            Button b = (Button) variantButtons.getChildAt(i);
+            if (game.mode() >= ExtraGames.SPELLING) {
+                b.setText(ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING][i]);
+            } else if (game.mode() == LearningGame.WORDS) {
+                b.setText(i == 0 ? "Middelste letter" : "Begin of eind");
+            } else {
+                b.setText(i == 0 ? "Spel 1" : "Spel 2");
+            }
+            b.setAlpha(i == game.variant() ? 1f : 0.55f);
+        }
         prompt.setText(round.prompt);
         picture.setText(round.display); picture.setTextColor(round.displayColor);
         picture.setContentDescription(round.prompt + ". " + round.display);
