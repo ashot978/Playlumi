@@ -159,6 +159,7 @@ public final class ExtraGames {
             correct = rhyme;
             answers.add(rhyme); answers.add(odd);
             int another = (other + 1) % RHYME_GROUPS.length;
+            if (another == groupIndex) another = (another + 1) % RHYME_GROUPS.length;
             uniqueAdd(answers, RHYME_GROUPS[another][2]);
         } else {
             correct = odd;
