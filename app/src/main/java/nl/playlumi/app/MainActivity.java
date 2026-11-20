@@ -18,11 +18,12 @@ import java.util.Random;
 /** Tile-based, screen-by-screen learning experience with no ads, timers or accounts. */
 public class MainActivity extends Activity {
     private static final int AGE = 0, CATEGORIES = 1, DIFFICULTY = 2, VARIANT = 3, PLAY = 4;
-    private static final int SESSION_ROUNDS = 100;
+    private static final int SESSION_ROUNDS = 200;
     private static final int BG = 0xfff5f9fb, INK = 0xff244454, MUTED = 0xff59717b;
     private static final int[] TILE = {0xffdeefff,0xffffe7cf,0xffeee1ff,0xffd9f5e8,0xffffe3ef,0xfffff2be};
     private static final String[] ICONS = {"⭐","🎨","🔤","🔷","🔢","🧩","🐾",
-            "✏️","🔠","🖼️","🎶","⚖️","➕","🔢","↔️","🧠"};
+            "✏️","🔠","🖼️","🎶","⚖️","➕","🔢","↔️","🧠",
+            "🕒","🌦️","🧭","🏠","🥕","🦁","📏","💡"};
     private static final String[] AGES = {"3–4 jaar", "5–6 jaar", "7+ jaar"};
     private static final String[] AGE_ICONS = {"🐣","🦋","🚀"};
     private static final String[] LEVELS = {"Makkelijk","Gemiddeld","Uitdagend"};
@@ -219,6 +220,9 @@ public class MainActivity extends Activity {
     }
     private String[] variantNames() {
         String[] first;
+        if (game.mode() >= NewWorldGames.FIRST) {
+            return NewWorldGames.VARIANTS[game.mode() - NewWorldGames.FIRST];
+        }
         if (game.mode() >= ExtraGames.SPELLING) {
             first = ExtraGames.VARIANT_LABELS[game.mode() - ExtraGames.SPELLING];
         } else if (game.mode() == LearningGame.WORDS) {
@@ -248,7 +252,7 @@ public class MainActivity extends Activity {
             final int selected = i;
             String[] variants = {"🎯", "🎲", "🧠", "✨", "🚀"};
             Button b = tile(variants[i] + "  " + names[i],
-                    "100 vragen • afwisselende opdrachten", TILE[(game.mode() + i) % TILE.length], 91);
+                    "200 vragen • afwisselende opdrachten", TILE[(game.mode() + i) % TILE.length], 91);
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(91));
             p.setMargins(0, dp(5), 0, dp(5)); root.addView(b, p);
             b.setOnClickListener(v -> {
@@ -270,8 +274,8 @@ public class MainActivity extends Activity {
                 15, 0xff27856e, 0, 10);
         if (sessionSolved >= SESSION_ROUNDS) {
             addLabel("🏆 Geweldig gespeeld!", 29, 0xff29846f, 25, 15);
-            addLabel("Je hebt 100 opdrachten goed opgelost!", 18, INK, 0, 24);
-            Button again = tile("🔄 Nog 100 vragen", "Blijf oefenen!", TILE[1], 92);
+            addLabel("Je hebt 200 opdrachten goed opgelost!", 18, INK, 0, 24);
+            Button again = tile("🔄 Nog 200 vragen", "Blijf oefenen!", TILE[1], 92);
             root.addView(again, new LinearLayout.LayoutParams(-1, dp(92)));
             again.setOnClickListener(v -> { sessionSolved = 0; game.nextRound(); saveRecent(); showPage(); });
             return;
