@@ -19,8 +19,20 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Test all games, lint and compile
-        run: gradle testDebugUnitTest lintDebug assembleDebug
+      - name: Prepare automatically increasing Android version code
+        shell: bash
+        run: echo "PLAYLUMI_BUILD_CODE=$((10000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+
+      - name: Test all games, lint and compile both APK variants
+        run: gradle testDebugUnitTest lintDebug assembleDebug assembleRelease
+
+      - name: Upload unsigned release for offline private-key signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-unsigned-release-apk
+          path: app/build/outputs/apk/release/*-unsigned.apk
+          if-no-files-found: error
+          retention-days: 30
 
       # The real keystore and password are available only as encrypted GitHub secrets.
       # No generated or temporary debug key is ever used for the published APK.
