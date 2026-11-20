@@ -46,6 +46,10 @@ public class MainActivity extends Activity {
         out.putInt("mode", game.mode()); out.putInt("variant", game.variant()); out.putInt("level", game.level());
         super.onSaveInstanceState(out);
     }
+    @Override public void onBackPressed() {
+        if (!home) { home = true; message = ""; render(); }
+        else super.onBackPressed();
+    }
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }
     private TextView text(String s, int sp, int color) {
         TextView v = new TextView(this);
