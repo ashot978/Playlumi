@@ -1,6 +1,9 @@
 package nl.playlumi.app;
 
 import android.app.Activity;
+import android.widget.FrameLayout;
+import android.widget.ProgressBar;
+import android.view.animation.DecelerateInterpolator;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -33,6 +36,10 @@ public class MainActivity extends Activity {
     private int page, age, difficulty, completed, streak, sessionSolved, sessionAttempts;
     private String feedback = "";
     private LinearLayout root;
+    private FrameLayout stage;
+    private TextView feedbackView;
+    private java.util.ArrayList<Button> answerButtons = new java.util.ArrayList<>();
+    private boolean resolvingAnswer;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -103,6 +110,7 @@ public class MainActivity extends Activity {
         b.setBackgroundTintList(ColorStateList.valueOf(background));
         b.setMinHeight(dp(height)); b.setPadding(dp(8), dp(8), dp(8), dp(8));
         b.setContentDescription((title + " " + description).trim());
+        PlaylumiMotion.tactile(b);
         return b;
     }
     private void tileRow(Button[] items) {
@@ -134,12 +142,22 @@ public class MainActivity extends Activity {
         page = destination; feedback = ""; showPage();
     }
     private void showPage() {
+        stage = new FrameLayout(this);
+        android.graphics.drawable.GradientDrawable gradient =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{0xffecfaff, 0xfffdf3ff, 0xfffff8ed});
+        stage.setBackground(gradient);
         ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true); scroll.setBackgroundColor(BG);
+        scroll.setFillViewport(true);
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(15), dp(18), dp(15), dp(30));
-        scroll.addView(root); setContentView(scroll);
+        scroll.addView(root);
+        stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(stage);
+        final LinearLayout screen = root;
+        screen.post(() -> { if (root == screen) PlaylumiMotion.reveal(screen); });
         switch (page) {
             case AGE: showAge(); break;
             case CATEGORIES: showCategories(); break;
@@ -275,6 +293,14 @@ public class MainActivity extends Activity {
         addLabel("⭐ " + sessionSolved + "/" + SESSION_ROUNDS +
                 "   •   Totaal: " + completed + "   •   Reeks: " + streak,
                 15, 0xff27856e, 0, 10);
+        ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(SESSION_ROUNDS);
+        progressBar.setProgress(sessionSolved);
+        progressBar.setProgressTintList(ColorStateList.valueOf(0xff48b79e));
+        progressBar.setProgressBackgroundTintList(ColorStateList.valueOf(0xffe4e8f1));
+        LinearLayout.LayoutParams progressLayout = new LinearLayout.LayoutParams(-1, dp(12));
+        progressLayout.setMargins(dp(8), 0, dp(8), dp(16));
+        root.addView(progressBar, progressLayout);
         if (sessionSolved >= SESSION_ROUNDS) {
             addLabel("🏆 Geweldig gespeeld!", 29, 0xff29846f, 25, 15);
             addLabel("Je hebt 200 opdrachten goed opgelost!", 18, INK, 0, 24);
@@ -289,8 +315,13 @@ public class MainActivity extends Activity {
         display.setBackground(shape(Color.WHITE, 22));
         display.setContentDescription(round.prompt + " " + round.display);
         root.addView(display, new LinearLayout.LayoutParams(-1, -2));
-        addLabel(feedback.isEmpty() ? "Kies het juiste antwoord 👇" : feedback,
-                17, feedback.startsWith("⭐") || feedback.startsWith("🎉") ? 0xff248365 : MUTED, 14, 12);
+        feedbackView = label(feedback.isEmpty() ? "Kies het juiste antwoord 👇" : feedback, 17,
+                feedback.startsWith("⭐") || feedback.startsWith("🎉") ? 0xff248365 : MUTED);
+        LinearLayout.LayoutParams feedbackLayout = new LinearLayout.LayoutParams(-1, -2);
+        feedbackLayout.setMargins(0, dp(14), 0, dp(12));
+        root.addView(feedbackView, feedbackLayout);
+        answerButtons.clear();
+        resolvingAnswer = false;
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(round.answers.size() <= 4 ? 2 : 3);
         grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
@@ -307,7 +338,8 @@ public class MainActivity extends Activity {
             p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
             p.setMargins(dp(4), dp(4), dp(4), dp(4));
             grid.addView(b, p);
-            b.setOnClickListener(v -> choose(selected));
+            answerButtons.add(b);
+            b.setOnClickListener(v -> choose(selected, b));
         }
         if (round.isSolved()) {
             Button next = tile("🌟 Volgende opdracht", "", TILE[3], 74);
@@ -317,18 +349,38 @@ public class MainActivity extends Activity {
             next.setOnClickListener(v -> { game.nextRound(); saveRecent(); feedback = ""; showPage(); });
         }
     }
-    private void choose(int index) {
-        if (game.round().isSolved()) return;
+    private void choose(int index, Button tapped) {
+        if (resolvingAnswer || game.round().isSolved()) return;
         sessionAttempts++;
         if (game.round().choose(index)) {
+            resolvingAnswer = true;
             completed++; streak++; sessionSolved++;
             getPreferences(MODE_PRIVATE).edit().putInt("completed_all", completed).putInt("streak", streak).apply();
             feedback = sessionSolved % 10 == 0 ? "🎉 Al " + sessionSolved + " opdrachten goed!" : "⭐ Goed gedaan!";
+            feedbackView.setText(feedback);
+            feedbackView.setTextColor(0xff248365);
+            for (Button button : answerButtons) button.setEnabled(false);
+            tapped.setBackgroundTintList(ColorStateList.valueOf(0xffb7efd5));
+            PlaylumiMotion.pop(tapped);
+            PlaylumiMotion.pop(feedbackView);
+            PlaylumiMotion.celebrate(stage, streak);
+            feedbackView.announceForAccessibility(feedback);
+            final LearningGame.Round solvedRound = game.round();
+            final FrameLayout activeStage = stage;
+            activeStage.postDelayed(() -> {
+                if (stage == activeStage && page == PLAY && game.round() == solvedRound) {
+                    resolvingAnswer = false;
+                    showPage();
+                }
+            }, 740L);
         } else {
             streak = 0;
             getPreferences(MODE_PRIVATE).edit().putInt("streak", 0).apply();
             feedback = "Bijna! Probeer het nog eens 💛";
+            feedbackView.setText(feedback);
+            feedbackView.setTextColor(0xffb87632);
+            PlaylumiMotion.shake(tapped);
+            feedbackView.announceForAccessibility(feedback);
         }
-        showPage();
     }
 }
