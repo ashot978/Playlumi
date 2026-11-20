@@ -136,7 +136,7 @@ public class MainActivity extends Activity {
         if (game.round().choose(index)) {
             completed++; streak++;
             getPreferences(MODE_PRIVATE).edit().putInt("completed_all", completed).putInt("streak", streak).apply();
-            message = game.mode() == LearningGame.WORDS ? "⭐ Goed gedaan! " + game.round().display.substring(game.round().display.indexOf("\\n") + 1).replace("_", game.round().answers.get(game.round().correctIndex)) : (streak > 1 && streak % 5 == 0 ? "🎉 Super! " + streak + " goed achter elkaar!" : "⭐ Goed gedaan!");
+            message = game.mode() == LearningGame.WORDS ? "⭐ Goed gedaan! " + game.round().display.substring(game.round().display.indexOf("\n") + 1).replace("_", game.round().answers.get(game.round().correctIndex)) : (streak > 1 && streak % 5 == 0 ? "🎉 Super! " + streak + " goed achter elkaar!" : "⭐ Goed gedaan!");
         } else {
             streak = 0; getPreferences(MODE_PRIVATE).edit().putInt("streak", streak).apply();
             message = "Bijna! Probeer nog eens 💛";
