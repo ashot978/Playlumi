@@ -258,11 +258,6 @@ public final class NewWorldGames {
         return make("Hoeveel is het verschil?","📏 "+Math.max(n,other)+" − "+Math.min(n,other)+" = ?",
                 ""+diff,opts(""+diff,numbers(0,max(lvl)),choiceCount(lvl),r),r);
     }
-    private static String[] numbers(int min,int maximum) {
-        String[] result=new String[maximum-min+1];
-        for(int i=min;i<=maximum;i++)result[i-min]=""+i;
-        return result;
-    }
     private static LearningGame.Round logic(int v,int lvl,Random r) {
         int max=max(lvl);
         if(v==0 || v==1 || v==3) {
