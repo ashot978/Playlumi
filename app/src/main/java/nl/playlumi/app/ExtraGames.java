@@ -51,7 +51,7 @@ public final class ExtraGames {
             {"kop","pop","stop","top"}, {"jas","tas","plas","was"},
             {"boot","noot","groot","rood"}, {"tak","dak","pak","bak"}
     };
-    private static final String[][] OPPOSITES = {
+    private static final String[][] OPPOSITE_WORD_PAIRS = {
             {"groot","klein"}, {"warm","koud"}, {"hoog","laag"}, {"nat","droog"},
             {"licht","donker"}, {"vol","leeg"}, {"blij","verdrietig"},
             {"snel","langzaam"}, {"open","dicht"}, {"hard","zacht"},
@@ -215,15 +215,15 @@ public final class ExtraGames {
                 display, answers, correct, random);
     }
     private static LearningGame.Round opposites(int variant, int level, Random random) {
-        int available = level == 0 ? 6 : level == 1 ? 12 : OPPOSITES.length;
+        int available = level == 0 ? 6 : level == 1 ? 12 : OPPOSITE_WORD_PAIRS.length;
         int index = random.nextInt(available);
-        String promptWord = OPPOSITES[index][variant == 0 ? 0 : 1];
-        String correct = OPPOSITES[index][variant == 0 ? 1 : 0];
+        String promptWord = OPPOSITE_WORD_PAIRS[index][variant == 0 ? 0 : 1];
+        String correct = OPPOSITE_WORD_PAIRS[index][variant == 0 ? 1 : 0];
         List<String> answers = new ArrayList<>();
         answers.add(correct);
         while (answers.size() < bound(level)) {
             int other = random.nextInt(available);
-            uniqueAdd(answers, OPPOSITES[other][variant == 0 ? 1 : 0]);
+            uniqueAdd(answers, OPPOSITE_WORD_PAIRS[other][variant == 0 ? 1 : 0]);
         }
         return round(variant == 0 ? "Wat is het tegenovergestelde?" : "Maak het tegenstellingenpaar af!",
                 "↔️  " + promptWord, answers, correct, random);
