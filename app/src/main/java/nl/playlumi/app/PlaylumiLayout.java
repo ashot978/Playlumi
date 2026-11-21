@@ -5,6 +5,7 @@ package nl.playlumi.app;
  * Pure Java so screen sizing can be regression-tested without an emulator.
  */
 public final class PlaylumiLayout {
+    public static final int SHORT_ROUND_QUESTIONS=8;
     private PlaylumiLayout() {}
 
     public static boolean useWideLayout(int widthDp, boolean landscape) {
