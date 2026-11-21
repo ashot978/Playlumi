@@ -3,8 +3,8 @@ package nl.playlumi.app;
 /** Small original, royalty-free synthesized jingles, no external audio assets. */
 public final class PlaylumiTunes {
     public static final int TAP=0, SUCCESS=1, TRY_AGAIN=2, UNLOCK=3,
-            HELLO=4, POP=5, DANCE=6, SPARKLE=7;
-    public static final int COUNT=8, RATE=22050;
+            HELLO=4, POP=5, DANCE=6, SPARKLE=7, NOTE_GREEN=8, NOTE_BLUE=9, NOTE_YELLOW=10, NOTE_PURPLE=11;
+    public static final int COUNT=12, RATE=22050;
     private static final double[][] NOTES={
         {660,0,0},                 // button tap
         {523.25,659.25,783.99},   // good answer
@@ -13,10 +13,14 @@ public final class PlaylumiTunes {
         {659.25,783.99,880,0,880}, // greeting
         {920,700,480},            // popping bubble, descending
         {392,523.25,659.25,523.25,783.99,880}, // little dance
-        {1046.5,1318.5,1568,2093} // magic chime
+        {1046.5,1318.5,1568,2093}, // magic chime
+        {261.63}, // frog: C4
+        {329.63}, // cat: E4
+        {392.00}, // chick: G4
+        {523.25}  // butterfly: C5
     };
-    private static final int[] NOTE_MS={85,130,170,150,175,38,135,155};
-    private static final int[] GAP_MS={0,13,14,10,14,0,16,11};
+    private static final int[] NOTE_MS={85,130,170,150,175,38,135,155,245,245,245,245};
+    private static final int[] GAP_MS={0,13,14,10,14,0,16,11,0,0,0,0};
     private PlaylumiTunes() {}
     public static byte[] wav(int effect) {
         if(effect<0 || effect>=COUNT)throw new IllegalArgumentException("Invalid jingle");
