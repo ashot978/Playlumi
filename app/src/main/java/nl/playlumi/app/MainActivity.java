@@ -1779,7 +1779,15 @@ public class MainActivity extends Activity {
         header(PlaylumiStories.ICONS[id]+" "+PlaylumiStories.NAMES[id],
                 "Hoofdstuk "+(stories.step()+1)+" / 4");
 
-        addText(scene.emoji,landscapeScreen()?45:61,0xff8661b6,2,6);
+        TextView illustration=text(scene.emoji,landscapeScreen()?45:61,0xff8661b6);
+        illustration.setContentDescription("Tik op de plaat om te toveren");
+        illustration.setClickable(true);illustration.setFocusable(true);
+        addWidget(illustration,2,6);
+        illustration.setOnClickListener(v->{
+            PlaylumiDelight.wiggle(illustration);
+            PlaylumiDelight.sprinkle(stage,illustration);
+            if(sound!=null)sound.sparkle();
+        });
         LinearLayout storyCard=new LinearLayout(this);
         storyCard.setGravity(Gravity.CENTER_VERTICAL);
         storyCard.setBackground(rounded(0xfff0e4ff,22));
@@ -1817,7 +1825,14 @@ public class MainActivity extends Activity {
         PlaylumiStories.Scene scene=stories.scene();
         String result=stories.choice()==0?scene.firstResult:scene.secondResult;
         header("✨ Jouw avontuur","Hoofdstuk "+(stories.step()+1)+" / 4");
-        addText(scene.emoji,landscapeScreen()?44:61,0xff7856b4,3,7);
+        TextView illustration=text(scene.emoji,landscapeScreen()?44:61,0xff7856b4);
+        illustration.setContentDescription("Tik om het verhaal te laten fonkelen");
+        illustration.setClickable(true);illustration.setFocusable(true);
+        addWidget(illustration,3,7);
+        illustration.setOnClickListener(v->{
+            PlaylumiDelight.hop(illustration);
+            PlaylumiDelight.sprinkle(stage,illustration);
+        });
         TextView reaction=text(result,landscapeScreen()?19:21,0xff533b87);
         reaction.setPadding(dp(13),dp(14),dp(13),dp(14));
         reaction.setMinHeight(dp(106));
@@ -2372,11 +2387,12 @@ public class MainActivity extends Activity {
     private void tapMelody(int note,Button pressed) {
         if(melodySolved || melody==null)return;
         sound.note(note);
+        PlaylumiDelight.hop(pressed);
         int status=melody.tap(note);
         if(status==0) {
             melodyStatus.setText("💗 Oeps! Probeer de melodie nog eens.");
             if(playPal!=null)playPal.react(2);
-            PlaylumiMotion.shake(pressed);
+            PlaylumiDelight.wiggle(pressed);
         } else if(status==1) {
             melodyStatus.setText("✨ Goed! "+melody.progress()+" van "+
                     melody.length()+" tonen.");
@@ -2396,6 +2412,7 @@ public class MainActivity extends Activity {
             sound.good();
             nextButton.setVisibility(View.VISIBLE);
             PlaylumiMotion.pop(nextButton);
+            PlaylumiDelight.sprinkle(stage,pressed);
             scroller.post(()->scroller.smoothScrollTo(0,
                     Math.max(0,root.getHeight()-scroller.getHeight())));
         }
@@ -2457,6 +2474,14 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams scene=new LinearLayout.LayoutParams(-1,dp(gardenHeight));
         scene.setMargins(dp(3),dp(3),dp(3),dp(7));
         root.addView(view,scene);
+        view.setContentDescription("Magische plant "+PlaylumiGarden.NAMES[plant]+
+                ". Tik om extra sterren te ontdekken.");
+        view.setClickable(true);view.setFocusable(true);
+        view.setOnClickListener(v->{
+            PlaylumiDelight.wiggle(view);
+            PlaylumiDelight.sprinkle(stage,view);
+            if(sound!=null)sound.sparkle();
+        });
         addText("💚 "+garden.stage(plant)+" van "+PlaylumiGarden.STAGES+
                 " groeistapjes",21,0xff2a876a,2,8);
         if(!gardenMessage.isEmpty())addText(gardenMessage,17,0xff6a4293,0,9);
