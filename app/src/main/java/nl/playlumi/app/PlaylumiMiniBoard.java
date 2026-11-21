@@ -120,6 +120,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                     }
                     case DragEvent.ACTION_DRAG_ENTERED:
                         view.setScaleX(1.04f);view.setScaleY(1.04f);
+                        PlaylumiDelight.hop(view);
                         return true;
                     case DragEvent.ACTION_DRAG_EXITED:
                     case DragEvent.ACTION_DRAG_ENDED:
@@ -127,6 +128,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                         return true;
                     case DragEvent.ACTION_DROP:
                         view.setScaleX(1f);view.setScaleY(1f);
+                        PlaylumiDelight.wiggle(view);
                         Object token=event.getLocalState();
                         if(token instanceof ShapeDrag && ((ShapeDrag)token).owner==this)
                             checkAnswer(((ShapeDrag)token).answerIndex,true);
@@ -241,7 +243,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             listener.onSolved();
         } else {
             status.setText("💛 Probeer eens een andere!");
-            if(index<cards.size())PlaylumiMotion.shake(cards.get(index));
+            if(index<cards.size())PlaylumiDelight.wiggle(cards.get(index));
             listener.onMistake();
         }
     }
@@ -267,6 +269,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         int result=question.flip(index);
         if(result==0)return;
         renderMemory();
+        if(index<cards.size())PlaylumiDelight.flip(cards.get(index));
         if(result==2 || result==3) {
             listener.onMatch();
             if(index<cards.size())PlaylumiMotion.pop(cards.get(index));
