@@ -63,8 +63,15 @@ public final class PlaylumiMiniChallenge {
         Collections.shuffle(values,r);
         return values.subList(0,count);
     }
+    /** Clicks only work in tap-based games. A shape MUST arrive via a drag drop. */
     public boolean choose(int index) {
         if(kind==MEMORY)throw new IllegalStateException("memory requires flip");
+        if(kind==DRAG)throw new IllegalStateException("shape requires drag and drop");
+        check(index);
+        return correctIndex==index;
+    }
+    public boolean drop(int index) {
+        if(kind!=DRAG)throw new IllegalStateException("only shapes can be dropped");
         check(index);
         return correctIndex==index;
     }
