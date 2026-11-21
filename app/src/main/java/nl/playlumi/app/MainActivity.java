@@ -945,7 +945,7 @@ public class MainActivity extends Activity {
     private void showAdventureMap() {
         header("🗺️ Op avontuur!","Volg de sterren en ontdek nieuwe plekken");
         addText("🌟 "+adventures.progress(world)+" van 6 avonturen klaar",19,0xff35816b,0,8);
-        addText("● ".repeat(storyPage+1)+"○ ".repeat(2-storyPage),15,0xff876ac1,0,12);
+        addText(storyPage==0?"● ○ ○":storyPage==1?"● ● ○":"● ● ●",15,0xff876ac1,0,12);
         int start=storyPage*2;
         for(int i=start;i<Math.min(start+2,PlaylumiAdventure.STAGES);i++) {
             final int stageIndex=i;
