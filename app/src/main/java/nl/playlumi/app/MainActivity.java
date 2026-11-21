@@ -23,6 +23,8 @@ import android.view.animation.DecelerateInterpolator;
 import java.util.ArrayList;
 import java.util.Random;
 import java.io.File;
+import java.util.Calendar;
+import android.os.SystemClock;
 
 /** One choice per screen, a separate learning world menu, and native Android play motion. */
 public class MainActivity extends Activity {
@@ -31,7 +33,9 @@ public class MainActivity extends Activity {
             MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15,
             ROOM=16, ROOM_CATS=17, ROOM_ITEMS=18,
             TROPHY_WORLDS=19, TROPHY_CATS=20,
-            STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25;
+            STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
+            PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
+            PARENT_SETTINGS=30, BREAK_SCREEN=31;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -75,6 +79,10 @@ public class MainActivity extends Activity {
     private boolean miniSolved;
     private PlaylumiAdventure adventures;
     private PlaylumiAdaptive adaptive;
+    private PlaylumiUsage usage;
+    private long activeSince;
+    private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
+    private boolean parentAllowed;
     private PlaylumiStories stories;
     private PlaylumiDrawingView drawing;
     private int storyLibraryPage;
@@ -97,6 +105,16 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(flags);
         SharedPreferences prefs=getPreferences(MODE_PRIVATE);
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
+        PlaylumiMotion.setReduced(prefs.getBoolean("reduced_motion",false));
+        int today=dayStamp();
+        if(prefs.getInt("usage_day",-1)!=today)
+            prefs.edit().putInt("usage_day",today).putInt("usage_seconds",0)
+                    .putBoolean("usage_break_shown",false).apply();
+        usage=new PlaylumiUsage();
+        usage.restore(prefs.getInt("usage_seconds",0),
+                prefs.getInt("usage_limit",0),prefs.getBoolean("usage_break_shown",false));
+        adultA=10+new Random().nextInt(8);
+        adultB=8+new Random().nextInt(8);
         age=prefs.getInt("chosen_age",-1);
         lifetimeCount=prefs.getInt("completed_all",0);
         int mode=prefs.getInt("game_mode",0);
@@ -137,6 +155,12 @@ public class MainActivity extends Activity {
             trophyPage=state.getInt("trophyPage",0);
             storyLibraryPage=state.getInt("storyLibraryPage",0);
             storyJustCompleted=state.getBoolean("storyJustCompleted",false);
+            parentWorld=state.getInt("parentWorld",0);
+            parentStatsPage=state.getInt("parentStatsPage",0);
+            adultA=state.getInt("adultA",adultA);
+            adultB=state.getInt("adultB",adultB);
+            parentAllowed=state.getBoolean("parentAllowed",false);
+            breakReturn=state.getInt("breakReturn",HOME);
         }
         stories=new PlaylumiStories();
         stories.restore(prefs.getInt("stories_completed",0),prefs.getInt("stories_current",-1),
@@ -211,6 +235,12 @@ public class MainActivity extends Activity {
         out.putInt("trophyPage",trophyPage);
         out.putInt("storyLibraryPage",storyLibraryPage);
         out.putBoolean("storyJustCompleted",storyJustCompleted);
+        out.putInt("parentWorld",parentWorld);
+        out.putInt("parentStatsPage",parentStatsPage);
+        out.putInt("adultA",adultA);
+        out.putInt("adultB",adultB);
+        out.putBoolean("parentAllowed",parentAllowed);
+        out.putInt("breakReturn",breakReturn);
         out.putInt("roomPage",roomPage);
         out.putInt("roomItemPage",roomItemPage);
         out.putInt("roomSlot",roomSlot);
@@ -237,6 +267,10 @@ public class MainActivity extends Activity {
             if(drawing!=null)drawing.save();
             move(WORLD_HUB);return;
         }
+        if(page==PARENT_GATE || page==PARENT_HOME) {parentAllowed=false;move(HOME);return;}
+        if(page==PARENT_WORLDS || page==PARENT_SETTINGS) {move(PARENT_HOME);return;}
+        if(page==PARENT_STATS) {move(PARENT_WORLDS);return;}
+        if(page==BREAK_SCREEN) {move(HOME);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
@@ -447,6 +481,12 @@ public class MainActivity extends Activity {
             case STORY_REACTION: showStoryReaction();break;
             case STORY_END: showStoryEnd();break;
             case DRAW: showDrawing();break;
+            case PARENT_GATE: showParentGate();break;
+            case PARENT_HOME: showParentHome();break;
+            case PARENT_WORLDS: showParentWorlds();break;
+            case PARENT_STATS: showParentStats();break;
+            case PARENT_SETTINGS: showParentSettings();break;
+            case BREAK_SCREEN: showBreakScreen();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
