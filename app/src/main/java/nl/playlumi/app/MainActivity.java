@@ -872,64 +872,123 @@ public class MainActivity extends Activity {
     private int sessionGoal() {
         return storyStage>=0?PlaylumiAdventure.QUESTIONS_PER_MISSION:SESSION_ROUNDS;
     }
+    /**
+     * Responsive game canvas: portrait stacks short cards; landscape splits the
+     * question and answers into two columns. All answers remain tappable and the
+     * ScrollView can still scroll when the user chooses large system fonts.
+     */
     private void showPlay() {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
+        boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
-        companion(83);
-        addText("⭐ "+sessionSolved+" / "+sessionGoal(),18,0xff2c886f,0,7);
+
+        LinearLayout progressRow=new LinearLayout(this);
+        progressRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView counter=text("⭐ "+sessionSolved+" / "+sessionGoal(),15,0xff2c886f);
+        counter.setGravity(Gravity.CENTER_VERTICAL);
+        progressRow.addView(counter,new LinearLayout.LayoutParams(-2,dp(25)));
         roundProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         roundProgress.setMax(sessionGoal());
         roundProgress.setProgress(sessionSolved);
         roundProgress.setProgressTintList(ColorStateList.valueOf(0xff64c7a7));
         roundProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0xffe4d9f0));
-        LinearLayout.LayoutParams barParams=new LinearLayout.LayoutParams(-1,dp(12));
-        barParams.setMargins(dp(10),0,dp(10),dp(19));
-        root.addView(roundProgress,barParams);
+        LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(0,dp(7),1f);
+        bar.setMargins(dp(14),0,dp(3),0);
+        progressRow.addView(roundProgress,bar);
+        LinearLayout.LayoutParams progressParams=new LinearLayout.LayoutParams(-1,dp(29));
+        progressParams.setMargins(dp(3),0,dp(3),dp(6));
+        root.addView(progressRow,progressParams);
 
-        TextView question=text(round.prompt,25,0xff583b97);
-        question.setPadding(dp(13),dp(16),dp(13),dp(16));
-        question.setBackground(rounded(0xfff0e4ff,27));
-        question.setMinHeight(dp(70));
-        addWidget(question,0,12);
+        LinearLayout questions=root;
+        LinearLayout answers=root;
+        if(wide) {
+            LinearLayout columns=new LinearLayout(this);
+            columns.setOrientation(LinearLayout.HORIZONTAL);
+            columns.setGravity(Gravity.TOP);
+            root.addView(columns,new LinearLayout.LayoutParams(-1,-2));
+            questions=new LinearLayout(this);
+            questions.setOrientation(LinearLayout.VERTICAL);
+            answers=new LinearLayout(this);
+            answers.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams leftParams=new LinearLayout.LayoutParams(0,-2,1f);
+            LinearLayout.LayoutParams rightParams=new LinearLayout.LayoutParams(0,-2,1f);
+            leftParams.setMargins(0,0,dp(7),0);
+            rightParams.setMargins(dp(7),0,0,0);
+            columns.addView(questions,leftParams);
+            columns.addView(answers,rightParams);
+        }
+
+        LinearLayout promptLine=new LinearLayout(this);
+        promptLine.setOrientation(LinearLayout.HORIZONTAL);
+        promptLine.setGravity(Gravity.CENTER_VERTICAL);
+        TextView question=text(round.prompt,wide?18:20,0xff583b97);
+        question.setPadding(dp(9),dp(9),dp(9),dp(9));
+        question.setBackground(rounded(0xfff0e4ff,19));
+        question.setMinHeight(dp(wide?80:68));
+        question.setMaxLines(4);
+        promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
         if(sound.isEnabled()) {
-            Button listen=tile("🔊 Lees de vraag voor","",0xffe7e3ff,49);
-            addTile(listen,0);
+            Button listen=tile("🔊","",0xffe7e3ff,46);
+            listen.setTextSize(21);
+            listen.setPadding(dp(3),dp(3),dp(3),dp(3));
+            listen.setMinWidth(dp(46));
+            listen.setContentDescription("Lees de vraag voor");
+            LinearLayout.LayoutParams speakerP=new LinearLayout.LayoutParams(dp(49),dp(51));
+            speakerP.setMargins(dp(6),0,0,0);
+            promptLine.addView(listen,speakerP);
             listen.setOnClickListener(v->sound.speak(round.prompt));
         }
-        TextView picture=text(round.display,50,round.displayColor);
-        picture.setPadding(dp(12),dp(24),dp(12),dp(24));
-        picture.setBackground(rounded(Color.WHITE,32));
-        picture.setMinHeight(dp(164));
-        picture.setElevation(dp(3));
-        picture.setContentDescription(round.prompt+" "+round.display);
-        addWidget(picture,0,12);
+        addWidgetIn(questions,promptLine,0,dp(8));
 
-        feedbackText=text("👇 Tik het juiste antwoord aan!",18,SUB);
-        addWidget(feedbackText,0,10);
-        answerButtons.clear();answerLocked=round.isSolved();
+        int pictureSize=round.display.length()>22?27:
+                round.display.length()>12?30:wide?32:38;
+        TextView picture=text(round.display,pictureSize,round.displayColor);
+        picture.setPadding(dp(9),dp(10),dp(9),dp(10));
+        picture.setBackground(rounded(Color.WHITE,22));
+        picture.setMinHeight(dp(wide?150:112));
+        picture.setMaxLines(4);
+        picture.setElevation(dp(2));
+        picture.setContentDescription(round.prompt+" "+round.display);
+        addWidgetIn(questions,picture,0,dp(wide?3:8));
+
+        feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
+        feedbackText.setMinHeight(dp(28));
+        addWidgetIn(answers,feedbackText,0,dp(3));
+        answerButtons.clear();
+        answerLocked=round.isSolved();
         for(int i=0;i<round.answers.size();i+=2) {
-            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
+            LinearLayout answerRow=new LinearLayout(this);
+            answerRow.setGravity(Gravity.CENTER);
             for(int j=i;j<Math.min(i+2,round.answers.size());j++) {
                 final int answer=j;
                 String value=round.answers.get(j);
-                Button b=tile(value,"",COLORS[(mode+j)%6],85);
-                b.setTextSize(value.length()>=13?16:value.length()>=9?18:
-                        value.length()>=6?21:29);
-                b.setEnabled(!answerLocked);
-                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);
-                lp.setMargins(dp(5),dp(5),dp(5),dp(5));
-                row.addView(b,lp);
-                answerButtons.add(b);
-                b.setOnClickListener(v->choose(answer,b));
+                Button button=tile(value,"",COLORS[(mode+j)%6],wide?60:70);
+                button.setTextSize(value.length()>=13?15:value.length()>=9?17:
+                        value.length()>=6?20:27);
+                button.setPadding(dp(5),dp(7),dp(5),dp(7));
+                button.setMaxLines(3);
+                button.setEnabled(!answerLocked);
+                LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,-2,1f);
+                cell.setMargins(dp(3),dp(3),dp(3),dp(3));
+                answerRow.addView(button,cell);
+                answerButtons.add(button);
+                button.setOnClickListener(v->choose(answer,button));
             }
-            root.addView(row);
+            answers.addView(answerRow,new LinearLayout.LayoutParams(-1,-2));
         }
-        nextButton=tile("🌟 Volgende!","",0xffcff4dd,80);
-        addTile(nextButton,13);
+        nextButton=tile("🌟 Volgende!","",0xffcff4dd,66);
+        LinearLayout.LayoutParams nextParams=new LinearLayout.LayoutParams(-1,-2);
+        nextParams.setMargins(dp(4),dp(7),dp(4),dp(5));
+        answers.addView(nextButton,nextParams);
         nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->continueAfterAnswer());
+    }
+    private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+        p.setMargins(dp(3),top,dp(3),bottom);
+        parent.addView(widget,p);
     }
     private void addWidget(View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
