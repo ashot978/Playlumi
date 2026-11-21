@@ -81,6 +81,7 @@ public final class PlaylumiWardrobe {
     public void earnStoryBonus(){add(15);}
     public void earnCreativeBonus(){add(9);}
     public void earnFriendBonus(){add(PlaylumiFriends.FIRST_COMPLETE_BONUS);}
+    public void earnGardenBonus(){add(PlaylumiGarden.FIRST_BLOOM_STARS);}
     public void earnBadges(int badges){
         if(badges<0 || badges>Integer.MAX_VALUE/STARS_FOR_BADGE)
             throw new IllegalArgumentException("badges out of range");
