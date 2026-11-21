@@ -1,0 +1,17 @@
+# Geen binaire apps of geheime ondertekening in de publieke repository
+*.apk
+*.aab
+*.dex
+*.p12
+*.jks
+*.keystore
+*.pem
+*.key
+*password*
+*signing-key*
+# Lokale buildoutput
+build/
+.gradle/
+.idea/
+*.class
+.DS_Store
