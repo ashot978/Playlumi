@@ -1777,4 +1777,78 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    /** New sensory counting minigame, with one clear goal at a time. */
+    private void showBubblePlay() {
+        if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        header("🫧 Het Bellenfeest","Ronde "+Math.min(bubbleRound+1,20)+" van 20");
+        if(bubbleRound>=20) {
+            characterHero(170);
+            addText("🎉 Wat een bubbelkampioen!",25,0xff63458c,10,10);
+            Button again=tile("🫧 Nog meer bellen!","",0xffd3f4df,99);
+            addTile(again,10);
+            again.setOnClickListener(v->{
+                bubbleRound=0;bubbleSolved=false;
+                bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+                move(BUBBLE_PLAY);
+            });
+            Button back=tile("🎪 Een ander spel","",0xffe8deff,89);
+            addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
+            return;
+        }
+        companion(92);
+        if(sound.isEnabled()) {
+            Button speak=tile("🔊 Luister naar de opdracht","",0xffe8e1ff,49);
+            addTile(speak,1);
+            speak.setOnClickListener(v->sound.speak("Prik "+bubbles.target+" zeepbellen"));
+        }
+        PlaylumiBubbleBoard board=new PlaylumiBubbleBoard(this,bubbles,
+                new PlaylumiBubbleBoard.Listener() {
+            @Override public void onPop() {sound.pop();}
+            @Override public void onSolved() {
+                if(bubbleSolved)return;
+                bubbleSolved=true;
+                if(playPal!=null)playPal.dance();
+                int category=LearningGame.COUNT;
+                ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
+                lifetimeCount++;
+                wardrobe.earnAnswer();
+                wardrobe.earnBadges(badges.size());
+                saveWardrobe();saveScore(category);
+                pendingBadges.addAll(badges);
+                sound.good();
+                PlaylumiMotion.celebrate(stage,bubbleRound+1);
+                if(nextButton!=null) {
+                    nextButton.setVisibility(View.VISIBLE);
+                    nextButton.setAlpha(0f);
+                    nextButton.animate().alpha(1f).setDuration(240).start();
+                    scroller.post(()->scroller.smoothScrollTo(0,
+                            Math.max(0,root.getHeight()-scroller.getHeight())));
+                }
+            }
+        });
+        LinearLayout.LayoutParams boardp=new LinearLayout.LayoutParams(-1,-2);
+        boardp.setMargins(dp(2),dp(6),dp(2),dp(7));
+        root.addView(board,boardp);
+        nextButton=tile("🌟 Naar de volgende!","",0xffcef3d8,82);
+        addTile(nextButton,6);
+        nextButton.setVisibility(bubbleSolved?View.VISIBLE:View.GONE);
+        nextButton.setOnClickListener(v->finishBubbleRound());
+    }
+    private void finishBubbleRound() {
+        if(!bubbleSolved)return;
+        bubbleRound++;
+        if(!pendingBadges.isEmpty()) {
+            earnedBadge=pendingBadges.remove(0);
+            rewardReturn=BUBBLE_PLAY;
+            move(REWARD);return;
+        }
+        advanceBubbles();
+    }
+    private void advanceBubbles() {
+        bubbleSolved=false;
+        bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        move(BUBBLE_PLAY);
+    }
+
 }
