@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
             WORLD_PICKER=40, HOME_OPTIONS=41;
-    private static final int SESSION_ROUNDS=200;
+    private static final int SESSION_ROUNDS=8;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
             0xffd5f5df,0xffffdded,0xfffff1b6};
@@ -907,7 +907,7 @@ public class MainActivity extends Activity {
         int start=variantPage*2;
         for(int i=start;i<Math.min(start+2,names.length);i++) {
             final int selection=i;
-            Button b=tile(icons[i]+"  "+names[i],"200 vragen om te ontdekken",COLORS[i%6],115);
+            Button b=tile(icons[i]+"  "+names[i],"8 opdrachten per speelronde",COLORS[i%6],115);
             addTile(b,11);
             b.setOnClickListener(v->{
                 if(smartDifficulty)difficulty=adaptive.level(game.mode(),Math.max(0,age));
@@ -1233,32 +1233,31 @@ public class MainActivity extends Activity {
 
     /** A playful character preview rather than a crowded settings screen. */
     private void showAvatar() {
-        header("✨ Dit is jouw ster!","Maak je eigen magische maatje.");
-        characterHero(228);
-        addText("🌟 "+wardrobe.stars()+" speelsterren",24,0xffa4781f,8,6);
-        addText(wardrobe.unlockedItems()+" van "+(PlaylumiWardrobe.SLOTS*PlaylumiWardrobe.OPTIONS)+" spullen vrijgespeeld",14,SUB,0,14);
-        Button dress=tile("🎀 Kleed je ster aan!","Ontdek nieuwe kleuren en accessoires",
-                0xffd7f5e5,112);
-        addTile(dress,8);
+        header("⭐ Mijn stervriend","Jouw eigen magische maatje.");
+        characterHero(194);
+        addText("🌟 "+wardrobe.stars()+" sterren  •  "+
+                wardrobe.unlockedItems()+" spulletjes",17,0xffa4781f,3,10);
+
+        Button dress=tile("🎀 Kleedkamer","Kies outfits en kleuren",
+                0xffd7f5e5,103);
         dress.setOnClickListener(v->{closetPage=0;move(CLOSET);});
-        Button stageButton=tile("🎭 Sterrenpodium","Laat je stervriend dansen, zwaaien of schitteren!",
-                0xffffe8b8,102);
-        addTile(stageButton,8);
+        Button stageButton=tile("🎭 Sterrenpodium","Dans en zwaai",
+                0xffffe8b8,103);
         stageButton.setOnClickListener(v->move(STAR_STAGE));
-        Button friendButton=tile("🐾 Verzorg je vriendje","Samen spelen, knuffelen en nieuwe stickers verdienen!",
-                0xffd5f5e4,100);
-        addTile(friendButton,8);
+        addTwo(dress,stageButton,100);
+
+        Button friendButton=tile("🐾 Vriendjes","Spelen en verzorgen",
+                0xffd5f5e4,101);
         friendButton.setOnClickListener(v->{carePage=0;careMessage="";move(FRIEND_CARE);});
-        Button home=tile("🏠 Mijn eigen kamer","Versier je kamer met speelsterren",0xffd9ecff,105);
-        addTile(home,8);
+        Button home=tile("🏠 Mijn kamer","Versier jouw huis",
+                0xffd9ecff,101);
         home.setOnClickListener(v->move(ROOM));
-        Button trophies=tile("🏆 Mijn trofeeënkamer","Bekijk alle verdiende badges",0xffffeab9,97);
-        addTile(trophies,8);
+        addTwo(friendButton,home,100);
+
+        Button trophies=tile("🏆 Trofeeënkamer","Bekijk al jouw badges",
+                0xffffeab9,84);
+        addTile(trophies,6);
         trophies.setOnClickListener(v->move(TROPHY_WORLDS));
-        Button play=tile("🎮 Verdien meer sterren","Spelen levert 3 sterren per goed antwoord op",
-                0xffffe6c8,92);
-        addTile(play,8);
-        play.setOnClickListener(v->move(HOME));
     }
 
     /** Show at most two wardrobe categories on each page. */
@@ -1350,44 +1349,43 @@ public class MainActivity extends Activity {
                 miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.NUMBERS:LearningGame.PATTERNS;
     }
     private void showMiniMenu() {
-        header("🎪 Het speelplein","Kies een spel om echt mee te spelen!");
-        characterHero(134);
-        String[] detail={"Sleep het goede plaatje naar het huisje",
-                "Tik bewegende ballonnen met het juiste cijfer",
-                "Zoek twee dezelfde diertjes"};
+        header("🎪 Het speelplein","Tik een spelletje aan.");
+        String[] names={"Sleep de vormen","Tik de ballon","Dierenmemory"};
+        String[] notes={"Sleep naar het huisje","Vind de juiste ballon",
+                "Zoek dezelfde diertjes"};
+        Button[] first=new Button[3];
         for(int i=0;i<3;i++) {
-            final int chosen=i;
-            Button b=tile(PlaylumiMiniChallenge.ICONS[i]+"  "+PlaylumiMiniChallenge.NAMES[i],
-                    detail[i],COLORS[i],108);
-            addTile(b,8);
-            b.setOnClickListener(v->{
-                miniKind=chosen;
-                miniRound=0;
-                miniSolved=false;
+            final int kind=i;
+            first[i]=tile(PlaylumiMiniChallenge.ICONS[i]+"  "+names[i],
+                    notes[i],COLORS[i],104);
+            first[i].setOnClickListener(v->{
+                miniKind=kind;miniRound=0;miniSolved=false;
                 pendingBadges.clear();
-                mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+                mini=PlaylumiMiniChallenge.generate(kind,Math.max(0,age),new Random());
                 move(MINI_PLAY);
             });
         }
-        Button bubblesButton=tile("🫧 Bellenfeest","Laat precies genoeg bellen knappen!",
-                0xffd4ebff,113);
-        addTile(bubblesButton,9);
+        Button bubblesButton=tile("🫧 Bellenfeest","Laat bellen knappen",
+                0xffd4ebff,104);
         bubblesButton.setOnClickListener(v->{
             bubbleRound=0;bubbleSolved=false;
             bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
             pendingBadges.clear();
             move(BUBBLE_PLAY);
         });
-        Button musicButton=tile("🎵 Het Muziekatelier","Luister en speel melodieën na!",
-                0xffefdcff,114);
-        addTile(musicButton,9);
+        Button musicButton=tile("🎵 Muziekatelier","Speel een melodie",
+                0xffefdcff,104);
         musicButton.setOnClickListener(v->{
             melodyRound=0;melodySolved=false;
             pendingBadges.clear();
             melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
             move(MUSIC_PLAY);
         });
+        addTwo(first[0],first[1],103);
+        addTwo(first[2],bubblesButton,103);
+        addTile(musicButton,7);
     }
+
     private void showMiniPlay() {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
