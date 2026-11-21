@@ -1,6 +1,10 @@
 package nl.playlumi.app;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
+import android.os.Build;
+import android.os.SystemClock;
+import android.view.animation.LinearInterpolator;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -13,6 +17,37 @@ public final class PlaylumiCharacterView extends View {
     private static final int INK=0xff4f386e;
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PlaylumiWardrobe wardrobe;
+    private ValueAnimator idleMotion;
+    private float cycle;
+    private int reaction;
+    private long reactionUntil;
+
+    /** 1 = happy dance, 2 = encouragement, 3 = wave. */
+    public void react(int kind) {
+        reaction=kind;
+        reactionUntil=SystemClock.uptimeMillis()+1400;
+        invalidate();
+    }
+    public void dance() { react(1); }
+    public void wave() { react(3); }
+
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (Build.VERSION.SDK_INT>=26 && !ValueAnimator.areAnimatorsEnabled()) return;
+        idleMotion=ValueAnimator.ofFloat(0f,(float)(Math.PI*2));
+        idleMotion.setDuration(2400);
+        idleMotion.setRepeatCount(ValueAnimator.INFINITE);
+        idleMotion.setInterpolator(new LinearInterpolator());
+        idleMotion.addUpdateListener(anim -> {
+            cycle=(Float)anim.getAnimatedValue();
+            invalidate();
+        });
+        idleMotion.start();
+    }
+    @Override protected void onDetachedFromWindow() {
+        if (idleMotion!=null) {idleMotion.cancel();idleMotion=null;}
+        super.onDetachedFromWindow();
+    }
 
     public PlaylumiCharacterView(Context context,PlaylumiWardrobe wardrobe) {
         super(context);
@@ -28,6 +63,8 @@ public final class PlaylumiCharacterView extends View {
         float scale=Math.min(w/300f,h/330f);
         canvas.translate((w-300f*scale)/2f,(h-330f*scale)/2f);
         canvas.scale(scale,scale);
+        boolean reacting=SystemClock.uptimeMillis()<reactionUntil;
+        canvas.rotate((float)Math.sin(cycle)*1.7f+(reacting && reaction==1?(float)Math.sin(cycle*3)*5f:0f),150f,164f);
         drawSparkles(canvas);
         drawShoes(canvas);
         if(wardrobe.equipped(PlaylumiWardrobe.OUTFITS)==2)drawCape(canvas);
@@ -83,10 +120,13 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,189,271,202,276,0xffffffff);
     }
     private void drawArms(Canvas c) {
-        line(c,78,171,37,200,0xff8b68bd,13);
-        line(c,222,171,264,194,0xff8b68bd,13);
-        ellipse(c,25,191,45,211,0xffffddb6);
-        ellipse(c,258,184,276,202,0xffffddb6);
+        boolean excited=SystemClock.uptimeMillis()<reactionUntil && (reaction==1 || reaction==3);
+        float wave=excited?(float)Math.sin(cycle*4)*23f:(float)Math.sin(cycle*2)*5f;
+        float lift=excited?42f:0f;
+        line(c,78,171,37,200-lift-wave,0xff8b68bd,13);
+        line(c,222,171,264,194-lift+wave,0xff8b68bd,13);
+        ellipse(c,25,191-lift-wave,45,211-lift-wave,0xffffddb6);
+        ellipse(c,258,184-lift+wave,276,202-lift+wave,0xffffddb6);
     }
     private void drawStar(Canvas c) {
         Path star=new Path();
@@ -109,15 +149,22 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,101,100,150,120,0x5affffff);
     }
     private void drawFace(Canvas c) {
-        ellipse(c,104,148,119,172,INK);
-        ellipse(c,179,148,194,172,INK);
-        ellipse(c,109,151,115,158,0xffffffff);
-        ellipse(c,183,151,189,158,0xffffffff);
+        boolean blink=Math.sin(cycle)>0.993;
+        if (blink) {
+            line(c,106,159,120,159,INK,5);
+            line(c,180,159,194,159,INK,5);
+        } else {
+            ellipse(c,104,148,119,172,INK);
+            ellipse(c,179,148,194,172,INK);
+            ellipse(c,109,151,115,158,0xffffffff);
+            ellipse(c,183,151,189,158,0xffffffff);
+        }
         ellipse(c,84,178,108,192,0x77f16aa3);
         ellipse(c,192,178,216,192,0x77f16aa3);
         Paint mouth=color(INK);mouth.setStyle(Paint.Style.STROKE);
         mouth.setStrokeWidth(6);mouth.setStrokeCap(Paint.Cap.ROUND);
-        c.drawArc(new RectF(125,158,176,211),13,152,false,mouth);
+        boolean happy=SystemClock.uptimeMillis()<reactionUntil && reaction==1;
+        c.drawArc(new RectF(happy?118:125,154,happy?183:176,happy?223:211),13,152,false,mouth);
         ellipse(c,145,174,155,184,0xffed9a83);
     }
     private void drawCape(Canvas c) {
