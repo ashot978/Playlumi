@@ -9,7 +9,7 @@ Playlumi is built on GitHub, and its signed release APK is prepared privately by
   `D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF`
 - PKCS#12 key alias: `playlumi-release`
 - Keystore creation: November 20, 2026
-- Version code: `10000 + GITHUB_RUN_NUMBER` from the Android workflow. Always increase with every release.
+- Version code: `13000 + GITHUB_RUN_NUMBER` from the Android workflow. Always increase with every release.
 
 ## Normal unattended release process
 
