@@ -61,6 +61,7 @@ public class MainActivity extends Activity {
     private int sessionSolved,sessionAttempts,earnedBadge=-1,lifetimeCount;
     private boolean moving,answerLocked,greeted;
     private int mascotTapCount;
+    private int starStagePage;
     private LearningGame game;
     private QuestionHistory recent;
     private PlaylumiScores scores;
@@ -156,6 +157,7 @@ public class MainActivity extends Activity {
             badgePage=state.getInt("badgePage",0);
             closetPage=state.getInt("closetPage",0);
             shopPage=state.getInt("shopPage",0);
+            starStagePage=state.getInt("starStagePage",0);
             selectedSlot=state.getInt("selectedSlot",0);
             carePage=state.getInt("carePage",0);
             albumPage=state.getInt("albumPage",0);
@@ -283,6 +285,7 @@ public class MainActivity extends Activity {
         out.putInt("earnedBadge",earnedBadge);
         out.putInt("closetPage",closetPage);
         out.putInt("shopPage",shopPage);
+        out.putInt("starStagePage",starStagePage);
         out.putInt("selectedSlot",selectedSlot);
         out.putInt("carePage",carePage);
         out.putInt("albumPage",albumPage);
@@ -2118,29 +2121,70 @@ public class MainActivity extends Activity {
 
     /** A toy stage: children choose a single funny movement at a time. */
     private void showStarStage() {
-        header("🎭 Het Sterrenpodium","Jij bent de regisseur van je stervriend!");
-        characterHero(232);
-        addText("Tik op een groot plaatje en kijk wat er gebeurt.",16,SUB,8,14);
-        Button dance=tile("💃 Doe een sterrendans!","",0xffffe1bc,103);
-        addTile(dance,8);
-        dance.setOnClickListener(v->{
-            if(character!=null)character.dance();
-            sound.dance();
-            PlaylumiMotion.pop(dance);
-        });
-        Button wave=tile("👋 Zwaai naar mij!","",0xffd6f3e1,103);
-        addTile(wave,8);
-        wave.setOnClickListener(v->{
-            if(character!=null)character.wave();
-            sound.hello();
-            PlaylumiMotion.pop(wave);
-        });
-        Button magic=tile("✨ Laat sterren toveren!","",0xffe8d9ff,103);
-        addTile(magic,8);
-        magic.setOnClickListener(v->{
-            if(character!=null)character.twirl();
-            sound.sparkle();
-            PlaylumiMotion.celebrate(stage,10);
+        header("🎭 Sterrenpodium","Tik op een plaatje!");
+        characterHero(206);
+        addText((starStagePage+1)+" / 2",14,0xff9b7bab,1,8);
+
+        if(starStagePage==0) {
+            Button dance=tile("💃 Dansje!","",0xffffe1bc,93);
+            addTile(dance,5);
+            dance.setOnClickListener(v->{
+                if(character!=null) {
+                    character.dance();
+                    PlaylumiDelight.hop(character);
+                    PlaylumiDelight.sprinkle(stage,character);
+                }
+                sound.dance();
+            });
+            Button wave=tile("👋 Zwaaien!","",0xffd6f3e1,93);
+            addTile(wave,5);
+            wave.setOnClickListener(v->{
+                if(character!=null) {
+                    character.wave();
+                    PlaylumiDelight.wiggle(character);
+                }
+                sound.hello();
+            });
+            Button magic=tile("✨ Toverkunst!","",0xffe8d9ff,93);
+            addTile(magic,5);
+            magic.setOnClickListener(v->{
+                if(character!=null)character.twirl();
+                sound.sparkle();
+                PlaylumiMotion.celebrate(stage,10);
+            });
+        } else {
+            Button surprise=tile("😲 Verrassing!","",0xffffe2c7,93);
+            addTile(surprise,5);
+            surprise.setOnClickListener(v->{
+                if(character!=null) {
+                    character.surprised();
+                    PlaylumiDelight.sprinkle(stage,character);
+                }
+                sound.pop();
+            });
+            Button spin=tile("🌀 Rondje draaien!","",0xffd9efff,93);
+            addTile(spin,5);
+            spin.setOnClickListener(v->{
+                if(character!=null){
+                    character.twirl();
+                    PlaylumiDelight.spin(character);
+                }
+                sound.dance();
+            });
+            Button party=tile("🎉 Groot sterrenfeest!","",0xffffeabc,93);
+            addTile(party,5);
+            party.setOnClickListener(v->{
+                if(character!=null)character.dance();
+                sound.unlock();
+                PlaylumiMotion.celebrate(stage,10);
+            });
+        }
+        Button more=tile(starStagePage==0?"🌟 Nog meer trucjes →":
+                "↩ Eerste trucjes","",0xffece4ff,70);
+        addTile(more,8);
+        more.setOnClickListener(v->{
+            starStagePage=1-starStagePage;
+            showPage();
         });
     }
 
