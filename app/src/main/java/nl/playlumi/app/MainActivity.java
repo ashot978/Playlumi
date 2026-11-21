@@ -761,6 +761,9 @@ public class MainActivity extends Activity {
                 0xffd7f5e5,112);
         addTile(dress,8);
         dress.setOnClickListener(v->{closetPage=0;move(CLOSET);});
+        Button home=tile("🏠 Mijn eigen kamer","Versier je kamer met speelsterren",0xffd9ecff,105);
+        addTile(home,8);
+        home.setOnClickListener(v->move(ROOM));
         Button play=tile("🎮 Verdien meer sterren","Spelen levert 3 sterren per goed antwoord op",
                 0xffffe6c8,92);
         addTile(play,8);
@@ -1004,6 +1007,94 @@ public class MainActivity extends Activity {
         more.setOnClickListener(v->{
             storyPage=storyPage<2?storyPage+1:0;
             showPage();
+        });
+    }
+
+
+    private void roomPreview(int height) {
+        PlaylumiRoomView view=new PlaylumiRoomView(this,room,wardrobe);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
+        p.setMargins(dp(4),dp(8),dp(4),dp(16));
+        root.addView(view,p);
+    }
+    private void showRoom() {
+        header("🏠 Mijn eigen kamer","Welkom thuis, stervriend!");
+        roomPreview(310);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xffa87829,0,6);
+        addText(room.ownedItems()+" van 25 kamerdingen vrijgespeeld",14,SUB,0,10);
+        Button decorate=tile("🎨 Richt je kamer in!","Kies kleuren, meubels en versieringen",
+                0xffd5f2df,109);
+        addTile(decorate,8);
+        decorate.setOnClickListener(v->{roomPage=0;move(ROOM_CATS);});
+        Button friend=tile("⭐ Terug naar je stervriend","",0xffe8dcff,77);
+        addTile(friend,8);
+        friend.setOnClickListener(v->move(AVATAR));
+    }
+    private void showRoomCats() {
+        header("🎨 Versier je kamer","Wat gaan we vandaag veranderen?");
+        roomPreview(184);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",18,0xffa87829,0,6);
+        addText((roomPage+1)+" / 3",15,0xff8a63b3,0,7);
+        int start=roomPage*2;
+        for(int i=start;i<Math.min(start+2,PlaylumiRoom.SLOTS);i++) {
+            final int slot=i;
+            Button b=tile(PlaylumiRoom.SLOT_ICONS[i]+"  "+PlaylumiRoom.LABELS[i],
+                    "Nu: "+PlaylumiRoom.NAMES[i][room.selected(i)],COLORS[i%6],95);
+            addTile(b,7);
+            b.setOnClickListener(v->{
+                roomSlot=slot;roomItemPage=0;roomMessage="";
+                move(ROOM_ITEMS);
+            });
+        }
+        Button more=tile(roomPage<2?"✨ Meer kameronderdelen →":"↩ Terug naar de kleuren","",
+                0xffe8deff,78);
+        addTile(more,12);
+        more.setOnClickListener(v->{
+            roomPage=roomPage<2?roomPage+1:0;
+            showPage();
+        });
+    }
+    private void showRoomItems() {
+        int slot=roomSlot;
+        header(PlaylumiRoom.SLOT_ICONS[slot]+" "+PlaylumiRoom.LABELS[slot],
+                "Wat past bij jouw kamer?");
+        roomPreview(203);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xffa87829,0,5);
+        if(!roomMessage.isEmpty())addText(roomMessage,16,0xff4e4291,0,8);
+        addText((roomItemPage+1)+" / 3",15,0xff9163bd,0,6);
+        for(int i=roomItemPage*2;i<Math.min(roomItemPage*2+2,PlaylumiRoom.OPTIONS);i++) {
+            final int item=i;
+            boolean selected=room.selected(slot)==i;
+            boolean owned=room.owned(slot,i);
+            String desc=selected?"✅ Heb je nu":owned?"✨ Tik om te gebruiken":
+                    "🌟 "+room.cost(slot,i)+" speelsterren";
+            Button b=tile(PlaylumiRoom.ICONS[slot][i]+"  "+PlaylumiRoom.NAMES[slot][i],desc,
+                    selected?0xffd2f5db:COLORS[(slot+i)%6],102);
+            addTile(b,8);
+            b.setOnClickListener(v->{
+                int price=room.cost(slot,item);
+                if(price>wardrobe.stars() || !wardrobe.spendStars(price)) {
+                    roomMessage="💛 Nog "+Math.max(0,price-wardrobe.stars())+" speelsterren nodig.";
+                    showPage();return;
+                }
+                boolean first=!room.owned(slot,item);
+                room.unlockAndSelect(slot,item);
+                saveRoom();saveWardrobe();
+                roomMessage=first?"🎉 Nieuw item! Je kamer ziet er anders uit.":
+                        "✨ Mooi! De kamer is aangepast.";
+                showPage();
+                if(first) {
+                    FrameLayout active=stage;
+                    active.post(()->{if(stage==active)PlaylumiMotion.celebrate(active,10);});
+                }
+            });
+        }
+        Button more=tile(roomItemPage<2?"🎁 Meer spulletjes →":"↩ Eerste spulletjes","",
+                0xffe8deff,76);
+        addTile(more,10);
+        more.setOnClickListener(v->{
+            roomItemPage=roomItemPage<2?roomItemPage+1:0;
+            roomMessage="";showPage();
         });
     }
 
