@@ -327,7 +327,11 @@ public class MainActivity extends Activity {
     }
     private void showHome() {
         header("🌟 Kies een wereld","Waar wil je vandaag spelen?");
-        hero(100);
+        characterHero(158);
+        addText("✨ "+wardrobe.stars()+" speelsterren",19,0xffb87a2e,3,8);
+        Button avatarButton=tile("🎁 Mijn stervriend","Kleed je eigen karakter aan",0xffffdfb4,98);
+        addTile(avatarButton,4);
+        avatarButton.setOnClickListener(v->move(AVATAR));
         for(int i=0;i<3;i++) {
             final int selected=i;
             Button b=tile(WORLD_ICONS[i]+"  "+WORLDS[i],WORLD_DESCS[i],COLORS[i],105);
@@ -504,7 +508,7 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
-            feedback="⭐ Geweldig! Dat is goed!";
+            feedback="⭐ Goed gedaan! +3 🌟";
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                     rounded(0xffb9f5d1,25),null));
             for(Button b:answerButtons)b.setEnabled(false);
@@ -519,6 +523,9 @@ public class MainActivity extends Activity {
                     Math.max(0,sessionSolved-1),sessionSolved);
             animate.setDuration(430);animate.start();
             if(sessionSolved==SESSION_ROUNDS)newBadges.addAll(scores.finishSession(mode));
+            wardrobe.earnAnswer();
+            wardrobe.earnBadges(newBadges.size());
+            saveWardrobe();
             pendingBadges.addAll(newBadges);
             nextButton.setVisibility(View.VISIBLE);
             nextButton.setAlpha(0f);
@@ -581,7 +588,8 @@ public class MainActivity extends Activity {
         header("🎉 Nieuwe badge!","");
         addText(PlaylumiScores.BADGE_ICONS[earnedBadge],100,0xffc68823,24,10);
         addText(PlaylumiScores.BADGE_NAMES[earnedBadge],30,0xff51378c,8,12);
-        addText(PlaylumiScores.BADGE_HINTS[earnedBadge],18,SUB,0,22);
+        addText(PlaylumiScores.BADGE_HINTS[earnedBadge],18,SUB,0,10);
+        addText("🎁 +12 speelsterren!",21,0xff2b9677,0,22);
         Button continueButton=tile("🌟 Hoera, verder!","",0xffd3f4dd,96);
         addTile(continueButton,10);
         continueButton.setOnClickListener(v->continueAfterBadge());
