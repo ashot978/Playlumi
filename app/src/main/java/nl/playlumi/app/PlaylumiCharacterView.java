@@ -22,7 +22,7 @@ public final class PlaylumiCharacterView extends View {
     private int reaction;
     private long reactionUntil;
 
-    /** 1 = happy dance, 2 = encouragement, 3 = wave, 4 = surprised, 5 = twirl. */
+    /** 1 = happy dance, 2 = encouragement, 3 = wave, 4 = surprised, 5 = twirl, 6 = high-five. */
     public void react(int kind) {
         reaction=kind;
         reactionUntil=SystemClock.uptimeMillis()+1400;
@@ -33,6 +33,7 @@ public final class PlaylumiCharacterView extends View {
     public void wave() { react(3); }
     public void surprised() { react(4); }
     public void twirl() { react(5); }
+    public void highFive() { react(6); }
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -152,9 +153,12 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,189,271,202,276,0xffffffff);
     }
     private void drawArms(Canvas c) {
-        boolean excited=SystemClock.uptimeMillis()<reactionUntil && (reaction==1 || reaction==3 || reaction==5);
-        float wave=excited?(float)Math.sin(cycle*4)*23f:(float)Math.sin(cycle*2)*5f;
-        float lift=excited?42f:0f;
+        boolean active=SystemClock.uptimeMillis()<reactionUntil;
+        boolean highFive=active && reaction==6;
+        boolean excited=active && (reaction==1 || reaction==3 || reaction==5 || highFive);
+        float wave=highFive?(float)Math.sin(cycle*4)*12f:
+                excited?(float)Math.sin(cycle*4)*23f:(float)Math.sin(cycle*2)*5f;
+        float lift=highFive?65f:excited?42f:0f;
         line(c,78,171,37,200-lift-wave,0xff8b68bd,13);
         line(c,222,171,264,194-lift+wave,0xff8b68bd,13);
         ellipse(c,25,191-lift-wave,45,211-lift-wave,0xffffddb6);
@@ -199,7 +203,7 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,192,178,216,192,0x77f16aa3);
         Paint mouth=color(INK);mouth.setStyle(Paint.Style.STROKE);
         mouth.setStrokeWidth(6);mouth.setStrokeCap(Paint.Cap.ROUND);
-        boolean happy=expressive && (reaction==1 || reaction==5);
+        boolean happy=expressive && (reaction==1 || reaction==5 || reaction==6);
         if(expressive && reaction==4)
             ellipse(c,140,182,160,208,INK);
         else

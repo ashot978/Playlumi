@@ -4,3 +4,11 @@
 - Preserve locally stored progress across updates. Avoid accounts, ads, analytics and extra permissions without explicit approval and a privacy review.
 - Run unit tests, lint and the debug build when the Android SDK and Gradle are available. Verify interaction and accessibility on a real device before claiming device support.
 - Do not publish, merge or release without explicit authorization.
+
+## Playlumi 0.27.0 - release agreement
+Every completed app feature update MUST include a newly built signed Android APK
+as a direct conversation download, not just an open PR. Never mislabel an
+unbuilt or untested APK as ready. Build from original source on the app branch,
+run tests, lint, emulator launch, and verify package, versionCode and stable
+signer. Keep the private keystore/password out of GitHub and CI. Do not
+merge to main or publish to stores without an explicit request.

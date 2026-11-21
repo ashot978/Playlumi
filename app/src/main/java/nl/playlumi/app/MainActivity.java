@@ -1135,7 +1135,13 @@ public class MainActivity extends Activity {
                 saveAdaptive(mode);
             }
             sound.good();
-            if(playPal!=null)playPal.dance();
+            final int answerStreak = scores.get(mode).currentStreak;
+            final boolean isSessionLast = sessionSolved == sessionGoal();
+            final boolean highFive = HighFiveMotion.shouldPlay(answerStreak, isSessionLast);
+            if (playPal != null) {
+                if (highFive) playPal.highFive();
+                else playPal.dance();
+            }
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                     rounded(0xffb9f5d1,25),null));
             for(Button b:answerButtons)b.setEnabled(false);
@@ -1144,11 +1150,11 @@ public class MainActivity extends Activity {
             PlaylumiMotion.pop(touched);
             PlaylumiMotion.pop(feedbackText);
             if(roundStars!=null)roundStars.showProgress(sessionSolved);
-            // A01: one non-blocking reward effect at a time.
-            // The game has already accepted the answer and updated the score.
-            if(sessionSolved==sessionGoal() ||
-                    scores.get(mode).currentStreak%5==0) {
-                PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
+            // Exactly one visual celebration; scoring and progress are already saved.
+            if(isSessionLast || answerStreak % 5 == 0) {
+                PlaylumiMotion.celebrate(stage,answerStreak);
+            } else if (highFive) {
+                PlaylumiHighFiveView.show(stage,playPal);
             } else {
                 PlaylumiFlyingStar.launch(stage,touched,roundStars,
                         sessionSolved,sessionGoal());
