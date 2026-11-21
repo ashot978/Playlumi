@@ -1143,11 +1143,16 @@ public class MainActivity extends Activity {
             feedbackText.setTextColor(0xff21836e);
             PlaylumiMotion.pop(touched);
             PlaylumiMotion.pop(feedbackText);
-            PlaylumiDelight.sprinkle(stage,touched);
-            if(sessionSolved==sessionGoal() ||
-                    scores.get(mode).currentStreak%5==0)
-                PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
             if(roundStars!=null)roundStars.showProgress(sessionSolved);
+            // A01: one non-blocking reward effect at a time.
+            // The game has already accepted the answer and updated the score.
+            if(sessionSolved==sessionGoal() ||
+                    scores.get(mode).currentStreak%5==0) {
+                PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
+            } else {
+                PlaylumiFlyingStar.launch(stage,touched,roundStars,
+                        sessionSolved,sessionGoal());
+            }
             if(sessionSolved==sessionGoal()) {
                 if(storyStage>=0) {
                     storyNewReward=adventures.complete(world,storyStage);
