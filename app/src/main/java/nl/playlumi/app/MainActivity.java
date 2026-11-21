@@ -106,7 +106,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(flags);
         activeProfile=getSharedPreferences("playlumi-global",MODE_PRIVATE)
                 .getInt("active_profile",0);
-        if(activeProfile<0 || activeProfile>2)activeProfile=0;
+        activeProfile=PlaylumiProfiles.safe(activeProfile);
         if(state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile)
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
     }
     private SharedPreferences prefs() {
         return activeProfile==0?getPreferences(MODE_PRIVATE):
-                getSharedPreferences("playlumi-child-"+activeProfile,MODE_PRIVATE);
+                getSharedPreferences(PlaylumiProfiles.preferences(activeProfile),MODE_PRIVATE);
     }
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
     private void saveAdaptive(int cat) {
@@ -1477,8 +1477,7 @@ public class MainActivity extends Activity {
     }
     private void showDrawing() {
         header("🖍️ Mijn Tekenstudio","Teken met je vinger. Alles mag!");
-        drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),activeProfile==0?"playlumi-kunstwerk.png":
-                "playlumi-kunstwerk-"+activeProfile+".png"));
+        drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),PlaylumiProfiles.artworkFile(activeProfile)));
         drawing.setElevation(dp(5));
         LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,dp(330));
         drawParams.setMargins(dp(4),dp(8),dp(4),dp(12));
@@ -1672,11 +1671,11 @@ public class MainActivity extends Activity {
 
     private void showProfiles() {
         header("👧 Kies jouw speler","Iedere speler heeft een eigen wereld.");
-        String[] images={"⭐","🌸","🚀"};
-        for(int i=0;i<3;i++) {
+        String[] images=PlaylumiProfiles.ICONS;
+        for(int i=0;i<PlaylumiProfiles.COUNT;i++) {
             final int slot=i;
             SharedPreferences player=i==0?getPreferences(MODE_PRIVATE):
-                    getSharedPreferences("playlumi-child-"+i,MODE_PRIVATE);
+                    getSharedPreferences(PlaylumiProfiles.preferences(i),MODE_PRIVATE);
             int selectedAge=player.getInt("chosen_age",-1);
             String ageNote=selectedAge<0?"Nog niet begonnen":AGES[Math.min(2,selectedAge)];
             String subtitle=(i==activeProfile?"✅ Nu aan het spelen  •  ":"")+
