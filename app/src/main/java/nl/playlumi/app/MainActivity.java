@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
             WORLD_PICKER=40, HOME_OPTIONS=41;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
-    private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
+    private static final int TEXT=PlaylumiVisualStyle.INK, SUB=PlaylumiVisualStyle.MUTED;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
             0xffd5f5df,0xffffdded,0xfffff1b6};
     private static final String[] ICONS={"⭐","🎨","🔤","🔷","🔢","🧩","🐾",
@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private ScrollView scroller;
     private TextView feedbackText;
     private PlaylumiStarTrail roundStars;
+    private TextView sessionCounter;
     private Button nextButton;
     private String feedback="";
     private PlaylumiAudio sound;
@@ -117,8 +118,8 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(0xffeaf5ff);
-        getWindow().setNavigationBarColor(0xfffff6e4);
+        getWindow().setStatusBarColor(PlaylumiVisualStyle.PAGE_TOP);
+        getWindow().setNavigationBarColor(PlaylumiVisualStyle.PAGE_BOTTOM);
         int flags=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if(Build.VERSION.SDK_INT>=26) flags|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         getWindow().getDecorView().setSystemUiVisibility(flags);
@@ -452,12 +453,31 @@ public class MainActivity extends Activity {
         GradientDrawable b=new GradientDrawable();
         b.setColor(color);b.setCornerRadius(dp(radius));return b;
     }
+    /** One rounded surface language shared by navigation, tiles and questions. */
+    private GradientDrawable softCard(int color,int radius) {
+        GradientDrawable shape=new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{PlaylumiVisualStyle.lightened(color,100),
+                        PlaylumiVisualStyle.lightened(color,470)});
+        shape.setCornerRadius(dp(radius));
+        shape.setStroke(dp(1),0xcaffffff);
+        return shape;
+    }
+    private RippleDrawable primaryAction() {
+        GradientDrawable shape=new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{PlaylumiVisualStyle.PRIMARY_START,
+                        PlaylumiVisualStyle.PRIMARY_END});
+        shape.setCornerRadius(dp(24));
+        shape.setStroke(dp(1),0x60ffffff);
+        return new RippleDrawable(ColorStateList.valueOf(0x30ffffff),shape,null);
+    }
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
         t.setTypeface(Typeface.create("sans-serif-rounded",size>=19?Typeface.BOLD:Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);t.setIncludeFontPadding(true);
-        t.setLineSpacing(dp(1),1.02f);return t;
+        t.setLineSpacing(dp(2),1.06f);return t;
     }
     private void addText(String value,int size,int color,int top,int bottom) {
         TextView t=text(value,size,color);
@@ -470,16 +490,17 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
         b.setTextColor(TEXT);
-        b.setTextSize(description.isEmpty()?18:16);
+        b.setTextSize(description.isEmpty()?18:17);
         b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
-        b.setLineSpacing(dp(1),1.0f);
-        b.setGravity(Gravity.CENTER);
+        b.setLineSpacing(dp(2),1.07f);
+        b.setGravity(description.isEmpty()?Gravity.CENTER:(Gravity.CENTER_VERTICAL|Gravity.START));
         b.setMaxLines(4);
-        b.setPadding(dp(10),dp(9),dp(10),dp(9));
+        b.setPadding(dp(description.isEmpty()?13:18),dp(10),
+                dp(description.isEmpty()?13:16),dp(10));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                rounded(color,20),null));
-        b.setElevation(dp(2));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),
+                softCard(color,24),null));
+        b.setElevation(dp(3));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -524,7 +545,13 @@ public class MainActivity extends Activity {
     }
     private void characterHero(int size) {
         LinearLayout holder=new LinearLayout(this);
-        holder.setGravity(Gravity.CENTER);
+        boolean welcomeCard=page==HOME;
+        holder.setGravity(welcomeCard?Gravity.CENTER_VERTICAL:Gravity.CENTER);
+        if(welcomeCard) {
+            holder.setPadding(dp(11),dp(6),dp(13),dp(6));
+            holder.setBackground(softCard(0xffbdece5,29));
+            holder.setElevation(dp(4));
+        }
         character=new PlaylumiCharacterView(this,wardrobe);
         character.setContentDescription("Jouw stervriendje. Tik voor een magische verrassing.");
         character.setOnClickListener(v->{
@@ -543,6 +570,28 @@ public class MainActivity extends Activity {
         int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),showFull,
                 getResources().getConfiguration().screenHeightDp);
         holder.addView(character,new LinearLayout.LayoutParams(dp(actual),dp(actual)));
+        if(welcomeCard) {
+            LinearLayout welcome=new LinearLayout(this);
+            welcome.setOrientation(LinearLayout.VERTICAL);
+            welcome.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
+            welcome.setPadding(dp(12),0,0,0);
+            TextView greet=text("Welkom, avonturier!",19,TEXT);
+            greet.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            greet.setMaxLines(2);
+            welcome.addView(greet,new LinearLayout.LayoutParams(-1,-2));
+            TextView subtitle=text("Ontdek iets nieuws vandaag",13,SUB);
+            subtitle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            subtitle.setMaxLines(2);
+            welcome.addView(subtitle,new LinearLayout.LayoutParams(-1,-2));
+            TextView stars=text("  ⭐ "+wardrobe.stars()+" sterren  ",14,PlaylumiVisualStyle.SUCCESS);
+            stars.setGravity(Gravity.CENTER);
+            stars.setBackground(rounded(0xdfffffff,15));
+            stars.setPadding(dp(4),dp(4),dp(4),dp(4));
+            LinearLayout.LayoutParams badge=new LinearLayout.LayoutParams(-2,-2);
+            badge.setMargins(0,dp(8),0,0);
+            welcome.addView(stars,badge);
+            holder.addView(welcome,new LinearLayout.LayoutParams(0,-2,1f));
+        }
         if(page==HOME && !greeted) {
             greeted=true;
             final PlaylumiCharacterView helloFriend=character;
@@ -555,8 +604,10 @@ public class MainActivity extends Activity {
                 }
             },550L);
         }
-        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(actual+4));
-        row.setMargins(0,dp(1),0,dp(1));
+        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(
+                -1,dp(actual+(welcomeCard?16:4)));
+        row.setMargins(dp(welcomeCard?3:0),dp(welcomeCard?6:1),
+                dp(welcomeCard?3:0),dp(welcomeCard?9:1));
         root.addView(holder,row);
         PlaylumiMotion.floatMascot(character);
     }
@@ -588,11 +639,14 @@ public class MainActivity extends Activity {
         boolean gameHeader=gameScreen();
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(9),dp(3),dp(9),dp(3));
+        row.setBackground(softCard(0xffffffff,22));
+        row.setElevation(dp(2));
         if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
             TextView back=text("←",27,0xff60448e);
             back.setGravity(Gravity.CENTER);
-            back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
-                    rounded(0xffeee4ff,16),null));
+            back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),
+                    softCard(0xffe0daff,14),null));
             back.setContentDescription("Terug naar het vorige scherm");
             back.setClickable(true);back.setFocusable(true);
             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(42),dp(42));
@@ -600,7 +654,7 @@ public class MainActivity extends Activity {
             row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        TextView title=text(heading,gameHeader?19:22,0xff52378b);
+        TextView title=text(heading,gameHeader?19:21,TEXT);
         title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
         title.setMaxLines(1);
         title.setSingleLine(true);
@@ -628,8 +682,8 @@ public class MainActivity extends Activity {
             iconParams.setMargins(dp(5),0,0,0);
             row.addView(star,iconParams);
         }
-        LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(50));
-        rowp.setMargins(0,0,0,dp(gameHeader?4:5));
+        LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(57));
+        rowp.setMargins(dp(3),dp(2),dp(3),dp(gameHeader?7:8));
         root.addView(row,rowp);
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
@@ -642,7 +696,9 @@ public class MainActivity extends Activity {
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
+                new int[]{PlaylumiVisualStyle.PAGE_TOP,
+                        PlaylumiVisualStyle.PAGE_MIDDLE,
+                        PlaylumiVisualStyle.PAGE_BOTTOM});
         stage.setBackground(bg);
         if(page==HOME || page==WORLD_PICKER || page==WORLD_HUB ||
                 page==AVATAR || page==CLOSET || page==ROOM ||
@@ -657,7 +713,7 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        root.setPadding(dp(side),dp(5),dp(side),dp(12));
+        root.setPadding(dp(side),dp(8),dp(side),dp(14));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
@@ -785,11 +841,14 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     private void showHome() {
-        header("🌟 Playlumi","Kies een plaatje om te beginnen.");
+        header("🌟 Playlumi","Jouw vrolijke speelwereld");
         characterHero(118);
-        addText("🌟 "+wardrobe.stars()+" sterren",17,0xffa77933,0,3);
 
-        Button quick=tile("▶ Speel meteen","",0xffccf2db,112);
+        Button quick=tile("▶  Speel meteen","",0xffccf2db,112);
+        quick.setBackground(primaryAction());
+        quick.setTextColor(Color.WHITE);
+        quick.setTextSize(22);
+        quick.setElevation(dp(5));
         quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
         addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
@@ -1004,15 +1063,20 @@ public class MainActivity extends Activity {
 
         LinearLayout progressRow=new LinearLayout(this);
         progressRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView counter=text("⭐ "+sessionSolved+" / "+sessionGoal(),15,0xff2c886f);
+        TextView counter=text("⭐ "+sessionSolved+" / "+sessionGoal(),15,
+                PlaylumiVisualStyle.SUCCESS);
+        sessionCounter=counter;
         counter.setGravity(Gravity.CENTER_VERTICAL);
-        progressRow.addView(counter,new LinearLayout.LayoutParams(-2,dp(25)));
+        progressRow.setPadding(dp(10),dp(5),dp(10),dp(5));
+        progressRow.setBackground(softCard(0xffffffff,18));
+        progressRow.setElevation(dp(2));
+        progressRow.addView(counter,new LinearLayout.LayoutParams(-2,dp(28)));
         roundStars=new PlaylumiStarTrail(this,sessionGoal(),sessionSolved);
         LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(0,dp(30),1f);
         bar.setMargins(dp(12),0,dp(2),0);
         progressRow.addView(roundStars,bar);
-        LinearLayout.LayoutParams progressParams=new LinearLayout.LayoutParams(-1,dp(33));
-        progressParams.setMargins(dp(3),0,dp(3),dp(6));
+        LinearLayout.LayoutParams progressParams=new LinearLayout.LayoutParams(-1,dp(46));
+        progressParams.setMargins(dp(3),0,dp(3),dp(10));
         root.addView(progressRow,progressParams);
 
         LinearLayout questions=root;
@@ -1037,9 +1101,11 @@ public class MainActivity extends Activity {
         LinearLayout promptLine=new LinearLayout(this);
         promptLine.setOrientation(LinearLayout.HORIZONTAL);
         promptLine.setGravity(Gravity.CENTER_VERTICAL);
-        TextView question=text(round.prompt,wide?18:20,0xff583b97);
-        question.setPadding(dp(9),dp(9),dp(9),dp(9));
-        question.setBackground(rounded(0xfff0e4ff,19));
+        TextView question=text(round.prompt,wide?18:20,TEXT);
+        question.setText(PlaylumiType.emphasizedQuestion(round.prompt));
+        question.setPadding(dp(14),dp(11),dp(14),dp(11));
+        question.setBackground(softCard(0xffe7e0fc,22));
+        question.setElevation(dp(1));
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
         promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
@@ -1059,8 +1125,8 @@ public class MainActivity extends Activity {
         int pictureSize=round.display.length()>22?27:
                 round.display.length()>12?30:wide?32:38;
         TextView picture=text(round.display,pictureSize,round.displayColor);
-        picture.setPadding(dp(9),dp(10),dp(9),dp(10));
-        picture.setBackground(rounded(Color.WHITE,22));
+        picture.setPadding(dp(13),dp(12),dp(13),dp(12));
+        picture.setBackground(softCard(0xffe6f7fa,24));
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
@@ -1075,7 +1141,9 @@ public class MainActivity extends Activity {
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
         feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
-        feedbackText.setMinHeight(dp(28));
+        feedbackText.setMinHeight(dp(38));
+        feedbackText.setPadding(dp(10),dp(6),dp(10),dp(6));
+        feedbackText.setBackground(softCard(0xfff1ebff,17));
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
         answerLocked=round.isSolved();
@@ -1100,6 +1168,9 @@ public class MainActivity extends Activity {
             answers.addView(answerRow,new LinearLayout.LayoutParams(-1,-2));
         }
         nextButton=tile("🌟 Volgende!","",0xffcff4dd,66);
+        nextButton.setBackground(primaryAction());
+        nextButton.setTextColor(Color.WHITE);
+        nextButton.setElevation(dp(4));
         LinearLayout.LayoutParams nextParams=new LinearLayout.LayoutParams(-1,-2);
         nextParams.setMargins(dp(4),dp(7),dp(4),dp(5));
         answers.addView(nextButton,nextParams);
@@ -1146,10 +1217,13 @@ public class MainActivity extends Activity {
                     rounded(0xffb9f5d1,25),null));
             for(Button b:answerButtons)b.setEnabled(false);
             feedbackText.setText(feedback);
-            feedbackText.setTextColor(0xff21836e);
+            feedbackText.setTextColor(PlaylumiVisualStyle.SUCCESS);
+            feedbackText.setBackground(softCard(PlaylumiVisualStyle.SUCCESS_TINT,17));
             PlaylumiMotion.pop(touched);
             PlaylumiMotion.pop(feedbackText);
             if(roundStars!=null)roundStars.showProgress(sessionSolved);
+            if(sessionCounter!=null)
+                sessionCounter.setText("⭐ "+sessionSolved+" / "+sessionGoal());
             // Exactly one visual celebration; scoring and progress are already saved.
             if(isSessionLast || answerStreak % 5 == 0) {
                 PlaylumiMotion.celebrate(stage,answerStreak);
@@ -1183,7 +1257,8 @@ public class MainActivity extends Activity {
             roundHadMistake=true;
             sound.mistake();
             if(playPal!=null)playPal.react(2);
-            feedbackText.setText(feedback);feedbackText.setTextColor(0xffa86a29);
+            feedbackText.setText(feedback);feedbackText.setTextColor(0xff915526);
+            feedbackText.setBackground(softCard(PlaylumiVisualStyle.ERROR_TINT,17));
             PlaylumiDelight.wiggle(touched);
             feedbackText.announceForAccessibility(feedback);
         }
