@@ -642,6 +642,28 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     private void showCompleted() {
+        if(storyStage>=0) {
+            header("🏆 Avontuur voltooid!","");
+            characterHero(172);
+            addText(PlaylumiAdventure.ICONS[world][storyStage]+"  "+
+                    PlaylumiAdventure.TITLES[world][storyStage],24,0xff543c97,12,8);
+            addText("Je hebt "+sessionGoal()+" uitdagingen opgelost!",17,SUB,0,10);
+            if(storyNewReward)addText("🎁 +"+PlaylumiAdventure.BONUS+" extra speelsterren!",19,0xff27866b,0,12);
+            Button map=tile("🗺️ Verder op avontuur!","",0xffd2f4dd,93);
+            addTile(map,7);
+            map.setOnClickListener(v->{
+                storyPage=Math.min(2,adventures.progress(world)/2);
+                storyStage=-1;
+                move(ADVENTURE_MAP);
+            });
+            Button repeat=tile("🔄 Nog een keer oefenen","",0xffe7dcff,76);
+            addTile(repeat,8);
+            repeat.setOnClickListener(v->{
+                sessionSolved=0;sessionAttempts=0;storyNewReward=false;
+                game.nextRound();saveRecent();move(PLAY);
+            });
+            return;
+        }
         header("🏆 Jij bent een kampioen!","");
         characterHero(145);
         addText("200 vragen goed!",29,0xff4b3488,10,10);
@@ -902,6 +924,59 @@ public class MainActivity extends Activity {
         mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         miniSolved=false;
         move(MINI_PLAY);
+    }
+
+
+    private void showWorldHub() {
+        header(WORLD_ICONS[world]+" "+WORLDS[world],"Hoe wil jij vandaag spelen?");
+        characterHero(141);
+        addText("🌟 "+adventures.progress(world)+" van 6 avonturen ontdekt",16,0xff397f6f,4,12);
+        Button story=tile("🗺️ Op avontuur!","Ontdek nieuwe plekken, één voor één",
+                0xffd9efff,115);
+        addTile(story,10);
+        story.setOnClickListener(v->{
+            storyPage=Math.min(2,adventures.progress(world)/2);
+            move(ADVENTURE_MAP);
+        });
+        Button free=tile("🎲 Zelf een spel kiezen","Alle spellen in deze wereld",0xffffe2b8,111);
+        addTile(free,10);
+        free.setOnClickListener(v->{categoryPage=0;move(CATEGORIES);});
+    }
+    private void showAdventureMap() {
+        header("🗺️ Op avontuur!","Volg de sterren en ontdek nieuwe plekken");
+        addText("🌟 "+adventures.progress(world)+" van 6 avonturen klaar",19,0xff35816b,0,8);
+        addText("● ".repeat(storyPage+1)+"○ ".repeat(2-storyPage),15,0xff876ac1,0,12);
+        int start=storyPage*2;
+        for(int i=start;i<Math.min(start+2,PlaylumiAdventure.STAGES);i++) {
+            final int stageIndex=i;
+            boolean open=adventures.available(world,i);
+            boolean done=adventures.completed(world,i);
+            String name=PlaylumiAdventure.TITLES[world][i];
+            String icon=open?PlaylumiAdventure.ICONS[world][i]:"🔒";
+            String detail=done?"✅ Avontuur voltooid":
+                    open?"🎁 "+PlaylumiAdventure.BONUS+" sterren bij je eerste voltooiing":
+                    "Speel eerst het vorige avontuur";
+            Button b=tile(icon+"  "+name,detail,done?0xffdaf2e7:
+                    open?COLORS[i%COLORS.length]:0xffede9f0,112);
+            b.setEnabled(open);
+            addTile(b,9);
+            b.setOnClickListener(v->{
+                storyStage=stageIndex;storyNewReward=false;
+                int mode=adventures.category(world,stageIndex);
+                game.configure(mode,adventures.variant(stageIndex),Math.max(0,age));
+                sessionSolved=0;sessionAttempts=0;
+                pendingBadges.clear();
+                saveRecent();
+                move(PLAY);
+            });
+        }
+        Button more=tile(storyPage<2?"✨ Verder op het pad →":"↩ Begin van het pad","",
+                0xffe9e0ff,80);
+        addTile(more,14);
+        more.setOnClickListener(v->{
+            storyPage=storyPage<2?storyPage+1:0;
+            showPage();
+        });
     }
 
 }
