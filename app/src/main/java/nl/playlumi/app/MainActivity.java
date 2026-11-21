@@ -443,36 +443,39 @@ public class MainActivity extends Activity {
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
-        t.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        t.setTypeface(Typeface.create("sans-serif-rounded",size>=19?Typeface.BOLD:Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);t.setIncludeFontPadding(true);
-        t.setLineSpacing(dp(2),1.06f);return t;
+        t.setLineSpacing(dp(1),1.02f);return t;
     }
     private void addText(String value,int size,int color,int top,int bottom) {
         TextView t=text(value,size,color);
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
-        p.setMargins(0,dp(top),0,dp(bottom));root.addView(t,p);
+        p.setMargins(0,dp(PlaylumiLayout.margin(top)),
+                0,dp(PlaylumiLayout.margin(bottom)));root.addView(t,p);
     }
     private Button tile(String title,String description,int color,int minHeight) {
         Button b=new Button(this);
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
         b.setTextColor(TEXT);
-        b.setTextSize(description.isEmpty()?20:18);
+        b.setTextSize(description.isEmpty()?18:16);
         b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
-        b.setLineSpacing(dp(3),1.04f);
+        b.setLineSpacing(dp(1),1.0f);
         b.setGravity(Gravity.CENTER);
-        b.setMaxLines(5);
-        b.setPadding(dp(13),dp(16),dp(13),dp(16));
-        b.setMinHeight(dp(minHeight));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),rounded(color,25),null));
-        b.setElevation(dp(4));
+        b.setMaxLines(4);
+        b.setPadding(dp(10),dp(9),dp(10),dp(9));
+        b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
+                rounded(color,20),null));
+        b.setElevation(dp(2));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
     }
     private void addTile(Button button,int margin) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
-        p.setMargins(dp(4),dp(margin),dp(4),dp(margin));
+        int gap=PlaylumiLayout.margin(margin);
+        p.setMargins(dp(3),dp(gap),dp(3),dp(gap));
         root.addView(button,p);
     }
     private void addTwo(Button one,Button two,int height) {
@@ -480,10 +483,10 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,-2,1);
         LinearLayout.LayoutParams p2=new LinearLayout.LayoutParams(0,-2,1);
-        p1.setMargins(dp(5),dp(7),dp(5),dp(7));
-        p2.setMargins(dp(5),dp(7),dp(5),dp(7));
-        one.setMinHeight(dp(height));
-        two.setMinHeight(dp(height));
+        p1.setMargins(dp(3),dp(4),dp(3),dp(4));
+        p2.setMargins(dp(3),dp(4),dp(3),dp(4));
+        one.setMinHeight(dp(PlaylumiLayout.tileHeight(height,gameScreen())));
+        two.setMinHeight(dp(PlaylumiLayout.tileHeight(height,gameScreen())));
         row.addView(one,p1);row.addView(two,p2);
         root.addView(row);
     }
@@ -498,10 +501,12 @@ public class MainActivity extends Activity {
     private void hero(int size) {
         LinearLayout holder=new LinearLayout(this);
         holder.setGravity(Gravity.CENTER);
-        ImageView star=mascot(size);
+        int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),false,
+                getResources().getConfiguration().screenHeightDp);
+        ImageView star=mascot(actual);
         holder.addView(star);
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(size+8));
-        p.setMargins(0,dp(2),0,dp(6));
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(actual+5));
+        p.setMargins(0,dp(2),0,dp(3));
         root.addView(holder,p);
         PlaylumiMotion.floatMascot(star);
     }
@@ -519,9 +524,13 @@ public class MainActivity extends Activity {
                 if(stage==active)PlaylumiMotion.celebrate(active,1);
             });
         });
-        holder.addView(character,new LinearLayout.LayoutParams(dp(size),dp(size)));
-        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(size+7));
-        row.setMargins(0,dp(4),0,dp(2));
+        boolean showFull=page==AVATAR || page==STAR_STAGE || page==STORY_END ||
+                page==REWARD || page==BREAK_SCREEN || page==SHOP;
+        int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),showFull,
+                getResources().getConfiguration().screenHeightDp);
+        holder.addView(character,new LinearLayout.LayoutParams(dp(actual),dp(actual)));
+        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(actual+4));
+        row.setMargins(0,dp(1),0,dp(1));
         root.addView(holder,row);
         PlaylumiMotion.floatMascot(character);
     }
@@ -535,13 +544,15 @@ public class MainActivity extends Activity {
         root.addView(row,new LinearLayout.LayoutParams(-1,dp(size+4)));
     }
     private boolean landscapeScreen() {
-        return getResources().getConfiguration().orientation==
-                android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
-                getResources().getConfiguration().screenWidthDp>=600;
+        return PlaylumiLayout.useWideLayout(
+                getResources().getConfiguration().screenWidthDp,
+                getResources().getConfiguration().orientation==
+                        android.content.res.Configuration.ORIENTATION_LANDSCAPE);
     }
     private boolean gameScreen() {
         return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY ||
-                page==MUSIC_PLAY;
+                page==MUSIC_PLAY || page==STORY_PLAY || page==STORY_REACTION ||
+                page==GARDEN_PLANT || page==DRAW;
     }
     /**
      * One compact navigation row, not a large Playlumi logo followed by a duplicate title.
@@ -610,7 +621,9 @@ public class MainActivity extends Activity {
         scroller.setClipToPadding(true);
         scroller.setVerticalScrollBarEnabled(false);
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(12),dp(5),dp(12),dp(13));
+        int side=PlaylumiLayout.sidePadding(
+                getResources().getConfiguration().screenWidthDp);
+        root.setPadding(dp(side),dp(5),dp(side),dp(12));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
@@ -1489,8 +1502,10 @@ public class MainActivity extends Activity {
 
     private void roomPreview(int height) {
         PlaylumiRoomView view=new PlaylumiRoomView(this,room,wardrobe);
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
-        p.setMargins(dp(4),dp(8),dp(4),dp(16));
+        int available=PlaylumiLayout.sceneHeight(height,landscapeScreen(),
+                getResources().getConfiguration().screenHeightDp);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(available));
+        p.setMargins(dp(3),dp(3),dp(3),dp(8));
         root.addView(view,p);
     }
     private void showRoom() {
