@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
     private FrameLayout stage;
     private ScrollView scroller;
     private TextView feedbackText;
-    private ProgressBar roundProgress;
+    private PlaylumiStarTrail roundStars;
     private Button nextButton;
     private String feedback="";
     private PlaylumiAudio sound;
@@ -993,15 +993,11 @@ public class MainActivity extends Activity {
         TextView counter=text("⭐ "+sessionSolved+" / "+sessionGoal(),15,0xff2c886f);
         counter.setGravity(Gravity.CENTER_VERTICAL);
         progressRow.addView(counter,new LinearLayout.LayoutParams(-2,dp(25)));
-        roundProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-        roundProgress.setMax(sessionGoal());
-        roundProgress.setProgress(sessionSolved);
-        roundProgress.setProgressTintList(ColorStateList.valueOf(0xff64c7a7));
-        roundProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0xffe4d9f0));
-        LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(0,dp(7),1f);
-        bar.setMargins(dp(14),0,dp(3),0);
-        progressRow.addView(roundProgress,bar);
-        LinearLayout.LayoutParams progressParams=new LinearLayout.LayoutParams(-1,dp(29));
+        roundStars=new PlaylumiStarTrail(this,sessionGoal(),sessionSolved);
+        LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(0,dp(30),1f);
+        bar.setMargins(dp(12),0,dp(2),0);
+        progressRow.addView(roundStars,bar);
+        LinearLayout.LayoutParams progressParams=new LinearLayout.LayoutParams(-1,dp(33));
         progressParams.setMargins(dp(3),0,dp(3),dp(6));
         root.addView(progressRow,progressParams);
 
@@ -1137,9 +1133,7 @@ public class MainActivity extends Activity {
             if(sessionSolved==sessionGoal() ||
                     scores.get(mode).currentStreak%5==0)
                 PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
-            ObjectAnimator animate=ObjectAnimator.ofInt(roundProgress,"progress",
-                    Math.max(0,sessionSolved-1),sessionSolved);
-            animate.setDuration(430);animate.start();
+            if(roundStars!=null)roundStars.showProgress(sessionSolved);
             if(sessionSolved==sessionGoal()) {
                 if(storyStage>=0) {
                     storyNewReward=adventures.complete(world,storyStage);
@@ -2040,9 +2034,11 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        Button narration=tile(autoReadEnabled()?
+        boolean narrationPref=prefs().getBoolean("auto_read",
+                PlaylumiEasyPlay.autoReadDefault(age));
+        Button narration=tile(narrationPref?
                 "🗣️ Automatisch voorlezen: aan":"🗣️ Automatisch voorlezen: uit",
-                "Handig als je nog niet kunt lezen",0xffdef2e5,89);
+                "Werkt wanneer geluid aanstaat",0xffdef2e5,89);
         addTile(narration,7);
         narration.setOnClickListener(v->{
             boolean enabled=prefs().getBoolean("auto_read",
