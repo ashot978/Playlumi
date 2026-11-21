@@ -534,24 +534,60 @@ public class MainActivity extends Activity {
         playPal.setOnClickListener(v->{playPal.wave();sound.tap();});
         root.addView(row,new LinearLayout.LayoutParams(-1,dp(size+4)));
     }
+    private boolean landscapeScreen() {
+        return getResources().getConfiguration().orientation==
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+    }
+    private boolean gameScreen() {
+        return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY ||
+                page==MUSIC_PLAY;
+    }
+    /**
+     * One compact navigation row, not a large Playlumi logo followed by a duplicate title.
+     * Always leaves the main part of the screen for the actual game.
+     */
     private void header(String heading,String subtitle) {
+        boolean gameHeader=gameScreen();
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         if(page!=AGE && page!=HOME) {
-            Button back=tile("‹","",0xffeee4ff,46);
-            back.setTextSize(27);
-            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(52),dp(52));
-            bp.setMargins(0,0,dp(10),0);row.addView(back,bp);
+            TextView back=text("←",27,0xff60448e);
+            back.setGravity(Gravity.CENTER);
+            back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
+                    rounded(0xffeee4ff,16),null));
+            back.setContentDescription("Terug naar het vorige scherm");
+            back.setClickable(true);back.setFocusable(true);
+            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(42),dp(42));
+            bp.setMargins(0,0,dp(9),0);
+            row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        View icon=wardrobe==null?mascot(49):new PlaylumiCharacterView(this,wardrobe);
-        row.addView(icon,new LinearLayout.LayoutParams(dp(49),dp(49)));
-        TextView brand=text("Playlumi",23,0xff8351bb);
-        LinearLayout.LayoutParams textp=new LinearLayout.LayoutParams(-2,-2);
-        textp.setMargins(dp(10),0,0,0);row.addView(brand,textp);
-        root.addView(row,new LinearLayout.LayoutParams(-1,dp(58)));
-        addText(heading,page==PLAY?25:29,0xff52378b,9,5);
-        if(subtitle!=null && !subtitle.isEmpty())addText(subtitle,14,SUB,0,16);
+        TextView title=text(heading,gameHeader?19:22,0xff52378b);
+        title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
+        title.setMaxLines(1);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1f);
+        row.addView(title,tp);
+        if(gameHeader) {
+            if(subtitle!=null && !subtitle.isEmpty()) {
+                TextView status=text(subtitle.replace("Uitdaging ",""),12,SUB);
+                status.setSingleLine(true);
+                status.setPadding(dp(5),0,dp(5),0);
+                row.addView(status,new LinearLayout.LayoutParams(-2,dp(45)));
+            }
+        } else {
+            View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
+            LinearLayout.LayoutParams iconParams=
+                    new LinearLayout.LayoutParams(dp(39),dp(39));
+            iconParams.setMargins(dp(5),0,0,0);
+            row.addView(star,iconParams);
+        }
+        LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(50));
+        rowp.setMargins(0,0,0,dp(gameHeader?4:5));
+        root.addView(row,rowp);
+        if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
+            addText(subtitle,14,SUB,0,8);
     }
     private void showPage() {
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
@@ -563,15 +599,28 @@ public class MainActivity extends Activity {
                 new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
         scroller=new ScrollView(this);scroller.setFillViewport(true);
+        scroller.setClipToPadding(true);
+        scroller.setVerticalScrollBarEnabled(false);
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16),dp(16),dp(16),dp(28));
+        root.setPadding(dp(12),dp(5),dp(12),dp(13));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
-        final LinearLayout currentRoot=root;
+        final ScrollView currentScroller=scroller;
         stage.setOnApplyWindowInsetsListener((v,insets)->{
-            if(root==currentRoot)root.setPadding(dp(16),dp(16)+insets.getSystemWindowInsetTop(),
-                    dp(16),dp(28)+insets.getSystemWindowInsetBottom());
+            if(scroller==currentScroller) {
+                int top,bottom;
+                if(Build.VERSION.SDK_INT>=30) {
+                    android.graphics.Insets bars=insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars());
+                    top=bars.top;bottom=bars.bottom;
+                } else {
+                    top=insets.getSystemWindowInsetTop();
+                    bottom=insets.getSystemWindowInsetBottom();
+                }
+                // Reserve an actual safe, scrollable viewport above system navigation.
+                currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
+            }
             return insets;
         });
         stage.requestApplyInsets();
