@@ -536,7 +536,8 @@ public class MainActivity extends Activity {
     }
     private boolean landscapeScreen() {
         return getResources().getConfiguration().orientation==
-                android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
+                getResources().getConfiguration().screenWidthDp>=600;
     }
     private boolean gameScreen() {
         return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY ||
