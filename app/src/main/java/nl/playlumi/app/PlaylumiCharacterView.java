@@ -33,7 +33,7 @@ public final class PlaylumiCharacterView extends View {
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (Build.VERSION.SDK_INT>=26 && !ValueAnimator.areAnimatorsEnabled()) return;
+        if (PlaylumiMotion.isReduced() || (Build.VERSION.SDK_INT>=26 && !ValueAnimator.areAnimatorsEnabled())) return;
         idleMotion=ValueAnimator.ofFloat(0f,(float)(Math.PI*2));
         idleMotion.setDuration(2400);
         idleMotion.setRepeatCount(ValueAnimator.INFINITE);
