@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
             WORLD_PICKER=40, HOME_OPTIONS=41;
-    private static final int SESSION_ROUNDS=8;
+    private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
             0xffd5f5df,0xffffdded,0xfffff1b6};
