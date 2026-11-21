@@ -83,6 +83,8 @@ public final class PlaylumiWardrobe {
     }
     public void earnAnswer() { add(STARS_FOR_ANSWER); }
     public void earnAdventureBonus() { add(PlaylumiAdventure.BONUS); }
+    public void earnStoryBonus() { add(15); }
+    public void earnCreativeBonus() { add(9); }
     public void earnBadges(int amount) {
         if(amount<0) throw new IllegalArgumentException("negative badges");
         add(STARS_FOR_BADGE*amount);
