@@ -46,3 +46,6 @@ Do not auto-purchase a locked wardrobe or room option on tap. Show a temporary i
 
 ## Playlumi 0.35.0 navigation to recent games
 Per child, store up to four last-used standard activities, including variant and difficulty, without answers or identifiers. Recent replay resets a new eight-question session; adventure progress is separate. Show all eight learning games in a world and all five variants without paging. Never reset previous saves or awards. Finished updates require signed APK, full CI, emulator start and matching private certificate.
+
+## Playlumi 0.36.0 favorites and outfit presets
+Favorites and three saved outfit selections are strictly per child profile and local. Favorite game tap starts a new shuffled round. A saved outfit may equip only already-owned items, never award/unlock/spend stars. Do not mutate outfit preview or child data on saving favorites. Publish each completed update as a new signed APK with stable package and signing cert following full Android tests and emulator start.
