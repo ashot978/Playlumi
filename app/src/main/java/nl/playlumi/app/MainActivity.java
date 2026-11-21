@@ -569,7 +569,7 @@ public class MainActivity extends Activity {
         boolean gameHeader=gameScreen();
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        if(page!=AGE && page!=HOME) {
+        if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
             TextView back=text("←",27,0xff60448e);
             back.setGravity(Gravity.CENTER);
             back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
