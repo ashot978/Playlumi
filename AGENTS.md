@@ -12,3 +12,6 @@ unbuilt or untested APK as ready. Build from original source on the app branch,
 run tests, lint, emulator launch, and verify package, versionCode and stable
 signer. Keep the private keystore/password out of GitHub and CI. Do not
 merge to main or publish to stores without an explicit request.
+
+## Look & feel 0.28.0
+Apply the shared native design language across screens. Preserve game rules, stored scores, profiles and stable app identity. A finished update must include a newly built signed APK and passing Android build, lint and emulator launch; never publish private signing materials.

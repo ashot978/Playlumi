@@ -22,7 +22,7 @@ jobs:
           gradle-version: '8.9'
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((13000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((14000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
   emulator-launch:
@@ -56,7 +56,7 @@ jobs:
           script: bash tools/smoke-android.sh
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((13000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((14000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
       - name: Save verified unsigned APK for private signing
