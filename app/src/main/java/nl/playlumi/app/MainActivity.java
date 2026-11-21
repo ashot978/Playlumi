@@ -258,7 +258,7 @@ public class MainActivity extends Activity {
             bp.setMargins(0,0,dp(10),0);row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        ImageView icon=mascot(49);
+        View icon=wardrobe==null?mascot(49):new PlaylumiCharacterView(this,wardrobe);
         row.addView(icon,new LinearLayout.LayoutParams(dp(49),dp(49)));
         TextView brand=text("Playlumi",23,0xff8351bb);
         LinearLayout.LayoutParams textp=new LinearLayout.LayoutParams(-2,-2);
@@ -561,7 +561,7 @@ public class MainActivity extends Activity {
     }
     private void showCompleted() {
         header("🏆 Jij bent een kampioen!","");
-        hero(135);
+        characterHero(145);
         addText("200 vragen goed!",29,0xff4b3488,10,10);
         addText("Knap gespeeld! Wil je nog een avontuur?",17,SUB,0,18);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
