@@ -603,4 +603,102 @@ public class MainActivity extends Activity {
         if(sessionSolved<SESSION_ROUNDS) {game.nextRound();saveRecent();}
         feedback="";move(PLAY);
     }
+
+    /** A playful character preview rather than a crowded settings screen. */
+    private void showAvatar() {
+        header("✨ Dit is jouw ster!","Maak je eigen magische maatje.");
+        characterHero(228);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",24,0xffa4781f,8,6);
+        addText(wardrobe.unlockedItems()+" van 25 spullen vrijgespeeld",14,SUB,0,14);
+        Button dress=tile("🎀 Kleed je ster aan!","Ontdek nieuwe kleuren en accessoires",
+                0xffd7f5e5,112);
+        addTile(dress,8);
+        dress.setOnClickListener(v->{closetPage=0;move(CLOSET);});
+        Button play=tile("🎮 Verdien meer sterren","Spelen levert 3 sterren per goed antwoord op",
+                0xffffe6c8,92);
+        addTile(play,8);
+        play.setOnClickListener(v->move(HOME));
+    }
+
+    /** Show at most two wardrobe categories on each page. */
+    private void showCloset() {
+        header("🎁 Kleed je ster aan","Wat wil je veranderen?");
+        characterHero(170);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",19,0xffa4781f,5,8);
+        addText((closetPage+1)+" / 3",16,0xff9163bf,0,8);
+        int start=closetPage*2;
+        for(int i=start;i<Math.min(start+2,PlaylumiWardrobe.SLOTS);i++) {
+            final int selected=i;
+            String label=PlaylumiWardrobe.SLOT_ICONS[i]+"  "+PlaylumiWardrobe.SLOT_NAMES[i];
+            String worn=PlaylumiWardrobe.ITEM_NAMES[i][wardrobe.equipped(i)];
+            Button b=tile(label,"Nu: "+worn,COLORS[i%COLORS.length],108);
+            addTile(b,9);
+            b.setOnClickListener(v->{
+                selectedSlot=selected;shopPage=0;shopMessage="";
+                move(SHOP);
+            });
+        }
+        Button browse=tile(closetPage<2?"✨ Meer aankleden →":"↩ Terug naar de kleuren","",
+                0xffe8ddff,76);
+        addTile(browse,12);
+        browse.setOnClickListener(v->{
+            closetPage=closetPage<2?closetPage+1:0;
+            shopMessage="";showPage();
+        });
+    }
+
+    /** The wardrobe uses only stars earned by playing, with no real money. */
+    private void showShop() {
+        int slot=selectedSlot;
+        header(PlaylumiWardrobe.SLOT_ICONS[slot]+" "+PlaylumiWardrobe.SLOT_NAMES[slot],
+                "Kies een nieuwe look!");
+        characterHero(194);
+        addText("🌟 "+wardrobe.stars()+" speelsterren",21,0xffa4781f,0,8);
+        if(!shopMessage.isEmpty()) addText(shopMessage,17,0xff5b3b90,0,10);
+        addText((shopPage+1)+" / 3",16,0xff9163bf,0,7);
+        int start=shopPage*2;
+        for(int i=start;i<Math.min(start+2,PlaylumiWardrobe.OPTIONS);i++) {
+            final int selected=i;
+            boolean owned=wardrobe.owned(slot,i);
+            boolean selectedNow=wardrobe.equipped(slot)==i;
+            String label=PlaylumiWardrobe.ITEM_ICONS[slot][i]+"  "+
+                    PlaylumiWardrobe.ITEM_NAMES[slot][i];
+            String subtitle=selectedNow?"✅ Draag je nu":
+                    owned?"✨ Klik om aan te trekken":
+                    "🌟 "+wardrobe.price(slot,i)+" speelsterren";
+            Button b=tile(label,subtitle,
+                    selectedNow?0xffd0f4df:COLORS[(slot+i)%COLORS.length],102);
+            addTile(b,8);
+            b.setOnClickListener(v->{
+                int result=wardrobe.buyOrEquip(slot,selected);
+                if(result==PlaylumiWardrobe.NOT_ENOUGH) {
+                    int needed=wardrobe.price(slot,selected)-wardrobe.stars();
+                    shopMessage="🌼 Speel verder! Nog "+needed+" sterren nodig.";
+                    showPage();
+                } else {
+                    saveWardrobe();
+                    shopMessage=result==PlaylumiWardrobe.PURCHASED ?
+                            "🎉 Nieuw! "+PlaylumiWardrobe.ITEM_NAMES[slot][selected]:
+                            "✨ Superleuk! Aangetrokken.";
+                    showPage();
+                    if(result==PlaylumiWardrobe.PURCHASED) {
+                        FrameLayout active=stage;
+                        active.post(()->{
+                            if(stage==active)PlaylumiMotion.celebrate(active,10);
+                        });
+                    } else if(character!=null) {
+                        PlaylumiMotion.pop(character);
+                    }
+                }
+            });
+        }
+        Button browse=tile(shopPage<2?"🎨 Meer spullen →":"↩ Eerste spullen","",
+                0xffe8ddff,76);
+        addTile(browse,12);
+        browse.setOnClickListener(v->{
+            shopPage=shopPage<2?shopPage+1:0;
+            shopMessage="";showPage();
+        });
+    }
+
 }
