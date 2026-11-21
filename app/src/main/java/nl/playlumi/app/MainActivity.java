@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
             TROPHY_WORLDS=19, TROPHY_CATS=20,
             STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
-            PARENT_SETTINGS=30, BREAK_SCREEN=31;
+            PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -82,6 +82,7 @@ public class MainActivity extends Activity {
     private PlaylumiUsage usage;
     private long activeSince;
     private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
+    private int activeProfile;
     private boolean parentAllowed;
     private PlaylumiStories stories;
     private PlaylumiDrawingView drawing;
@@ -103,7 +104,12 @@ public class MainActivity extends Activity {
         int flags=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if(Build.VERSION.SDK_INT>=26) flags|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         getWindow().getDecorView().setSystemUiVisibility(flags);
-        SharedPreferences prefs=getPreferences(MODE_PRIVATE);
+        activeProfile=getSharedPreferences("playlumi-global",MODE_PRIVATE)
+                .getInt("active_profile",0);
+        if(activeProfile<0 || activeProfile>2)activeProfile=0;
+        if(state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile)
+            state=null; // Switching children must not restore the former child's state.
+        SharedPreferences prefs=prefs();
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
         PlaylumiMotion.setReduced(prefs.getBoolean("reduced_motion",false));
         int today=dayStamp();
@@ -218,6 +224,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onSaveInstanceState(Bundle out) {
         if(page==DRAW && drawing!=null)drawing.save();
+        out.putInt("activeProfile",activeProfile);
         out.putInt("age",age);out.putInt("mode",game.mode());out.putInt("variant",game.variant());
         out.putInt("difficulty",difficulty);out.putInt("world",world);
         out.putInt("categoryPage",categoryPage);out.putInt("variantPage",variantPage);
@@ -277,6 +284,7 @@ public class MainActivity extends Activity {
         if(page==PARENT_WORLDS || page==PARENT_SETTINGS) {move(PARENT_HOME);return;}
         if(page==PARENT_STATS) {move(PARENT_WORLDS);return;}
         if(page==BREAK_SCREEN) {move(HOME);return;}
+        if(page==PROFILES) {move(HOME);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
@@ -301,7 +309,10 @@ public class MainActivity extends Activity {
                 .putInt("usage_limit",usage.limit())
                 .putBoolean("usage_break_shown",usage.breakShown()).apply();
     }
-    private SharedPreferences prefs() {return getPreferences(MODE_PRIVATE);}
+    private SharedPreferences prefs() {
+        return activeProfile==0?getPreferences(MODE_PRIVATE):
+                getSharedPreferences("playlumi-child-"+activeProfile,MODE_PRIVATE);
+    }
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
     private void saveAdaptive(int cat) {
         prefs().edit().putInt("learn_lvl_"+cat,adaptive.level(cat,Math.max(0,age)))
@@ -513,6 +524,7 @@ public class MainActivity extends Activity {
             case PARENT_STATS: showParentStats();break;
             case PARENT_SETTINGS: showParentSettings();break;
             case BREAK_SCREEN: showBreakScreen();break;
+            case PROFILES: showProfiles();break;
             default: throw new IllegalStateException("page");
         }
         if(!PlaylumiMotion.isReduced()) {
@@ -1461,7 +1473,8 @@ public class MainActivity extends Activity {
     }
     private void showDrawing() {
         header("🖍️ Mijn Tekenstudio","Teken met je vinger. Alles mag!");
-        drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),"playlumi-kunstwerk.png"));
+        drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),activeProfile==0?"playlumi-kunstwerk.png":
+                "playlumi-kunstwerk-"+activeProfile+".png"));
         drawing.setElevation(dp(5));
         LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,dp(330));
         drawParams.setMargins(dp(4),dp(8),dp(4),dp(12));
