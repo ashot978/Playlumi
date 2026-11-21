@@ -1166,4 +1166,56 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    private int trophiesInWorld(int selectedWorld) {
+        int total=0;
+        for(int i=selectedWorld*8;i<selectedWorld*8+8;i++)
+            total+=scores.get(i).earnedBadges();
+        return total;
+    }
+    private void showTrophyWorlds() {
+        header("🏆 Mijn trofeeënkamer","Kijk wat je allemaal al kunt!");
+        characterHero(137);
+        int all=0;
+        for(int i=0;i<3;i++)all+=trophiesInWorld(i);
+        addText("✨ "+all+" van 144 badges verzameld",20,0xffa67929,7,12);
+        for(int w=0;w<3;w++) {
+            final int chosen=w;
+            Button b=tile(WORLD_ICONS[w]+"  "+WORLDS[w],
+                    "🏅 "+trophiesInWorld(w)+" van 48 badges",COLORS[w],107);
+            addTile(b,9);
+            b.setOnClickListener(v->{
+                trophyWorld=chosen;trophyPage=0;
+                move(TROPHY_CATS);
+            });
+        }
+    }
+    private void showTrophyCats() {
+        header("🏅 "+WORLDS[trophyWorld],"Kies een spel om de badges te bekijken");
+        addText("✨ "+trophiesInWorld(trophyWorld)+" van 48",18,0xffa67929,2,9);
+        addText((trophyPage+1)+" / 4",15,0xff946ac0,0,8);
+        int from=trophyWorld*8+trophyPage*2;
+        for(int category=from;category<from+2;category++) {
+            final int selected=category;
+            PlaylumiScores.Score score=scores.get(category);
+            String label=ICONS[category]+"  "+LearningGame.GAME_NAMES[category];
+            Button b=tile(label,"🏅 "+score.earnedBadges()+" van 6 verdiend",
+                    COLORS[category%6],117);
+            addTile(b,8);
+            b.setOnClickListener(v->{
+                badgesFromTrophy=true;
+                badgePage=0;
+                game.configure(selected,0,Math.max(0,age));
+                move(BADGES);
+            });
+        }
+        Button more=tile(trophyPage<3?"✨ Meer trofeeën →":"↩ Eerste trofeeën","",
+                0xffe5daff,76);
+        addTile(more,12);
+        more.setOnClickListener(v->{
+            trophyPage=trophyPage<3?trophyPage+1:0;
+            showPage();
+        });
+    }
+
 }
