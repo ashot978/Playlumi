@@ -182,7 +182,12 @@ public class MainActivity extends Activity {
         if(sound!=null)sound.close();
         super.onDestroy();
     }
+    @Override protected void onPause() {
+        if(page==DRAW && drawing!=null)drawing.save();
+        super.onPause();
+    }
     @Override protected void onSaveInstanceState(Bundle out) {
+        if(page==DRAW && drawing!=null)drawing.save();
         out.putInt("age",age);out.putInt("mode",game.mode());out.putInt("variant",game.variant());
         out.putInt("difficulty",difficulty);out.putInt("world",world);
         out.putInt("categoryPage",categoryPage);out.putInt("variantPage",variantPage);
@@ -228,7 +233,10 @@ public class MainActivity extends Activity {
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
         if(page==STORY_LIBRARY) {move(WORLD_HUB);return;}
         if(page==STORY_PLAY || page==STORY_REACTION || page==STORY_END) {move(STORY_LIBRARY);return;}
-        if(page==DRAW) {move(WORLD_HUB);return;}
+        if(page==DRAW) {
+            if(drawing!=null)drawing.save();
+            move(WORLD_HUB);return;
+        }
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
