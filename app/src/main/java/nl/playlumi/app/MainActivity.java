@@ -234,6 +234,14 @@ public class MainActivity extends Activity {
         LinearLayout holder=new LinearLayout(this);
         holder.setGravity(Gravity.CENTER);
         character=new PlaylumiCharacterView(this,wardrobe);
+        character.setContentDescription("Jouw stervriendje. Tik voor een magische verrassing.");
+        character.setOnClickListener(v->{
+            PlaylumiMotion.pop(v);
+            FrameLayout active=stage;
+            active.post(()->{
+                if(stage==active)PlaylumiMotion.celebrate(active,1);
+            });
+        });
         holder.addView(character,new LinearLayout.LayoutParams(dp(size),dp(size)));
         LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(size+7));
         row.setMargins(0,dp(4),0,dp(2));
