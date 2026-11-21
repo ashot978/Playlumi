@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
             TROPHY_WORLDS=19, TROPHY_CATS=20,
             STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
-            PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32;
+            PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
     private int closetPage,shopPage,selectedSlot;
     private String shopMessage="";
     private int sessionSolved,sessionAttempts,earnedBadge=-1,lifetimeCount;
-    private boolean moving,answerLocked;
+    private boolean moving,answerLocked,greeted;
     private LearningGame game;
     private QuestionHistory recent;
     private PlaylumiScores scores;
@@ -269,6 +269,7 @@ public class MainActivity extends Activity {
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
+        if(page==STAR_STAGE) {move(AVATAR);return;}
         if(page==ROOM) {move(AVATAR);return;}
         if(page==ROOM_CATS) {move(ROOM);return;}
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
@@ -429,6 +430,8 @@ public class MainActivity extends Activity {
         character=new PlaylumiCharacterView(this,wardrobe);
         character.setContentDescription("Jouw stervriendje. Tik voor een magische verrassing.");
         character.setOnClickListener(v->{
+            character.surprised();
+            if(sound!=null)sound.hello();
             PlaylumiMotion.pop(v);
             FrameLayout active=stage;
             active.post(()->{
@@ -525,6 +528,7 @@ public class MainActivity extends Activity {
             case PARENT_SETTINGS: showParentSettings();break;
             case BREAK_SCREEN: showBreakScreen();break;
             case PROFILES: showProfiles();break;
+            case STAR_STAGE: showStarStage();break;
             default: throw new IllegalStateException("page");
         }
         if(!PlaylumiMotion.isReduced()) {
@@ -939,7 +943,11 @@ public class MainActivity extends Activity {
         Button continueButton=tile("🌟 Hoera, verder!","",0xffd3f4dd,96);
         addTile(continueButton,10);
         continueButton.setOnClickListener(v->continueAfterBadge());
-        stage.post(()->PlaylumiMotion.celebrate(stage,10));
+        FrameLayout active=stage;
+        active.post(()->{if(stage==active){
+            PlaylumiMotion.celebrate(active,10);
+            sound.unlock();
+        }});
     }
     private void continueAfterBadge() {
         if(rewardReturn==MINI_PLAY) {
@@ -962,11 +970,15 @@ public class MainActivity extends Activity {
         header("✨ Dit is jouw ster!","Maak je eigen magische maatje.");
         characterHero(228);
         addText("🌟 "+wardrobe.stars()+" speelsterren",24,0xffa4781f,8,6);
-        addText(wardrobe.unlockedItems()+" van 25 spullen vrijgespeeld",14,SUB,0,14);
+        addText(wardrobe.unlockedItems()+" van "+(PlaylumiWardrobe.SLOTS*PlaylumiWardrobe.OPTIONS)+" spullen vrijgespeeld",14,SUB,0,14);
         Button dress=tile("🎀 Kleed je ster aan!","Ontdek nieuwe kleuren en accessoires",
                 0xffd7f5e5,112);
         addTile(dress,8);
         dress.setOnClickListener(v->{closetPage=0;move(CLOSET);});
+        Button stageButton=tile("🎭 Sterrenpodium","Laat je stervriend dansen, zwaaien of schitteren!",
+                0xffffe8b8,102);
+        addTile(stageButton,8);
+        stageButton.setOnClickListener(v->move(STAR_STAGE));
         Button home=tile("🏠 Mijn eigen kamer","Versier je kamer met speelsterren",0xffd9ecff,105);
         addTile(home,8);
         home.setOnClickListener(v->move(ROOM));
@@ -1014,7 +1026,7 @@ public class MainActivity extends Activity {
         characterHero(194);
         addText("🌟 "+wardrobe.stars()+" speelsterren",21,0xffa4781f,0,8);
         if(!shopMessage.isEmpty()) addText(shopMessage,17,0xff5b3b90,0,10);
-        addText((shopPage+1)+" / 3",16,0xff9163bf,0,7);
+        addText((shopPage+1)+" / "+((PlaylumiWardrobe.OPTIONS+1)/2),16,0xff9163bf,0,7);
         int start=shopPage*2;
         for(int i=start;i<Math.min(start+2,PlaylumiWardrobe.OPTIONS);i++) {
             final int selected=i;
@@ -1036,6 +1048,8 @@ public class MainActivity extends Activity {
                     showPage();
                 } else {
                     saveWardrobe();
+                    if(result==PlaylumiWardrobe.PURCHASED)sound.unlock();
+                    else sound.sparkle();
                     shopMessage=result==PlaylumiWardrobe.PURCHASED ?
                             "🎉 Nieuw! "+PlaylumiWardrobe.ITEM_NAMES[slot][selected]:
                             "✨ Superleuk! Aangetrokken.";
@@ -1051,11 +1065,11 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        Button browse=tile(shopPage<2?"🎨 Meer spullen →":"↩ Eerste spullen","",
+        Button browse=tile(shopPage<(PlaylumiWardrobe.OPTIONS-1)/2?"🎨 Meer spullen →":"↩ Eerste spullen","",
                 0xffe8ddff,76);
         addTile(browse,12);
         browse.setOnClickListener(v->{
-            shopPage=shopPage<2?shopPage+1:0;
+            shopPage=shopPage<(PlaylumiWardrobe.OPTIONS-1)/2?shopPage+1:0;
             shopMessage="";showPage();
         });
     }
@@ -1240,7 +1254,7 @@ public class MainActivity extends Activity {
         header("🏠 Mijn eigen kamer","Welkom thuis, stervriend!");
         roomPreview(310);
         addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xffa87829,0,6);
-        addText(room.ownedItems()+" van 25 kamerdingen vrijgespeeld",14,SUB,0,10);
+        addText(room.ownedItems()+" van "+(PlaylumiRoom.SLOTS*PlaylumiRoom.OPTIONS)+" kamerdingen vrijgespeeld",14,SUB,0,10);
         Button decorate=tile("🎨 Richt je kamer in!","Kies kleuren, meubels en versieringen",
                 0xffd5f2df,109);
         addTile(decorate,8);
@@ -1280,7 +1294,7 @@ public class MainActivity extends Activity {
         roomPreview(203);
         addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xffa87829,0,5);
         if(!roomMessage.isEmpty())addText(roomMessage,16,0xff4e4291,0,8);
-        addText((roomItemPage+1)+" / 3",15,0xff9163bd,0,6);
+        addText((roomItemPage+1)+" / "+((PlaylumiRoom.OPTIONS+1)/2),15,0xff9163bd,0,6);
         for(int i=roomItemPage*2;i<Math.min(roomItemPage*2+2,PlaylumiRoom.OPTIONS);i++) {
             final int item=i;
             boolean selected=room.selected(slot)==i;
@@ -1299,6 +1313,7 @@ public class MainActivity extends Activity {
                 boolean first=!room.owned(slot,item);
                 room.unlockAndSelect(slot,item);
                 saveRoom();saveWardrobe();
+                if(first)sound.unlock();else sound.sparkle();
                 roomMessage=first?"🎉 Nieuw item! Je kamer ziet er anders uit.":
                         "✨ Mooi! De kamer is aangepast.";
                 showPage();
@@ -1308,11 +1323,11 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        Button more=tile(roomItemPage<2?"🎁 Meer spulletjes →":"↩ Eerste spulletjes","",
+        Button more=tile(roomItemPage<(PlaylumiRoom.OPTIONS-1)/2?"🎁 Meer spulletjes →":"↩ Eerste spulletjes","",
                 0xffe8deff,76);
         addTile(more,10);
         more.setOnClickListener(v->{
-            roomItemPage=roomItemPage<2?roomItemPage+1:0;
+            roomItemPage=roomItemPage<(PlaylumiRoom.OPTIONS-1)/2?roomItemPage+1:0;
             roomMessage="";showPage();
         });
     }
