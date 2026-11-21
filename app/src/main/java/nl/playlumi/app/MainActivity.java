@@ -2375,8 +2375,10 @@ public class MainActivity extends Activity {
         int plant=gardenPlant;
         header("🌿 "+PlaylumiGarden.NAMES[plant],"Help jouw plant groeien!");
         PlaylumiGardenView view=new PlaylumiGardenView(this,garden,plant);
-        LinearLayout.LayoutParams scene=new LinearLayout.LayoutParams(-1,dp(257));
-        scene.setMargins(dp(4),dp(7),dp(4),dp(13));
+        int gardenHeight=PlaylumiLayout.sceneHeight(257,landscapeScreen(),
+                getResources().getConfiguration().screenHeightDp);
+        LinearLayout.LayoutParams scene=new LinearLayout.LayoutParams(-1,dp(gardenHeight));
+        scene.setMargins(dp(3),dp(3),dp(3),dp(7));
         root.addView(view,scene);
         addText("💚 "+garden.stage(plant)+" van "+PlaylumiGarden.STAGES+
                 " groeistapjes",21,0xff2a876a,2,8);
