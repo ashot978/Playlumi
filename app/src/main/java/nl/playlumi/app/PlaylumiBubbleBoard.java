@@ -38,12 +38,17 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
         super(context);
         game=state;listener=events;awarded=state.solved();
         setOrientation(VERTICAL);
-        setPadding(dp(7),dp(7),dp(7),dp(12));
+        setPadding(dp(5),dp(4),dp(5),dp(6));
         setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView intro=text("🫧 Prik "+state.target+" bellen!",25,0xff624698);
-        addView(intro,new LayoutParams(-1,dp(60)));
-        count=text("✨ "+state.popped()+" / "+state.target,22,0xff34876a);
-        int perRow=3;
+        TextView intro=text("🫧 Prik "+state.target+" bellen!",21,0xff624698);
+        addView(intro,new LayoutParams(-1,dp(43)));
+        count=text("✨ "+state.popped()+" / "+state.target,19,0xff34876a);
+        boolean wide=PlaylumiLayout.useWideLayout(
+                getResources().getConfiguration().screenWidthDp,
+                getResources().getConfiguration().orientation==
+                        android.content.res.Configuration.ORIENTATION_LANDSCAPE);
+        int perRow=wide?4:3;
+        int bubbleHeight=getResources().getConfiguration().screenHeightDp<700?72:80;
         for(int start=0;start<state.total;start+=perRow) {
             LinearLayout row=new LinearLayout(context);
             row.setGravity(Gravity.CENTER);
@@ -52,9 +57,9 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                 Button b=new Button(context);
                 b.setAllCaps(false);
                 b.setText("🫧");
-                b.setTextSize(39);
+                b.setTextSize(wide?31:35);
                 b.setGravity(Gravity.CENTER);
-                b.setMinHeight(dp(90));
+                b.setMinHeight(dp(60));
                 b.setPadding(dp(3),dp(3),dp(3),dp(3));
                 b.setContentDescription("Zeepbel "+(index+1)+" van "+state.total+", tik om te prikken");
                 GradientDrawable shape=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -63,8 +68,8 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                 shape.setStroke(dp(2),0xeaffffff);
                 b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66ffffff),shape,null));
                 b.setElevation(dp(4));
-                LayoutParams bp=new LayoutParams(0,dp(91),1);
-                bp.setMargins(dp(6),dp(7),dp(6),dp(8));
+                LayoutParams bp=new LayoutParams(0,dp(bubbleHeight),1);
+                bp.setMargins(dp(4),dp(4),dp(4),dp(5));
                 row.addView(b,bp);
                 if(state.isPopped(i))b.setVisibility(INVISIBLE);
                 else {
@@ -83,7 +88,7 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
             addView(row,new LayoutParams(-1,-2));
         }
         updateStatus();
-        addView(count,new LayoutParams(-1,dp(60)));
+        addView(count,new LayoutParams(-1,dp(44)));
     }
     private TextView text(String s,int size,int color) {
         TextView t=new TextView(getContext());
