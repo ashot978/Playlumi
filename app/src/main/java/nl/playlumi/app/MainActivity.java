@@ -752,10 +752,10 @@ public class MainActivity extends Activity {
         }
     }
     private void startEasyPlay() {
-        int selected=prefs().getInt("last_played_category",0);
-        if(selected<0 || selected>=PlaylumiScores.CATEGORIES)selected=0;
-        int variation=prefs().getInt("last_played_variant",0);
-        if(variation<0 || variation>=5)variation=0;
+        int selected=PlaylumiEasyPlay.category(
+                prefs().getInt("last_played_category",0));
+        int variation=PlaylumiEasyPlay.variant(
+                prefs().getInt("last_played_variant",0));
         storyStage=-1;smartDifficulty=true;roundHadMistake=false;
         pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";
         pendingBadges.clear();
@@ -960,7 +960,7 @@ public class MainActivity extends Activity {
      */
     private boolean autoReadEnabled() {
         return sound!=null && sound.isEnabled() &&
-                prefs().getBoolean("auto_read",age==0);
+                prefs().getBoolean("auto_read",PlaylumiEasyPlay.autoReadDefault(age));
     }
     /** Speak only while the originating page is still visible; TTS may initialize late. */
     private void readThisPage(String message) {
@@ -1238,12 +1238,21 @@ public class MainActivity extends Activity {
     }
     private void showReward() {
         header("🎉 Nieuwe badge!","");
-        addText(PlaylumiScores.BADGE_ICONS[earnedBadge],100,0xffc68823,24,10);
+        TextView badgeIcon=text(PlaylumiScores.BADGE_ICONS[earnedBadge],
+                77,0xffc68823);
+        badgeIcon.setContentDescription("Je hebt een nieuwe badge! Tik om te fonkelen.");
+        badgeIcon.setFocusable(true);badgeIcon.setClickable(true);
+        addWidget(badgeIcon,12,5);
+        PlaylumiDelight.invite(badgeIcon);
+        badgeIcon.setOnClickListener(v->{
+            sound.sparkle();
+            PlaylumiDelight.sprinkle(stage,badgeIcon);
+        });
         addText(PlaylumiScores.BADGE_NAMES[earnedBadge],30,0xff51378c,8,12);
         addText(PlaylumiScores.BADGE_HINTS[earnedBadge],18,SUB,0,10);
         addText("🎁 +12 speelsterren!",21,0xff2b9677,0,22);
         Button continueButton=tile("🌟 Hoera, verder!","",0xffd3f4dd,96);
-        addTile(continueButton,10);
+        addTile(continueButton,7);
         continueButton.setOnClickListener(v->continueAfterBadge());
         FrameLayout active=stage;
         active.post(()->{if(stage==active){
@@ -2006,6 +2015,16 @@ public class MainActivity extends Activity {
         soundButton.setOnClickListener(v->{
             sound.setEnabled(!sound.isEnabled());
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
+            showPage();
+        });
+        Button narration=tile(autoReadEnabled()?
+                "🗣️ Automatisch voorlezen: aan":"🗣️ Automatisch voorlezen: uit",
+                "Handig als je nog niet kunt lezen",0xffdef2e5,89);
+        addTile(narration,7);
+        narration.setOnClickListener(v->{
+            boolean enabled=prefs().getBoolean("auto_read",
+                    PlaylumiEasyPlay.autoReadDefault(age));
+            prefs().edit().putBoolean("auto_read",!enabled).apply();
             showPage();
         });
         Button motion=tile(PlaylumiMotion.isReduced()?
