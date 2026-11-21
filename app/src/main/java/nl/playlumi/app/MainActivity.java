@@ -1323,7 +1323,7 @@ public class MainActivity extends Activity {
             addTile(drawing,8);
             drawing.setOnClickListener(v->move(DRAW));
         } else if(world==1) {
-            Button books=tile("📖 Verhalenbos","Maak zelf keuzes in zes verhalen",0xffe9d9ff,103);
+            Button books=tile("📖 Verhalenbos","Kies je eigen avontuur in twaalf verhalen",0xffe9d9ff,103);
             addTile(books,8);
             books.setOnClickListener(v->{storyLibraryPage=0;move(STORY_LIBRARY);});
         }
@@ -1514,8 +1514,8 @@ public class MainActivity extends Activity {
 
     private void showStoryLibrary() {
         header("📖 Het Verhalenbos","Jij beslist hoe het verhaal verdergaat!");
-        addText("📚 "+stories.completedCount()+" van 6 verhalen ontdekt",18,0xff36836d,0,9);
-        addText((storyLibraryPage+1)+" / 3",15,0xff9771bb,0,9);
+        addText("📚 "+stories.completedCount()+" van "+PlaylumiStories.NAMES.length+" verhalen ontdekt",18,0xff36836d,0,9);
+        addText((storyLibraryPage+1)+" / "+((PlaylumiStories.NAMES.length+1)/2),15,0xff9771bb,0,9);
         for(int i=storyLibraryPage*2;i<Math.min(storyLibraryPage*2+2,PlaylumiStories.NAMES.length);i++) {
             final int story=i;
             String subtitle=stories.completed(i)?"🌟 Al eens gelezen":
@@ -1531,11 +1531,11 @@ public class MainActivity extends Activity {
                 move(stories.choice()>=0?STORY_REACTION:STORY_PLAY);
             });
         }
-        Button more=tile(storyLibraryPage<2?"📚 Meer verhalen →":"↩ Eerste verhalen","",
+        Button more=tile(storyLibraryPage<(PlaylumiStories.NAMES.length-1)/2?"📚 Meer verhalen →":"↩ Eerste verhalen","",
                 0xffe8ddff,78);
         addTile(more,14);
         more.setOnClickListener(v->{
-            storyLibraryPage=storyLibraryPage<2?storyLibraryPage+1:0;
+            storyLibraryPage=storyLibraryPage<(PlaylumiStories.NAMES.length-1)/2?storyLibraryPage+1:0;
             showPage();
         });
     }
