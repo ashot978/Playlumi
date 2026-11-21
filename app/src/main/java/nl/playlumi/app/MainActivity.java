@@ -28,7 +28,8 @@ public class MainActivity extends Activity {
     private static final int AGE=0, HOME=1, CATEGORIES=2, DETAIL=3, LEVEL=4,
             VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11,
             MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15,
-            ROOM=16, ROOM_CATS=17, ROOM_ITEMS=18;
+            ROOM=16, ROOM_CATS=17, ROOM_ITEMS=18,
+            TROPHY_WORLDS=19, TROPHY_CATS=20;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -73,6 +74,8 @@ public class MainActivity extends Activity {
     private PlaylumiAdventure adventures;
     private PlaylumiAdaptive adaptive;
     private boolean smartDifficulty,roundHadMistake;
+    private boolean badgesFromTrophy;
+    private int trophyWorld,trophyPage;
     private int pendingLevel=-1;
     private int storyStage=-1,storyPage;
     private boolean storyNewReward;
@@ -121,6 +124,9 @@ public class MainActivity extends Activity {
             smartDifficulty=state.getBoolean("smartDifficulty",smartDifficulty);
             roundHadMistake=state.getBoolean("roundHadMistake",false);
             pendingLevel=state.getInt("pendingLevel",-1);
+            badgesFromTrophy=state.getBoolean("badgesFromTrophy",false);
+            trophyWorld=state.getInt("trophyWorld",0);
+            trophyPage=state.getInt("trophyPage",0);
         }
         adaptive=new PlaylumiAdaptive();
         for(int cat=0;cat<PlaylumiScores.CATEGORIES;cat++)
@@ -181,6 +187,9 @@ public class MainActivity extends Activity {
         out.putBoolean("smartDifficulty",smartDifficulty);
         out.putBoolean("roundHadMistake",roundHadMistake);
         out.putInt("pendingLevel",pendingLevel);
+        out.putBoolean("badgesFromTrophy",badgesFromTrophy);
+        out.putInt("trophyWorld",trophyWorld);
+        out.putInt("trophyPage",trophyPage);
         out.putInt("roomPage",roomPage);
         out.putInt("roomItemPage",roomItemPage);
         out.putInt("roomSlot",roomSlot);
@@ -199,6 +208,9 @@ public class MainActivity extends Activity {
         if(page==ROOM) {move(AVATAR);return;}
         if(page==ROOM_CATS) {move(ROOM);return;}
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
+        if(page==TROPHY_WORLDS) {move(AVATAR);return;}
+        if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
+        if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
@@ -394,6 +406,8 @@ public class MainActivity extends Activity {
             case ROOM: showRoom();break;
             case ROOM_CATS: showRoomCats();break;
             case ROOM_ITEMS: showRoomItems();break;
+            case TROPHY_WORLDS: showTrophyWorlds();break;
+            case TROPHY_CATS: showTrophyCats();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
@@ -492,7 +506,7 @@ public class MainActivity extends Activity {
         addTile(play,6);play.setOnClickListener(v->move(LEVEL));
         Button badge=tile("🏅 Mijn badges",s.earnedBadges()+" van 6 verdiend",
                 0xffffe4b9,94);
-        addTile(badge,6);badge.setOnClickListener(v->{badgePage=0;move(BADGES);});
+        addTile(badge,6);badge.setOnClickListener(v->{badgePage=0;badgesFromTrophy=false;move(BADGES);});
     }
     private void showLevel() {
         header("🚀 Kies je uitdaging","Hoe moeilijk wil je spelen?");
@@ -814,6 +828,9 @@ public class MainActivity extends Activity {
         Button home=tile("🏠 Mijn eigen kamer","Versier je kamer met speelsterren",0xffd9ecff,105);
         addTile(home,8);
         home.setOnClickListener(v->move(ROOM));
+        Button trophies=tile("🏆 Mijn trofeeënkamer","Bekijk alle verdiende badges",0xffffeab9,97);
+        addTile(trophies,8);
+        trophies.setOnClickListener(v->move(TROPHY_WORLDS));
         Button play=tile("🎮 Verdien meer sterren","Spelen levert 3 sterren per goed antwoord op",
                 0xffffe6c8,92);
         addTile(play,8);
