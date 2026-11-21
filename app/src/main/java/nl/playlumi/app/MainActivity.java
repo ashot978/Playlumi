@@ -358,6 +358,9 @@ public class MainActivity extends Activity {
         header("🌟 Kies een wereld","Waar wil je vandaag spelen?");
         characterHero(158);
         addText("✨ "+wardrobe.stars()+" speelsterren",19,0xffb87a2e,3,8);
+        Button miniButton=tile("🎪 Het speelplein","Sleep, tik en zoek! Drie bewegende spellen",0xffd0f6e3,94);
+        addTile(miniButton,4);
+        miniButton.setOnClickListener(v->move(MINI_MENU));
         Button avatarButton=tile("🎁 Mijn stervriend","Kleed je eigen karakter aan",0xffffdfb4,98);
         addTile(avatarButton,4);
         avatarButton.setOnClickListener(v->move(AVATAR));
@@ -370,6 +373,13 @@ public class MainActivity extends Activity {
         Button change=tile("🎂 Leeftijd: "+AGES[age],"",0xfff1e9ff,54);
         addTile(change,12);
         change.setOnClickListener(v->move(AGE));
+        Button audioToggle=tile(sound.isEnabled()?"🔊 Geluid aan":"🔇 Geluid uit","",0xffeeeaff,58);
+        addTile(audioToggle,6);
+        audioToggle.setOnClickListener(v->{
+            sound.setEnabled(!sound.isEnabled());
+            prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
+            showPage();
+        });
     }
     private void showCategories() {
         header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
@@ -490,6 +500,11 @@ public class MainActivity extends Activity {
         question.setBackground(rounded(0xfff0e4ff,27));
         question.setMinHeight(dp(70));
         addWidget(question,0,12);
+        if(sound.isEnabled()) {
+            Button listen=tile("🔊 Lees de vraag voor","",0xffe7e3ff,49);
+            addTile(listen,0);
+            listen.setOnClickListener(v->sound.speak(round.prompt));
+        }
         TextView picture=text(round.display,50,round.displayColor);
         picture.setPadding(dp(12),dp(24),dp(12),dp(24));
         picture.setBackground(rounded(Color.WHITE,32));
@@ -538,6 +553,7 @@ public class MainActivity extends Activity {
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             feedback="⭐ Goed gedaan! +3 🌟";
+            sound.good();
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                     rounded(0xffb9f5d1,25),null));
             for(Button b:answerButtons)b.setEnabled(false);
@@ -564,6 +580,7 @@ public class MainActivity extends Activity {
             feedbackText.announceForAccessibility(feedback);
         } else {
             feedback="💛 Probeer nog eens!";
+            sound.mistake();
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffa86a29);
             PlaylumiMotion.shake(touched);
             feedbackText.announceForAccessibility(feedback);
@@ -625,6 +642,13 @@ public class MainActivity extends Activity {
         stage.post(()->PlaylumiMotion.celebrate(stage,10));
     }
     private void continueAfterBadge() {
+        if(rewardReturn==MINI_PLAY) {
+            if(!pendingBadges.isEmpty()) {
+                earnedBadge=pendingBadges.remove(0);showPage();return;
+            }
+            earnedBadge=-1;rewardReturn=PLAY;
+            advanceMini();return;
+        }
         if(!pendingBadges.isEmpty()) {
             earnedBadge=pendingBadges.remove(0);showPage();return;
         }
