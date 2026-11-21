@@ -29,7 +29,6 @@ public final class PlaylumiQuickNavTest {
             assertEquals((6+cols-1)/cols,PlaylumiQuickNav.rowsFor(6,cols));
             assertEquals((7+cols-1)/cols,PlaylumiQuickNav.rowsFor(7,cols));
             assertEquals((5+cols-1)/cols,PlaylumiQuickNav.rowsFor(5,cols));
-            assertEquals(7,7); // all seven options, no artificial page limit
         }
     }
 

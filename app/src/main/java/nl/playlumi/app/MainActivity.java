@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
     private LinearLayout root;
     private FrameLayout stage;
     private ScrollView scroller;
+    private LinearLayout quickNavBar;
     private TextView feedbackText;
     private PlaylumiStarTrail roundStars;
     private TextView sessionCounter;
@@ -702,6 +703,15 @@ public class MainActivity extends Activity {
                 tiny.setMargins(dp(4),0,0,0);
                 row.addView(playPal,tiny);
             }
+            TextView homeShortcut=text("⌂",23,PlaylumiVisualStyle.INK);
+            homeShortcut.setContentDescription("Ga naar start");
+            homeShortcut.setBackground(softCard(0xffdceeff,13));
+            homeShortcut.setClickable(true);homeShortcut.setFocusable(true);
+            LinearLayout.LayoutParams shortcut=new LinearLayout.LayoutParams(
+                    dp(36),dp(39));
+            shortcut.setMargins(dp(5),0,0,0);
+            row.addView(homeShortcut,shortcut);
+            homeShortcut.setOnClickListener(v->move(HOME));
         } else {
             View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
             LinearLayout.LayoutParams iconParams=
@@ -715,11 +725,107 @@ public class MainActivity extends Activity {
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
     }
+    /** A stable bottom navigation bar on menus; gameplay keeps maximum room. */
+    private boolean showQuickNavigation() {
+        return page!=AGE && page!=BREAK_SCREEN && page!=PARENT_GATE &&
+                page!=PARENT_HOME && page!=PARENT_WORLDS && page!=PARENT_STATS &&
+                page!=PARENT_SETTINGS && page!=PLAY && page!=MINI_PLAY &&
+                page!=BUBBLE_PLAY && page!=MUSIC_PLAY && page!=STORY_PLAY &&
+                page!=STORY_REACTION && page!=DRAW && page!=REWARD;
+    }
+
+    private int selectedQuickDestination() {
+        switch(page) {
+            case AVATAR:case CLOSET:case SHOP:case ROOM:case ROOM_CATS:
+            case ROOM_ITEMS:case STAR_STAGE:case FRIEND_CARE:case FRIEND_ALBUM:
+            case TROPHY_WORLDS:case TROPHY_CATS:
+                return PlaylumiQuickNav.CUSTOMIZE;
+            case GARDEN_MENU:case GARDEN_PLANT:
+                return PlaylumiQuickNav.GARDEN;
+            case MINI_MENU:case WORLD_PICKER:case WORLD_HUB:case CATEGORIES:
+            case DETAIL:case LEVEL:case VARIANTS:case ADVENTURE_MAP:
+            case STORY_LIBRARY:case BADGES:
+                return PlaylumiQuickNav.PLAY;
+            default:return PlaylumiQuickNav.START;
+        }
+    }
+
+    private void renderQuickNavigation() {
+        quickNavBar=null;
+        if(!showQuickNavigation())return;
+        int current=selectedQuickDestination();
+        LinearLayout nav=new LinearLayout(this);
+        nav.setGravity(Gravity.CENTER);
+        nav.setPadding(dp(4),dp(4),dp(4),dp(4));
+        nav.setBackground(softCard(0xffeff7ff,24));
+        nav.setElevation(dp(12));
+        for(int tab=0;tab<PlaylumiQuickNav.COUNT;tab++) {
+            final int destination=tab;
+            TextView button=text(PlaylumiQuickNav.ICONS[tab]+"\n"+
+                    PlaylumiQuickNav.TITLES[tab],12,
+                    tab==current?PlaylumiVisualStyle.INK:SUB);
+            button.setGravity(Gravity.CENTER);
+            button.setMaxLines(2);
+            button.setLineSpacing(0,1f);
+            button.setContentDescription(PlaylumiQuickNav.TITLES[tab]+
+                    (tab==current?", geselecteerd":""));
+            button.setClickable(true);
+            button.setFocusable(true);
+            button.setBackground(new RippleDrawable(
+                    ColorStateList.valueOf(0x22ffffff),
+                    softCard(tab==current?0xffcde9ff:0xffffffff,18),null));
+            LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,-1,1f);
+            cell.setMargins(dp(2),0,dp(2),0);
+            nav.addView(button,cell);
+            button.setOnClickListener(v->{
+                int target=destination==PlaylumiQuickNav.START?HOME:
+                        destination==PlaylumiQuickNav.PLAY?MINI_MENU:
+                        destination==PlaylumiQuickNav.CUSTOMIZE?AVATAR:GARDEN_MENU;
+                if(page!=target)move(target);
+            });
+        }
+        FrameLayout.LayoutParams bar=new FrameLayout.LayoutParams(
+                -1,dp(66),Gravity.BOTTOM);
+        bar.setMargins(dp(10),0,dp(10),dp(8));
+        stage.addView(nav,bar);
+        quickNavBar=nav;
+    }
+
+    /** Compact, touch-friendly grid that shows every item without page cycling. */
+    private void addOptionGrid(java.util.List<Button> options,int height) {
+        int columns=PlaylumiQuickNav.columnsFor(
+                getResources().getConfiguration().screenWidthDp);
+        for(int start=0;start<options.size();start+=columns) {
+            LinearLayout row=new LinearLayout(this);
+            row.setGravity(Gravity.TOP);
+            for(int column=0;column<columns;column++) {
+                int index=start+column;
+                View item=index<options.size()?options.get(index):new View(this);
+                LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(
+                        0,-2,1f);
+                cell.setMargins(dp(3),dp(4),dp(3),dp(4));
+                if(item instanceof Button)
+                    ((Button)item).setMinHeight(dp(height));
+                row.addView(item,cell);
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
+
+    /** Stay at the selected wardrobe / room option after changing an item. */
+    private void redrawKeepingScroll() {
+        final int position=scroller==null?0:scroller.getScrollY();
+        showPage();
+        final ScrollView visible=scroller;
+        visible.post(()->{if(scroller==visible)visible.scrollTo(0,position);});
+    }
+
     private void showPage() {
         if(sound!=null)sound.stopSpeaking();
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
+        quickNavBar=null;
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -758,7 +864,14 @@ public class MainActivity extends Activity {
                     bottom=insets.getSystemWindowInsetBottom();
                 }
                 // Reserve an actual safe, scrollable viewport above system navigation.
-                currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
+                currentScroller.setPadding(0,top+dp(3),0,
+                        bottom+dp(showQuickNavigation()?88:20));
+                if(quickNavBar!=null && quickNavBar.getParent()==stage) {
+                    FrameLayout.LayoutParams navPosition=
+                            (FrameLayout.LayoutParams)quickNavBar.getLayoutParams();
+                    navPosition.bottomMargin=bottom+dp(8);
+                    quickNavBar.setLayoutParams(navPosition);
+                }
             }
             return insets;
         });
@@ -808,6 +921,7 @@ public class MainActivity extends Activity {
             case BUBBLE_PLAY: showBubblePlay();break;
             default: throw new IllegalStateException("page");
         }
+        renderQuickNavigation();
         if(!PlaylumiMotion.isReduced()) {
             stage.setAlpha(0f);stage.setTranslationX(dp(22));
             stage.animate().alpha(1).translationX(0).setDuration(280)
@@ -888,7 +1002,7 @@ public class MainActivity extends Activity {
         play.setOnClickListener(v->move(MINI_MENU));
         addTwo(worlds,play,107);
 
-        Button friend=tile("⭐ Mijn stervriend","Kleden en versieren",0xffffe7bb,86);
+        Button friend=tile("🎨 Aanpassen","Kleding, kleuren, kamer en tuin",0xffffe7bb,86);
         addTile(friend,4);
         friend.setOnClickListener(v->move(AVATAR));
 
@@ -1449,118 +1563,105 @@ public class MainActivity extends Activity {
         feedback="";move(PLAY);
     }
 
-    /** A playful character preview rather than a crowded settings screen. */
+    /** A customization hub where every destination is obvious at first glance. */
     private void showAvatar() {
-        header("⭐ Mijn stervriend","Jouw eigen magische maatje.");
-        characterHero(194);
-        addText("🌟 "+wardrobe.stars()+" sterren  •  "+
-                wardrobe.unlockedItems()+" spulletjes",17,0xffa4781f,3,10);
+        header("🎨 Aanpassen","Maak je eigen Playlumi-wereld.");
+        characterHero(143);
+        addText("⭐ "+wardrobe.stars()+" speelsterren  ·  "+
+                wardrobe.unlockedItems()+" vrijgespeelde spullen",17,
+                PlaylumiVisualStyle.SUCCESS,1,7);
 
-        Button dress=tile("🎀 Kleedkamer","Kies outfits en kleuren",
-                0xffd7f5e5,103);
-        dress.setOnClickListener(v->{closetPage=0;move(CLOSET);});
-        Button stageButton=tile("🎭 Sterrenpodium","Dans en zwaai",
-                0xffffe8b8,103);
-        stageButton.setOnClickListener(v->move(STAR_STAGE));
-        addTwo(dress,stageButton,100);
+        Button dress=tile("🎀 Mijn ster aankleden",
+                "Kleur, bril, hoed, kleding, vriendjes en gloed",
+                0xffd7f5e5,99);
+        dress.setOnClickListener(v->move(CLOSET));
+        Button roomButton=tile("🏠 Mijn kamer",
+                "Muren, vloeren, meubels en versiering",
+                0xffd9ecff,99);
+        roomButton.setOnClickListener(v->move(ROOM_CATS));
+        addTile(dress,5);
+        addTile(roomButton,5);
 
-        Button friendButton=tile("🐾 Vriendjes","Spelen en verzorgen",
-                0xffd5f5e4,101);
-        friendButton.setOnClickListener(v->{carePage=0;careMessage="";move(FRIEND_CARE);});
-        Button home=tile("🏠 Mijn kamer","Versier jouw huis",
-                0xffd9ecff,101);
-        home.setOnClickListener(v->move(ROOM));
-        addTwo(friendButton,home,100);
-
-        Button trophies=tile("🏆 Trofeeënkamer","Bekijk al jouw badges",
-                0xffffeab9,84);
-        addTile(trophies,6);
-        trophies.setOnClickListener(v->move(TROPHY_WORLDS));
-    }
-
-    /** Show at most two wardrobe categories on each page. */
-    private void showCloset() {
-        header("🎁 Kleed je ster aan","Wat wil je veranderen?");
-        characterHero(170);
-        addText("🌟 "+wardrobe.stars()+" speelsterren",19,0xffa4781f,5,8);
-        addText((closetPage+1)+" / 3",16,0xff9163bf,0,8);
-        int start=closetPage*2;
-        for(int i=start;i<Math.min(start+2,PlaylumiWardrobe.SLOTS);i++) {
-            final int selected=i;
-            String label=PlaylumiWardrobe.SLOT_ICONS[i]+"  "+PlaylumiWardrobe.SLOT_NAMES[i];
-            String worn=PlaylumiWardrobe.ITEM_NAMES[i][wardrobe.equipped(i)];
-            Button b=tile(label,"Nu: "+worn,COLORS[i%COLORS.length],108);
-            addTile(b,9);
-            b.setOnClickListener(v->{
-                selectedSlot=selected;shopPage=0;shopMessage="";
-                move(SHOP);
-            });
-        }
-        Button browse=tile(closetPage<2?"✨ Meer aankleden →":"↩ Terug naar de kleuren","",
-                0xffe8ddff,76);
-        addTile(browse,12);
-        browse.setOnClickListener(v->{
-            closetPage=closetPage<2?closetPage+1:0;
-            shopMessage="";showPage();
+        Button gardenButton=tile("🌱 Magische Tuin",
+                "Bekijk en verzorg je twaalf planten",0xffdff3cf,94);
+        gardenButton.setOnClickListener(v->move(GARDEN_MENU));
+        Button friendButton=tile("🐾 Vriendjes",
+                "Spelen en verzorgen",0xffffe7c4,94);
+        friendButton.setOnClickListener(v->{
+            carePage=0;careMessage="";move(FRIEND_CARE);
         });
+        addTwo(gardenButton,friendButton,94);
+
+        Button stageButton=tile("🎭 Sterrenpodium","Dans en zwaai",
+                0xffe8ddff,90);
+        stageButton.setOnClickListener(v->move(STAR_STAGE));
+        Button trophies=tile("🏆 Trofeeën","Bekijk je badges",
+                0xffffe8b8,90);
+        trophies.setOnClickListener(v->move(TROPHY_WORLDS));
+        addTwo(stageButton,trophies,90);
     }
 
-    /** The wardrobe uses only stars earned by playing, with no real money. */
+    /** All six wardrobe categories at once, without page arrows. */
+    private void showCloset() {
+        header("🎀 Mijn kledingkast","Tik wat je wilt veranderen.");
+        characterHero(117);
+        addText("⭐ "+wardrobe.stars()+" speelsterren",18,
+                PlaylumiVisualStyle.SUCCESS,0,8);
+        java.util.List<Button> options=new java.util.ArrayList<>();
+        for(int slot=0;slot<PlaylumiWardrobe.SLOTS;slot++) {
+            final int selected=slot;
+            String title=PlaylumiWardrobe.SLOT_ICONS[slot]+" "+
+                    PlaylumiWardrobe.SLOT_NAMES[slot];
+            String equipped=PlaylumiWardrobe.ITEM_NAMES[slot][wardrobe.equipped(slot)];
+            Button b=tile(title,"Nu: "+equipped,COLORS[slot%COLORS.length],89);
+            b.setOnClickListener(v->{
+                selectedSlot=selected;shopMessage="";move(SHOP);
+            });
+            options.add(b);
+        }
+        addOptionGrid(options,98);
+    }
+
+    /** All seven items visible as scrollable grid; one tap to buy or equip. */
     private void showShop() {
-        int slot=selectedSlot;
+        final int slot=selectedSlot;
         header(PlaylumiWardrobe.SLOT_ICONS[slot]+" "+PlaylumiWardrobe.SLOT_NAMES[slot],
-                "Kies een nieuwe look!");
-        characterHero(194);
-        addText("🌟 "+wardrobe.stars()+" speelsterren",21,0xffa4781f,0,8);
-        if(!shopMessage.isEmpty()) addText(shopMessage,17,0xff5b3b90,0,10);
-        addText((shopPage+1)+" / "+((PlaylumiWardrobe.OPTIONS+1)/2),16,0xff9163bf,0,7);
-        int start=shopPage*2;
-        for(int i=start;i<Math.min(start+2,PlaylumiWardrobe.OPTIONS);i++) {
-            final int selected=i;
-            boolean owned=wardrobe.owned(slot,i);
-            boolean selectedNow=wardrobe.equipped(slot)==i;
-            String label=PlaylumiWardrobe.ITEM_ICONS[slot][i]+"  "+
-                    PlaylumiWardrobe.ITEM_NAMES[slot][i];
-            String subtitle=selectedNow?"✅ Draag je nu":
-                    owned?"✨ Klik om aan te trekken":
-                    "🌟 "+wardrobe.price(slot,i)+" speelsterren";
-            Button b=tile(label,subtitle,
-                    selectedNow?0xffd0f4df:COLORS[(slot+i)%COLORS.length],102);
-            addTile(b,8);
+                "Kies wat je wilt dragen.");
+        characterHero(110);
+        addText("⭐ "+wardrobe.stars()+" speelsterren",18,
+                PlaylumiVisualStyle.SUCCESS,0,5);
+        if(!shopMessage.isEmpty())addText(shopMessage,16,0xff5b3b90,0,6);
+        java.util.List<Button> items=new java.util.ArrayList<>();
+        for(int item=0;item<PlaylumiWardrobe.OPTIONS;item++) {
+            final int selected=item;
+            String title=PlaylumiWardrobe.ITEM_ICONS[slot][item]+" "+
+                    PlaylumiWardrobe.ITEM_NAMES[slot][item];
+            String status=PlaylumiQuickNav.wardrobeStatus(wardrobe,slot,item);
+            Button b=tile(title,status,
+                    wardrobe.equipped(slot)==item?0xffc8f1d8:
+                    wardrobe.owned(slot,item)?0xffe6f8f1:
+                    COLORS[(slot+item)%COLORS.length],92);
             b.setOnClickListener(v->{
                 int result=wardrobe.buyOrEquip(slot,selected);
                 if(result==PlaylumiWardrobe.NOT_ENOUGH) {
                     int needed=wardrobe.price(slot,selected)-wardrobe.stars();
-                    shopMessage="🌼 Speel verder! Nog "+needed+" sterren nodig.";
-                    showPage();
-                } else {
-                    saveWardrobe();
-                    if(result==PlaylumiWardrobe.PURCHASED)sound.unlock();
-                    else sound.sparkle();
-                    shopMessage=result==PlaylumiWardrobe.PURCHASED ?
-                            "🎉 Nieuw! "+PlaylumiWardrobe.ITEM_NAMES[slot][selected]:
-                            "✨ Superleuk! Aangetrokken.";
-                    showPage();
-                    if(character!=null)
-                        PlaylumiDelight.sprinkle(stage,character);
-                    if(result==PlaylumiWardrobe.PURCHASED) {
-                        FrameLayout active=stage;
-                        active.post(()->{
-                            if(stage==active)PlaylumiMotion.celebrate(active,10);
-                        });
-                    } else if(character!=null) {
-                        PlaylumiMotion.pop(character);
-                    }
+                    shopMessage="💛 Nog "+needed+" sterren nodig.";
+                    redrawKeepingScroll();
+                    return;
                 }
+                saveWardrobe();
+                if(result==PlaylumiWardrobe.PURCHASED) sound.unlock();
+                else sound.sparkle();
+                shopMessage=result==PlaylumiWardrobe.PURCHASED?
+                        "🎉 Vrijgespeeld en aangetrokken!":"✨ Aangetrokken!";
+                redrawKeepingScroll();
+                if(character!=null)PlaylumiDelight.sprinkle(stage,character);
             });
+            items.add(b);
         }
-        Button browse=tile(shopPage<(PlaylumiWardrobe.OPTIONS-1)/2?"🎨 Meer spullen →":"↩ Eerste spullen","",
-                0xffe8ddff,76);
-        addTile(browse,12);
-        browse.setOnClickListener(v->{
-            shopPage=shopPage<(PlaylumiWardrobe.OPTIONS-1)/2?shopPage+1:0;
-            shopMessage="";showPage();
-        });
+        addOptionGrid(items,105);
+        Button back=tile("🎀 Andere categorie kiezen","",0xffe7dfff,65);
+        addTile(back,5);back.setOnClickListener(v->move(CLOSET));
     }
 
 
@@ -1569,7 +1670,12 @@ public class MainActivity extends Activity {
                 miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.NUMBERS:LearningGame.PATTERNS;
     }
     private void showMiniMenu() {
-        header("🎪 Het speelplein","Tik een spelletje aan.");
+        header("🎮 Spelen","Kies een leerwereld of een minispel.");
+        Button learn=tile("🌈 Leerwerelden","Tellen, taal, vormen en dieren",
+                0xffe5e3ff,84);
+        addTile(learn,5);
+        learn.setOnClickListener(v->move(WORLD_PICKER));
+        addText("🎪 Minispellen",18,TEXT,4,5);
         String[] names={"Sleep de vormen","Tik de ballon","Dierenmemory"};
         String[] notes={"300 geschudde vormborden","300 geschudde ballonborden",
                 "300 geschudde memoryborden"};
@@ -1788,73 +1894,70 @@ public class MainActivity extends Activity {
         addTile(friend,8);
         friend.setOnClickListener(v->move(AVATAR));
     }
+    /** All five room decoration categories at once. */
     private void showRoomCats() {
-        header("🎨 Versier je kamer","Wat gaan we vandaag veranderen?");
-        roomPreview(184);
-        addText("🌟 "+wardrobe.stars()+" speelsterren",18,0xffa87829,0,6);
-        addText((roomPage+1)+" / 3",15,0xff8a63b3,0,7);
-        int start=roomPage*2;
-        for(int i=start;i<Math.min(start+2,PlaylumiRoom.SLOTS);i++) {
-            final int slot=i;
-            Button b=tile(PlaylumiRoom.SLOT_ICONS[i]+"  "+PlaylumiRoom.LABELS[i],
-                    "Nu: "+PlaylumiRoom.NAMES[i][room.selected(i)],COLORS[i%6],95);
-            addTile(b,7);
+        header("🏠 Mijn kamer aanpassen","Kies wat je wilt veranderen.");
+        roomPreview(150);
+        addText("⭐ "+wardrobe.stars()+" speelsterren",18,
+                PlaylumiVisualStyle.SUCCESS,0,7);
+        java.util.List<Button> options=new java.util.ArrayList<>();
+        for(int slot=0;slot<PlaylumiRoom.SLOTS;slot++) {
+            final int selected=slot;
+            Button b=tile(PlaylumiRoom.SLOT_ICONS[slot]+" "+
+                    PlaylumiRoom.LABELS[slot],
+                    "Nu: "+PlaylumiRoom.NAMES[slot][room.selected(slot)],
+                    COLORS[slot%COLORS.length],95);
             b.setOnClickListener(v->{
-                roomSlot=slot;roomItemPage=0;roomMessage="";
-                move(ROOM_ITEMS);
+                roomSlot=selected;roomMessage="";move(ROOM_ITEMS);
             });
+            options.add(b);
         }
-        Button more=tile(roomPage<2?"✨ Meer kameronderdelen →":"↩ Terug naar de kleuren","",
-                0xffe8deff,78);
-        addTile(more,12);
-        more.setOnClickListener(v->{
-            roomPage=roomPage<2?roomPage+1:0;
-            showPage();
-        });
+        addOptionGrid(options,100);
+        Button gardenButton=tile("🌱 Ook de tuin bekijken","",0xffd9f3dd,66);
+        addTile(gardenButton,6);
+        gardenButton.setOnClickListener(v->move(GARDEN_MENU));
     }
+
+    /** No room item pagination; all 7 items in a single overview. */
     private void showRoomItems() {
-        int slot=roomSlot;
+        final int slot=roomSlot;
         header(PlaylumiRoom.SLOT_ICONS[slot]+" "+PlaylumiRoom.LABELS[slot],
-                "Wat past bij jouw kamer?");
-        roomPreview(203);
-        addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xffa87829,0,5);
-        if(!roomMessage.isEmpty())addText(roomMessage,16,0xff4e4291,0,8);
-        addText((roomItemPage+1)+" / "+((PlaylumiRoom.OPTIONS+1)/2),15,0xff9163bd,0,6);
-        for(int i=roomItemPage*2;i<Math.min(roomItemPage*2+2,PlaylumiRoom.OPTIONS);i++) {
-            final int item=i;
-            boolean selected=room.selected(slot)==i;
-            boolean owned=room.owned(slot,i);
-            String desc=selected?"✅ Heb je nu":owned?"✨ Tik om te gebruiken":
-                    "🌟 "+room.cost(slot,i)+" speelsterren";
-            Button b=tile(PlaylumiRoom.ICONS[slot][i]+"  "+PlaylumiRoom.NAMES[slot][i],desc,
-                    selected?0xffd2f5db:COLORS[(slot+i)%6],102);
-            addTile(b,8);
+                "Zo ziet je kamer eruit.");
+        roomPreview(147);
+        addText("⭐ "+wardrobe.stars()+" speelsterren",18,
+                PlaylumiVisualStyle.SUCCESS,0,5);
+        if(!roomMessage.isEmpty())addText(roomMessage,16,0xff4e4291,0,7);
+        java.util.List<Button> options=new java.util.ArrayList<>();
+        for(int item=0;item<PlaylumiRoom.OPTIONS;item++) {
+            final int chosen=item;
+            boolean selected=room.selected(slot)==item;
+            Button b=tile(PlaylumiRoom.ICONS[slot][item]+" "+
+                    PlaylumiRoom.NAMES[slot][item],
+                    PlaylumiQuickNav.roomStatus(room,slot,item),
+                    selected?0xffd2f5db:
+                    room.owned(slot,item)?0xffe4f4e9:COLORS[(slot+item)%6],96);
             b.setOnClickListener(v->{
-                int price=room.cost(slot,item);
+                int price=room.cost(slot,chosen);
                 if(price>wardrobe.stars() || !wardrobe.spendStars(price)) {
-                    roomMessage="💛 Nog "+Math.max(0,price-wardrobe.stars())+" speelsterren nodig.";
-                    showPage();return;
+                    roomMessage="💛 Nog "+
+                            Math.max(0,price-wardrobe.stars())+
+                            " speelsterren nodig.";
+                    redrawKeepingScroll();
+                    return;
                 }
-                boolean first=!room.owned(slot,item);
-                room.unlockAndSelect(slot,item);
+                boolean newItem=!room.owned(slot,chosen);
+                room.unlockAndSelect(slot,chosen);
                 saveRoom();saveWardrobe();
-                if(first)sound.unlock();else sound.sparkle();
-                roomMessage=first?"🎉 Nieuw item! Je kamer ziet er anders uit.":
-                        "✨ Mooi! De kamer is aangepast.";
-                showPage();
-                if(first) {
-                    FrameLayout active=stage;
-                    active.post(()->{if(stage==active)PlaylumiMotion.celebrate(active,10);});
-                }
+                if(newItem)sound.unlock();else sound.sparkle();
+                roomMessage=newItem?"🎉 Vrijgespeeld en geplaatst!":
+                        "✨ Je kamer is aangepast!";
+                redrawKeepingScroll();
             });
+            options.add(b);
         }
-        Button more=tile(roomItemPage<(PlaylumiRoom.OPTIONS-1)/2?"🎁 Meer spulletjes →":"↩ Eerste spulletjes","",
-                0xffe8deff,76);
-        addTile(more,10);
-        more.setOnClickListener(v->{
-            roomItemPage=roomItemPage<(PlaylumiRoom.OPTIONS-1)/2?roomItemPage+1:0;
-            roomMessage="";showPage();
-        });
+        addOptionGrid(options,103);
+        Button back=tile("🏠 Andere kameronderdelen","",0xffe7dfff,65);
+        addTile(back,5);back.setOnClickListener(v->move(ROOM_CATS));
     }
 
 
