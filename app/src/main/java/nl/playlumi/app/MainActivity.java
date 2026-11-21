@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
     private int starStagePage;
     private LearningGame game;
     private QuestionHistory recent;
+    private PlaylumiPlayHistory playHistory;
     private PlaylumiScores scores;
     private PlaylumiWardrobe wardrobe;
     private PlaylumiFriends friends;
@@ -253,6 +254,7 @@ public class MainActivity extends Activity {
             room.restore(slot,prefs.getInt("room_mask_"+slot,1),
                     prefs.getInt("room_item_"+slot,0));
         recent=new QuestionHistory(prefs.getString("recent_questions",""));
+        playHistory=PlaylumiPlayHistory.restore(prefs.getString("recent_games",""));
         game=new LearningGame(new Random());
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
@@ -446,6 +448,49 @@ public class MainActivity extends Activity {
                 getSharedPreferences(PlaylumiProfiles.preferences(activeProfile),MODE_PRIVATE);
     }
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
+
+    /** Only activity choices, never answers, are saved per player. */
+    private void rememberPlay() {
+        playHistory.record(game.mode(),game.variant(),difficulty,smartDifficulty);
+        prefs().edit().putString("recent_games",playHistory.serialize()).apply();
+    }
+
+    /** Start a NEW shuffled round from a previously chosen configuration. */
+    private void resumeRecent(PlaylumiPlayHistory.Entry item) {
+        storyStage=-1;storyNewReward=false;roundHadMistake=false;pendingLevel=-1;
+        sessionSolved=0;sessionAttempts=0;feedback="";
+        pendingBadges.clear();
+        smartDifficulty=item.smart;
+        difficulty=item.smart?adaptive.level(item.mode,Math.max(0,age)):item.difficulty;
+        game.configure(item.mode,item.variant,difficulty);
+        world=Math.max(0,Math.min(2,item.mode/8));
+        saveRecent();rememberPlay();
+        prefs().edit().putInt("game_mode",item.mode)
+                .putInt("game_variant",item.variant)
+                .putInt("last_played_category",item.mode)
+                .putInt("last_played_variant",item.variant)
+                .putBoolean("smart_mode",item.smart).apply();
+        move(PLAY);
+    }
+
+    /** Compact recent-game cards appear on the Home and Play menus. */
+    private void showRecentGames(boolean atHome) {
+        if(playHistory.size()==0)return;
+        addText(atHome?"🕹️ Verder spelen":"🕹️ Onlangs gespeeld",20,TEXT,6,5);
+        java.util.List<Button> options=new java.util.ArrayList<>();
+        for(int i=0;i<playHistory.size();i++) {
+            final PlaylumiPlayHistory.Entry item=playHistory.get(i);
+            String subtitle="▶ Spelvorm "+(item.variant+1)+" · "+
+                    (item.smart?"Slim niveau":LEVELS[item.difficulty]);
+            Button button=tile(ICONS[item.mode]+" "+
+                    LearningGame.GAME_NAMES[item.mode],subtitle,
+                    COLORS[item.mode%COLORS.length],93);
+            button.setOnClickListener(v->resumeRecent(item));
+            options.add(button);
+        }
+        addOptionGrid(options,105);
+    }
+
     private void saveAdaptive(int cat) {
         prefs().edit().putInt("learn_lvl_"+cat,adaptive.level(cat,Math.max(0,age)))
                 .putInt("learn_seen_"+cat,adaptive.sampleCount(cat))
@@ -1078,6 +1123,7 @@ public class MainActivity extends Activity {
         difficulty=adaptive.level(selected,Math.max(0,age));
         game.configure(selected,variation,difficulty);
         saveRecent();
+        rememberPlay();
         move(PLAY);
     }
     private void showHome() {
@@ -1093,6 +1139,7 @@ public class MainActivity extends Activity {
         addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
         PlaylumiDelight.invite(quick);
+        showRecentGames(true);
 
         Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
         worlds.setOnClickListener(v->move(WORLD_PICKER));
@@ -1150,22 +1197,19 @@ public class MainActivity extends Activity {
             move(PARENT_GATE);
         });
     }
+    /** All eight activities are directly visible per learning world. */
     private void showCategories() {
-        header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
-        addText(categoryPage==0?"●  ○":"○  ●",16,0xff9466c1,0,14);
-        int start=world*8+categoryPage*4;
-        for(int row=0;row<2;row++) {
-            int left=start+row*2,right=left+1;
-            Button one=tile(ICONS[left]+"\n"+LearningGame.GAME_NAMES[left],"",COLORS[left%6],144);
-            Button two=tile(ICONS[right]+"\n"+LearningGame.GAME_NAMES[right],"",COLORS[right%6],144);
-            one.setOnClickListener(v->selectCategory(left));
-            two.setOnClickListener(v->selectCategory(right));
-            addTwo(one,two,144);
+        header(WORLD_ICONS[world]+" "+WORLDS[world],
+                "Kies een van de acht spellen.");
+        java.util.List<Button> options=new java.util.ArrayList<>();
+        for(int mode=world*8;mode<world*8+8;mode++) {
+            final int chosen=mode;
+            Button b=tile(ICONS[mode]+" "+
+                    LearningGame.GAME_NAMES[mode],"",COLORS[mode%COLORS.length],111);
+            b.setOnClickListener(v->selectCategory(chosen));
+            options.add(b);
         }
-        Button more=tile(categoryPage==0?"✨ Meer spelletjes  →":"←  Vorige spelletjes","",
-                0xffe8e2ff,68);
-        addTile(more,13);
-        more.setOnClickListener(v->{categoryPage=1-categoryPage;showPage();});
+        addOptionGrid(options,117);
     }
     private void selectCategory(int category) {
         storyStage=-1;
@@ -1240,18 +1284,20 @@ public class MainActivity extends Activity {
         for(int i=0;i<3;i++) all[i+2]=VariantGames.NAMES[game.mode()][i];
         return all;
     }
+    /** All five play variants available without an extra paging screen. */
     private void showVariants() {
-        header("🎲 Hoe wil je spelen?","Kies een spelvorm");
+        header("🎲 Hoe wil je spelen?","Alle vijf spelvormen staan hieronder.");
         String[] names=variantNames();
-        addText((variantPage+1)+" / 3",17,0xff9466c1,0,14);
         String[] icons={"🎯","🧩","✨","🌟","🚀"};
-        int start=variantPage*2;
-        for(int i=start;i<Math.min(start+2,names.length);i++) {
+        java.util.List<Button> variants=new java.util.ArrayList<>();
+        for(int i=0;i<names.length;i++) {
             final int selection=i;
-            Button b=tile(icons[i]+"  "+names[i],"8 per ronde · 300 vragen op dit niveau",COLORS[i%6],115);
-            addTile(b,11);
+            Button b=tile(icons[i]+" "+names[i],
+                    "8 per ronde · 300 vragen op dit niveau",
+                    COLORS[i%COLORS.length],109);
             b.setOnClickListener(v->{
-                if(smartDifficulty)difficulty=adaptive.level(game.mode(),Math.max(0,age));
+                if(smartDifficulty)
+                    difficulty=adaptive.level(game.mode(),Math.max(0,age));
                 game.configure(game.mode(),selection,difficulty);
                 roundHadMistake=false;pendingLevel=-1;
                 saveRecent();
@@ -1261,13 +1307,12 @@ public class MainActivity extends Activity {
                 storyStage=-1;
                 sessionSolved=0;sessionAttempts=0;feedback="";
                 pendingBadges.clear();
+                rememberPlay();
                 move(PLAY);
             });
+            variants.add(b);
         }
-        Button more=tile(variantPage<2?"Meer spelvormen →":"↩ Terug naar begin","",
-                0xffe8e2ff,74);
-        addTile(more,14);
-        more.setOnClickListener(v->{variantPage=variantPage<2?variantPage+1:0;showPage();});
+        addOptionGrid(variants,120);
     }
     private int sessionGoal() {
         return storyStage>=0?PlaylumiAdventure.QUESTIONS_PER_MISSION:SESSION_ROUNDS;
@@ -1804,6 +1849,7 @@ public class MainActivity extends Activity {
     }
     private void showMiniMenu() {
         header("🎮 Spelen","Kies een leerwereld of een minispel.");
+        showRecentGames(false);
         Button learn=tile("🌈 Leerwerelden","Tellen, taal, vormen en dieren",
                 0xffe5e3ff,84);
         addTile(learn,5);
