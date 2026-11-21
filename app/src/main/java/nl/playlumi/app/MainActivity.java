@@ -36,7 +36,8 @@ public class MainActivity extends Activity {
             STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
-            BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36;
+            BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
+            MUSIC_PLAY=37;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -82,6 +83,10 @@ public class MainActivity extends Activity {
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
     private PlaylumiBubbles bubbles;
+    private PlaylumiMelody melody;
+    private int melodyRound;
+    private boolean melodySolved;
+    private TextView melodyStatus;
     private int bubbleRound;
     private boolean bubbleSolved;
     private PlaylumiAdventure adventures;
@@ -156,6 +161,8 @@ public class MainActivity extends Activity {
             miniKind=state.getInt("miniKind",0);
             miniRound=state.getInt("miniRound",0);
             bubbleRound=state.getInt("bubbleRound",0);
+            melodyRound=state.getInt("melodyRound",0);
+            melodySolved=state.getBoolean("melodySolved",false);
             bubbleSolved=state.getBoolean("bubbleSolved",false);
             rewardReturn=state.getInt("rewardReturn",PLAY);
             storyStage=state.getInt("storyStage",-1);
@@ -221,6 +228,14 @@ public class MainActivity extends Activity {
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
         if(page==MINI_PLAY)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(page==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
+            try {
+                melody=PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
+                        state.getInt("melodyProgress",0));
+            } catch(IllegalArgumentException ignored) {}
+        }
+        if(page==MUSIC_PLAY && melody==null)
+            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
         if(page==BUBBLE_PLAY) {
             if(state!=null && state.getInt("bubbleTotal",0)>0) {
                 try {
@@ -263,6 +278,12 @@ public class MainActivity extends Activity {
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
+        out.putInt("melodyRound",melodyRound);
+        out.putBoolean("melodySolved",melodySolved);
+        if(melody!=null) {
+            out.putIntArray("melodyNotes",melody.sequence());
+            out.putInt("melodyProgress",melody.progress());
+        }
         out.putBoolean("bubbleSolved",bubbleSolved);
         if(bubbles!=null) {
             out.putInt("bubbleTarget",bubbles.target);
@@ -300,7 +321,7 @@ public class MainActivity extends Activity {
         if(page==SHOP) {move(CLOSET);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
-        if(page==MINI_PLAY || page==BUBBLE_PLAY) {move(MINI_MENU);return;}
+        if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
@@ -572,6 +593,7 @@ public class MainActivity extends Activity {
             case STAR_STAGE: showStarStage();break;
             case FRIEND_CARE: showFriendCare();break;
             case FRIEND_ALBUM: showFriendAlbum();break;
+            case MUSIC_PLAY: showMusicPlay();break;
             case BUBBLE_PLAY: showBubblePlay();break;
             default: throw new IllegalStateException("page");
         }
@@ -994,6 +1016,13 @@ public class MainActivity extends Activity {
         }});
     }
     private void continueAfterBadge() {
+        if(rewardReturn==MUSIC_PLAY) {
+            if(!pendingBadges.isEmpty()){
+                earnedBadge=pendingBadges.remove(0);showPage();return;
+            }
+            earnedBadge=-1;rewardReturn=PLAY;
+            advanceMelody();return;
+        }
         if(rewardReturn==BUBBLE_PLAY) {
             if(!pendingBadges.isEmpty()) {
                 earnedBadge=pendingBadges.remove(0);showPage();return;
@@ -1162,6 +1191,15 @@ public class MainActivity extends Activity {
             bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
             pendingBadges.clear();
             move(BUBBLE_PLAY);
+        });
+        Button musicButton=tile("🎵 Het Muziekatelier","Luister en speel melodieën na!",
+                0xffefdcff,114);
+        addTile(musicButton,9);
+        musicButton.setOnClickListener(v->{
+            melodyRound=0;melodySolved=false;
+            pendingBadges.clear();
+            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+            move(MUSIC_PLAY);
         });
     }
     private void showMiniPlay() {
