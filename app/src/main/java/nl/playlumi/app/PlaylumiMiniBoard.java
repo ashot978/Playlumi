@@ -87,7 +87,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     }
     private boolean landscape() {
         return getResources().getConfiguration().orientation==
-                android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
+                getResources().getConfiguration().screenWidthDp>=600;
     }
     private void show() {
         removeAllViews();
