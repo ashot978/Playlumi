@@ -63,4 +63,28 @@ public final class PlaylumiStoriesTest {
     public void cannotAdvanceWithoutChoosing() {
         PlaylumiStories story=new PlaylumiStories();story.start(0);story.next();
     }
+
+    @Test public void allTwelveStoryBooksAreConnectedAndSaveOldProgress() {
+        assertEquals(12,PlaylumiStories.NAMES.length);
+        assertEquals(12,PlaylumiStories.ICONS.length);
+        assertEquals(12,PlaylumiStories.ENDINGS_A.length);
+        assertEquals(12,PlaylumiStories.ENDINGS_B.length);
+        PlaylumiStories stories=new PlaylumiStories();
+        stories.restore((1<<0)|(1<<2)|(1<<5),-1,0,0,-1);
+        assertEquals(3,stories.completedCount());
+        assertTrue(stories.completed(0));
+        assertTrue(stories.completed(2));
+        assertTrue(stories.completed(5));
+        for(int id=6;id<12;id++) {
+            assertFalse(stories.completed(id));
+            stories.start(id);
+            for(int chapter=0;chapter<4;chapter++) {
+                assertFalse(stories.scene().prompt.isEmpty());
+                stories.choose((chapter+id)%2);
+                stories.next();
+            }
+            assertTrue(stories.awardOnce());
+        }
+        assertEquals(9,stories.completedCount());
+    }
 }
