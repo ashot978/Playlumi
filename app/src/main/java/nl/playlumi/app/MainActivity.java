@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
             STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
-            BUBBLE_PLAY=34;
+            BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -62,6 +62,9 @@ public class MainActivity extends Activity {
     private QuestionHistory recent;
     private PlaylumiScores scores;
     private PlaylumiWardrobe wardrobe;
+    private PlaylumiFriends friends;
+    private int carePage,albumPage;
+    private String careMessage="";
     private PlaylumiRoom room;
     private int roomPage,roomItemPage,roomSlot;
     private String roomMessage="";
@@ -144,6 +147,8 @@ public class MainActivity extends Activity {
             closetPage=state.getInt("closetPage",0);
             shopPage=state.getInt("shopPage",0);
             selectedSlot=state.getInt("selectedSlot",0);
+            carePage=state.getInt("carePage",0);
+            albumPage=state.getInt("albumPage",0);
             sessionSolved=state.getInt("sessionSolved",0);
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
@@ -202,6 +207,10 @@ public class MainActivity extends Activity {
                 wardrobe.restoreSlot(i,prefs.getInt("wardrobe_owned_"+i,1),
                         prefs.getInt("wardrobe_worn_"+i,0));
         } else saveWardrobe();
+        friends=new PlaylumiFriends();
+        friends.restoreRewards(prefs.getInt("friends_rewarded",0));
+        for(int f=0;f<PlaylumiFriends.FRIENDS;f++)
+            friends.restore(f,prefs.getInt("friends_care_"+f,0));
         room=new PlaylumiRoom();
         for(int slot=0;slot<PlaylumiRoom.SLOTS;slot++)
             room.restore(slot,prefs.getInt("room_mask_"+slot,1),
@@ -249,6 +258,8 @@ public class MainActivity extends Activity {
         out.putInt("closetPage",closetPage);
         out.putInt("shopPage",shopPage);
         out.putInt("selectedSlot",selectedSlot);
+        out.putInt("carePage",carePage);
+        out.putInt("albumPage",albumPage);
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
@@ -287,6 +298,8 @@ public class MainActivity extends Activity {
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
         if(page==SHOP) {move(CLOSET);return;}
+        if(page==FRIEND_CARE) {move(AVATAR);return;}
+        if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
         if(page==MINI_PLAY || page==BUBBLE_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
@@ -367,6 +380,12 @@ public class MainActivity extends Activity {
                 .putInt("stories_step",stories.step())
                 .putInt("stories_alts",stories.secondaryChoices())
                 .putInt("stories_choice",stories.choice()).apply();
+    }
+    private void saveFriends() {
+        SharedPreferences.Editor editor=prefs().edit().putInt("friends_rewarded",friends.rewardedMask());
+        for(int i=0;i<PlaylumiFriends.FRIENDS;i++)
+            editor.putInt("friends_care_"+i,friends.mask(i));
+        editor.apply();
     }
     private void saveRoom() {
         SharedPreferences.Editor edit=prefs().edit();
@@ -551,6 +570,8 @@ public class MainActivity extends Activity {
             case BREAK_SCREEN: showBreakScreen();break;
             case PROFILES: showProfiles();break;
             case STAR_STAGE: showStarStage();break;
+            case FRIEND_CARE: showFriendCare();break;
+            case FRIEND_ALBUM: showFriendAlbum();break;
             case BUBBLE_PLAY: showBubblePlay();break;
             default: throw new IllegalStateException("page");
         }
@@ -1009,6 +1030,10 @@ public class MainActivity extends Activity {
                 0xffffe8b8,102);
         addTile(stageButton,8);
         stageButton.setOnClickListener(v->move(STAR_STAGE));
+        Button friendButton=tile("🐾 Verzorg je vriendje","Samen spelen, knuffelen en nieuwe stickers verdienen!",
+                0xffd5f5e4,100);
+        addTile(friendButton,8);
+        friendButton.setOnClickListener(v->{carePage=0;careMessage="";move(FRIEND_CARE);});
         Button home=tile("🏠 Mijn eigen kamer","Versier je kamer met speelsterren",0xffd9ecff,105);
         addTile(home,8);
         home.setOnClickListener(v->move(ROOM));
