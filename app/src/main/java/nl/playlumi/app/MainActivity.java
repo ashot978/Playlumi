@@ -624,6 +624,13 @@ public class MainActivity extends Activity {
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
+        if(page==HOME || page==WORLD_PICKER || page==WORLD_HUB ||
+                page==AVATAR || page==CLOSET || page==ROOM ||
+                page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
+                page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
+            stage.addView(new PlaylumiSkyView(this),
+                    new FrameLayout.LayoutParams(-1,-1));
+        }
         scroller=new ScrollView(this);scroller.setFillViewport(true);
         scroller.setClipToPadding(true);
         scroller.setVerticalScrollBarEnabled(false);
@@ -744,28 +751,43 @@ public class MainActivity extends Activity {
             });
         }
     }
+    private void startEasyPlay() {
+        int selected=prefs().getInt("last_played_category",0);
+        if(selected<0 || selected>=PlaylumiScores.CATEGORIES)selected=0;
+        int variation=prefs().getInt("last_played_variant",0);
+        if(variation<0 || variation>=5)variation=0;
+        storyStage=-1;smartDifficulty=true;roundHadMistake=false;
+        pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";
+        pendingBadges.clear();
+        difficulty=adaptive.level(selected,Math.max(0,age));
+        game.configure(selected,variation,difficulty);
+        saveRecent();
+        move(PLAY);
+    }
     private void showHome() {
-        header("🌟 Welkom bij Playlumi","Wat zullen we vandaag doen?");
-        characterHero(137);
-        addText("⭐ "+wardrobe.stars()+" speelsterren",18,0xffa77933,0,5);
+        header("🌟 Playlumi","Kies een plaatje om te beginnen.");
+        characterHero(118);
+        addText("🌟 "+wardrobe.stars()+" sterren",17,0xffa77933,0,3);
 
-        Button worlds=tile("🌈 Op ontdekkingsreis","Spelen en leren in drie werelden",
-                0xffdceeff,116);
-        addTile(worlds,5);
+        Button quick=tile("▶ Speel meteen","",0xffccf2db,112);
+        quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
+        addTile(quick,6);
+        quick.setOnClickListener(v->startEasyPlay());
+        PlaylumiDelight.invite(quick);
+
+        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
         worlds.setOnClickListener(v->move(WORLD_PICKER));
 
-        Button play=tile("🎪 Het speelplein","Slepen, zoeken, bellen en muziek",
-                0xffd7f3e4,116);
-        addTile(play,5);
+        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
         play.setOnClickListener(v->move(MINI_MENU));
+        addTwo(worlds,play,107);
 
-        Button friend=tile("⭐ Mijn stervriend","Kleding, kamer, diertjes en prijzen",
-                0xffffe7bb,116);
-        addTile(friend,5);
+        Button friend=tile("⭐ Mijn stervriend","Kleden en versieren",0xffffe7bb,86);
+        addTile(friend,4);
         friend.setOnClickListener(v->move(AVATAR));
 
-        Button options=tile("⚙️ Leeftijd, speler en instellingen","",0xffece5ff,66);
-        addTile(options,12);
+        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
+        addTile(options,8);
         options.setOnClickListener(v->move(HOME_OPTIONS));
     }
     private void showWorldPicker() {
@@ -914,7 +936,9 @@ public class MainActivity extends Activity {
                 game.configure(game.mode(),selection,difficulty);
                 roundHadMistake=false;pendingLevel=-1;
                 saveRecent();
-                prefs().edit().putInt("game_variant",selection).apply();
+                prefs().edit().putInt("game_variant",selection)
+                        .putInt("last_played_category",game.mode())
+                        .putInt("last_played_variant",selection).apply();
                 storyStage=-1;
                 sessionSolved=0;sessionAttempts=0;feedback="";
                 pendingBadges.clear();
@@ -1079,8 +1103,6 @@ public class MainActivity extends Activity {
             PlaylumiMotion.pop(touched);
             PlaylumiMotion.pop(feedbackText);
             PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
-            ObjectAnimator.ofInt(roundProgress,"progress",Math.max(0,sessionSolved-1),sessionSolved)
-                    .setDuration(420);
             ObjectAnimator animate=ObjectAnimator.ofInt(roundProgress,"progress",
                     Math.max(0,sessionSolved-1),sessionSolved);
             animate.setDuration(430);animate.start();
@@ -1156,8 +1178,8 @@ public class MainActivity extends Activity {
         }
         header("🏆 Jij bent een kampioen!","");
         characterHero(145);
-        addText("200 vragen goed!",29,0xff4b3488,10,10);
-        addText("Knap gespeeld! Wil je nog een avontuur?",17,SUB,0,18);
+        addText("🌟 "+sessionGoal()+" vragen goed!",27,0xff4b3488,9,9);
+        addText("Dat was knap! Zin in nog een ronde?",17,SUB,0,12);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
         addTile(again,6);
         again.setOnClickListener(v->{
