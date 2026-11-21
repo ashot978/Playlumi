@@ -373,7 +373,7 @@ public class MainActivity extends Activity {
         if(page==SHOP) {move(CLOSET);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
-        if(page==GARDEN_MENU) {move(ROOM);return;}
+        if(page==GARDEN_MENU) {move(HOME);return;}
         if(page==GARDEN_PLANT) {move(GARDEN_MENU);return;}
         if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
@@ -381,7 +381,7 @@ public class MainActivity extends Activity {
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
         if(page==STAR_STAGE) {move(AVATAR);return;}
         if(page==ROOM) {move(AVATAR);return;}
-        if(page==ROOM_CATS) {move(ROOM);return;}
+        if(page==ROOM_CATS) {move(AVATAR);return;}
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
         if(page==TROPHY_WORLDS) {move(AVATAR);return;}
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
@@ -922,6 +922,7 @@ public class MainActivity extends Activity {
             default: throw new IllegalStateException("page");
         }
         renderQuickNavigation();
+        stage.requestApplyInsets(); // Recheck system-bar clearance after adding tabs.
         if(!PlaylumiMotion.isReduced()) {
             stage.setAlpha(0f);stage.setTranslationX(dp(22));
             stage.animate().alpha(1).translationX(0).setDuration(280)
