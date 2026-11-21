@@ -22,14 +22,17 @@ public final class PlaylumiCharacterView extends View {
     private int reaction;
     private long reactionUntil;
 
-    /** 1 = happy dance, 2 = encouragement, 3 = wave. */
+    /** 1 = happy dance, 2 = encouragement, 3 = wave, 4 = surprised, 5 = twirl. */
     public void react(int kind) {
         reaction=kind;
         reactionUntil=SystemClock.uptimeMillis()+1400;
         invalidate();
+        postInvalidateDelayed(1450); // reset expression even in calm-motion mode
     }
     public void dance() { react(1); }
     public void wave() { react(3); }
+    public void surprised() { react(4); }
+    public void twirl() { react(5); }
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -64,7 +67,8 @@ public final class PlaylumiCharacterView extends View {
         canvas.translate((w-300f*scale)/2f,(h-330f*scale)/2f);
         canvas.scale(scale,scale);
         boolean reacting=SystemClock.uptimeMillis()<reactionUntil;
-        canvas.rotate((float)Math.sin(cycle)*1.7f+(reacting && reaction==1?(float)Math.sin(cycle*3)*5f:0f),150f,164f);
+        canvas.rotate((float)Math.sin(cycle)*1.7f+(reacting && (reaction==1 || reaction==5)?(float)Math.sin(cycle*3)*5f:0f),150f,164f);
+        drawAura(canvas);
         drawSparkles(canvas);
         drawShoes(canvas);
         if(wardrobe.equipped(PlaylumiWardrobe.OUTFITS)==2)drawCape(canvas);
@@ -103,6 +107,34 @@ public final class PlaylumiCharacterView extends View {
         paint.setTextAlign(Paint.Align.CENTER);
         c.drawText(value,x,y,paint);
     }
+    /** Magic effects are visible in all screens, including at rest. */
+    private void drawAura(Canvas c) {
+        int aura=wardrobe.equipped(PlaylumiWardrobe.AURAS);
+        if(aura==0)return;
+        int[] palette={0,0xfff6ca50,0xffee83ac,0xffb39bfa,
+                0xff6cd5e7,0xffafd77c,0xffc9d1f9};
+        Paint halo=color((palette[aura]&0x00ffffff)|0x33000000);
+        halo.setStyle(Paint.Style.STROKE);
+        halo.setStrokeWidth(aura==4?17f:11f);
+        c.drawCircle(150f,168f,119f,halo);
+        String symbol=aura==2?"♥":aura==3?"✦":aura==4?"✧":aura==5?"•":
+                aura==6?"☾":"✳";
+        int count=aura==3?10:7;
+        for(int j=0;j<count;j++) {
+            double theta=(Math.PI*2*j/count)+(PlaylumiMotion.isReduced()?0:cycle*.08);
+            float radius=126+(float)Math.sin(cycle*2+j)*4f;
+            float x=150+(float)Math.cos(theta)*radius;
+            float y=165+(float)Math.sin(theta)*radius;
+            int size=16+(j%3)*5;
+            if(aura==4) {
+                int col=new int[]{0xffe96c99,0xffe5b84e,0xff7ed0a5,0xff80afe7,0xffb197d5}[j%5];
+                ellipse(c,x-7,y-7,x+7,y+7,col);
+            } else if(aura==5) {
+                ellipse(c,x-4,y-4,x+4,y+4,palette[aura]);
+                ellipse(c,x-2,y-2,x+2,y+2,0xffffffff);
+            } else emoji(c,symbol,x,y,size);
+        }
+    }
     private void drawSparkles(Canvas c) {
         emoji(c,"✦",43,83,25);
         emoji(c,"✧",251,69,22);
@@ -120,7 +152,7 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,189,271,202,276,0xffffffff);
     }
     private void drawArms(Canvas c) {
-        boolean excited=SystemClock.uptimeMillis()<reactionUntil && (reaction==1 || reaction==3);
+        boolean excited=SystemClock.uptimeMillis()<reactionUntil && (reaction==1 || reaction==3 || reaction==5);
         float wave=excited?(float)Math.sin(cycle*4)*23f:(float)Math.sin(cycle*2)*5f;
         float lift=excited?42f:0f;
         line(c,78,171,37,200-lift-wave,0xff8b68bd,13);
@@ -149,8 +181,12 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,101,100,150,120,0x5affffff);
     }
     private void drawFace(Canvas c) {
-        boolean blink=Math.sin(cycle)>0.993;
-        if (blink) {
+        boolean expressive=SystemClock.uptimeMillis()<reactionUntil;
+        boolean blink=Math.sin(cycle)>0.993 || (expressive && reaction==3);
+        if(expressive && reaction==4) {
+            ellipse(c,104,144,123,175,INK);
+            ellipse(c,178,144,197,175,INK);
+        } else if (blink) {
             line(c,106,159,120,159,INK,5);
             line(c,180,159,194,159,INK,5);
         } else {
@@ -163,8 +199,11 @@ public final class PlaylumiCharacterView extends View {
         ellipse(c,192,178,216,192,0x77f16aa3);
         Paint mouth=color(INK);mouth.setStyle(Paint.Style.STROKE);
         mouth.setStrokeWidth(6);mouth.setStrokeCap(Paint.Cap.ROUND);
-        boolean happy=SystemClock.uptimeMillis()<reactionUntil && reaction==1;
-        c.drawArc(new RectF(happy?118:125,154,happy?183:176,happy?223:211),13,152,false,mouth);
+        boolean happy=expressive && (reaction==1 || reaction==5);
+        if(expressive && reaction==4)
+            ellipse(c,140,182,160,208,INK);
+        else
+            c.drawArc(new RectF(happy?118:125,154,happy?183:176,happy?223:211),13,152,false,mouth);
         ellipse(c,145,174,155,184,0xffed9a83);
     }
     private void drawCape(Canvas c) {
@@ -192,6 +231,18 @@ public final class PlaylumiCharacterView extends View {
                 round(c,116,211,184,252,15,0xffb0d8ff);
                 ellipse(c,139,220,161,243,0xff7448a8);
                 emoji(c,"✦",150,240,19);
+                break;
+            }
+            case 5: {
+                round(c,113,210,188,253,12,0xffa7e7ff);
+                line(c,115,226,188,226,0xffdd85c6,9);
+                emoji(c,"🌈",150,242,23);
+                break;
+            }
+            case 6: {
+                round(c,111,202,188,254,15,0xffd7dbf7);
+                round(c,128,213,174,242,12,0xff76a9d9);
+                emoji(c,"✦",150,234,19);
                 break;
             }
             default:break;
@@ -225,6 +276,16 @@ public final class PlaylumiCharacterView extends View {
                 emoji(c,"💗",189,179,37);
                 line(c,136,157,165,157,0xffe076b6,5);
                 break;
+            case 5:
+                emoji(c,"⭐",112,169,33);
+                emoji(c,"⭐",189,169,33);
+                line(c,131,161,168,161,0xff8e61b8,6);
+                break;
+            case 6:
+                emoji(c,"🦋",112,172,39);
+                emoji(c,"🦋",189,172,39);
+                line(c,131,159,168,159,0xff8862b4,5);
+                break;
             default:break;
         }
     }
@@ -254,13 +315,26 @@ public final class PlaylumiCharacterView extends View {
                 emoji(c,"🌸",149,96,33);
                 emoji(c,"🌼",184,109,31);
                 break;
+            case 5:
+                polygon(c,new float[]{100,104,93,50,126,78,149,35,176,78,207,50,200,104},0xffffd570);
+                round(c,94,97,207,111,9,0xffdd85c4);
+                emoji(c,"✨",151,92,23);
+                break;
+            case 6:
+                ellipse(c,73,56,228,130,0x66a8e3ff);
+                Paint glass=color(0xff83cbed);
+                glass.setStyle(Paint.Style.STROKE);
+                glass.setStrokeWidth(6);
+                c.drawOval(new RectF(72,53,229,131),glass);
+                ellipse(c,130,56,172,70,0xffb6d8fc);
+                break;
             default:break;
         }
     }
     private void drawFriend(Canvas c) {
         int i=wardrobe.equipped(PlaylumiWardrobe.FRIENDS);
         if(i==0)return;
-        String[] icons={"","🦋","🌙","🐰","☁️"};
+        String[] icons={"","🦋","🌙","🐰","☁️","🦊","🐶"};
         ellipse(c,212,227,281,300,0xcfffffff);
         emoji(c,icons[i],247,282,43);
     }
