@@ -28,9 +28,21 @@ public class PlaylumiMiniChallengeTest {
                         assertEquals(c.choices.size(),new HashSet<>(c.choices).size());
                         assertEquals(c.target,c.choices.get(c.correctIndex));
                         for(int i=0;i<c.choices.size();i++)
-                            assertEquals(c.correctIndex==i,c.choose(i));
+                            assertEquals(c.correctIndex==i,kind==PlaylumiMiniChallenge.DRAG?c.drop(i):c.choose(i));
                     }
                 }
+    }
+    @Test(expected=IllegalStateException.class)
+    public void tappingAShapeCannotCompleteADragChallenge() {
+        PlaylumiMiniChallenge drag=PlaylumiMiniChallenge.generate(
+                PlaylumiMiniChallenge.DRAG,0,new Random(13));
+        drag.choose(drag.correctIndex);
+    }
+    @Test public void onlyRealDropUsesShapeRule() {
+        PlaylumiMiniChallenge drag=PlaylumiMiniChallenge.generate(
+                PlaylumiMiniChallenge.DRAG,0,new Random(34));
+        for(int i=0;i<drag.choices.size();i++)
+            assertEquals(i==drag.correctIndex,drag.drop(i));
     }
     @Test public void memoryPairsCanAllBeMatchedAndGameCompletes() {
         Random r=new Random(19);
