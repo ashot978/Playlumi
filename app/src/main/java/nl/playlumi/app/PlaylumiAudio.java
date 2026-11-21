@@ -119,6 +119,12 @@ public final class PlaylumiAudio {
             return true;
         } catch(RuntimeException ignored) {return false;}
     }
+    /** Keep narration on its current page, never talk over the next activity. */
+    public void stopSpeaking() {
+        if(speech!=null) {
+            try {speech.stop();} catch(RuntimeException ignored) {}
+        }
+    }
     public void close() {
         released=true;
         if(speech!=null) {speech.stop();speech.shutdown();speech=null;}
