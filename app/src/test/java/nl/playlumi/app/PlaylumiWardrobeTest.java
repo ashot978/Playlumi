@@ -7,7 +7,7 @@ public class PlaylumiWardrobeTest {
     @Test public void freeOutfitsAndStarterStars() {
         PlaylumiWardrobe wallet=new PlaylumiWardrobe();
         assertEquals(18,wallet.stars());
-        assertEquals(5,wallet.unlockedItems());
+        assertEquals(PlaylumiWardrobe.SLOTS,wallet.unlockedItems());
         for(int slot=0;slot<PlaylumiWardrobe.SLOTS;slot++) {
             assertTrue(wallet.owned(slot,0));
             assertEquals(0,wallet.equipped(slot));
@@ -57,11 +57,11 @@ public class PlaylumiWardrobeTest {
         assertEquals(54,wallet.allTimeStars());
     }
     @Test public void allCatalogItemsHaveNamesAndStrictlyIncreasingPrices() {
-        assertEquals(5,PlaylumiWardrobe.SLOT_NAMES.length);
+        assertEquals(PlaylumiWardrobe.SLOTS,PlaylumiWardrobe.SLOT_NAMES.length);
         for(int slot=0;slot<PlaylumiWardrobe.SLOTS;slot++) {
-            assertEquals(5,PlaylumiWardrobe.ITEM_NAMES[slot].length);
-            assertEquals(5,PlaylumiWardrobe.ITEM_ICONS[slot].length);
-            assertEquals(5,PlaylumiWardrobe.PRICES[slot].length);
+            assertEquals(PlaylumiWardrobe.OPTIONS,PlaylumiWardrobe.ITEM_NAMES[slot].length);
+            assertEquals(PlaylumiWardrobe.OPTIONS,PlaylumiWardrobe.ITEM_ICONS[slot].length);
+            assertEquals(PlaylumiWardrobe.OPTIONS,PlaylumiWardrobe.PRICES[slot].length);
             int previous=-1;
             for(int item=0;item<PlaylumiWardrobe.OPTIONS;item++) {
                 assertFalse(PlaylumiWardrobe.ITEM_NAMES[slot][item].isEmpty());
@@ -73,5 +73,28 @@ public class PlaylumiWardrobeTest {
     @Test(expected=IllegalArgumentException.class)
     public void invalidSlotFails() {new PlaylumiWardrobe().buyOrEquip(8,3);}
     @Test(expected=IllegalArgumentException.class)
-    public void invalidItemFails() {new PlaylumiWardrobe().buyOrEquip(0,5);}
+    public void invalidItemFails() {new PlaylumiWardrobe().buyOrEquip(0,PlaylumiWardrobe.OPTIONS);}
+
+    @Test public void existingReleaseInventoryRemainsCompatibleWithNewOptions() {
+        PlaylumiWardrobe original=new PlaylumiWardrobe();
+        original.restoreSlot(PlaylumiWardrobe.HATS,1|(1<<2)|(1<<4),4);
+        original.restoreSlot(PlaylumiWardrobe.COLORS,1|(1<<1),1);
+        assertEquals(4,original.equipped(PlaylumiWardrobe.HATS));
+        assertTrue(original.owned(PlaylumiWardrobe.HATS,2));
+        assertEquals(0,original.equipped(PlaylumiWardrobe.AURAS));
+        assertTrue(original.owned(PlaylumiWardrobe.AURAS,0));
+    }
+    @Test public void newMagicalAurasCanBeBoughtSavedAndEquipped() {
+        PlaylumiWardrobe before=new PlaylumiWardrobe(250);
+        assertEquals(PlaylumiWardrobe.PURCHASED,
+                before.buyOrEquip(PlaylumiWardrobe.AURAS,6));
+        assertEquals(105,before.stars());
+        PlaylumiWardrobe after=new PlaylumiWardrobe();
+        for(int slot=0;slot<PlaylumiWardrobe.SLOTS;slot++)
+            after.restoreSlot(slot,before.ownedMask(slot),before.equipped(slot));
+        assertTrue(after.owned(PlaylumiWardrobe.AURAS,6));
+        assertEquals(6,after.equipped(PlaylumiWardrobe.AURAS));
+        assertEquals(PlaylumiWardrobe.EQUIPPED,
+                after.buyOrEquip(PlaylumiWardrobe.AURAS,6));
+    }
 }
