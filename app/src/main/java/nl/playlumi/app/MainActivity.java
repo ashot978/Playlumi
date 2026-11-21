@@ -27,7 +27,8 @@ import java.util.Random;
 public class MainActivity extends Activity {
     private static final int AGE=0, HOME=1, CATEGORIES=2, DETAIL=3, LEVEL=4,
             VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11,
-            MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15;
+            MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15,
+            ROOM=16, ROOM_CATS=17, ROOM_ITEMS=18;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -53,6 +54,9 @@ public class MainActivity extends Activity {
     private QuestionHistory recent;
     private PlaylumiScores scores;
     private PlaylumiWardrobe wardrobe;
+    private PlaylumiRoom room;
+    private int roomPage,roomItemPage,roomSlot;
+    private String roomMessage="";
     private PlaylumiCharacterView character;
     private LinearLayout root;
     private FrameLayout stage;
@@ -107,6 +111,9 @@ public class MainActivity extends Activity {
             rewardReturn=state.getInt("rewardReturn",PLAY);
             storyStage=state.getInt("storyStage",-1);
             storyPage=state.getInt("storyPage",0);
+            roomPage=state.getInt("roomPage",0);
+            roomItemPage=state.getInt("roomItemPage",0);
+            roomSlot=state.getInt("roomSlot",0);
             storyNewReward=state.getBoolean("storyNewReward",false);
         }
         adventures=new PlaylumiAdventure();
@@ -128,6 +135,10 @@ public class MainActivity extends Activity {
                 wardrobe.restoreSlot(i,prefs.getInt("wardrobe_owned_"+i,1),
                         prefs.getInt("wardrobe_worn_"+i,0));
         } else saveWardrobe();
+        room=new PlaylumiRoom();
+        for(int slot=0;slot<PlaylumiRoom.SLOTS;slot++)
+            room.restore(slot,prefs.getInt("room_mask_"+slot,1),
+                    prefs.getInt("room_item_"+slot,0));
         recent=new QuestionHistory(prefs.getString("recent_questions",""));
         game=new LearningGame(new Random());
         game.setHistory(recent);
@@ -156,6 +167,9 @@ public class MainActivity extends Activity {
         out.putInt("storyStage",storyStage);
         out.putInt("storyPage",storyPage);
         out.putBoolean("storyNewReward",storyNewReward);
+        out.putInt("roomPage",roomPage);
+        out.putInt("roomItemPage",roomItemPage);
+        out.putInt("roomSlot",roomSlot);
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
@@ -168,6 +182,9 @@ public class MainActivity extends Activity {
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
+        if(page==ROOM) {move(AVATAR);return;}
+        if(page==ROOM_CATS) {move(ROOM);return;}
+        if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
@@ -191,6 +208,14 @@ public class MainActivity extends Activity {
         for(int i=0;i<PlaylumiWardrobe.SLOTS;i++) {
             edit.putInt("wardrobe_owned_"+i,wardrobe.ownedMask(i));
             edit.putInt("wardrobe_worn_"+i,wardrobe.equipped(i));
+        }
+        edit.apply();
+    }
+    private void saveRoom() {
+        SharedPreferences.Editor edit=prefs().edit();
+        for(int slot=0;slot<PlaylumiRoom.SLOTS;slot++) {
+            edit.putInt("room_mask_"+slot,room.ownedMask(slot));
+            edit.putInt("room_item_"+slot,room.selected(slot));
         }
         edit.apply();
     }
@@ -347,6 +372,9 @@ public class MainActivity extends Activity {
             case MINI_PLAY: showMiniPlay();break;
             case WORLD_HUB: showWorldHub();break;
             case ADVENTURE_MAP: showAdventureMap();break;
+            case ROOM: showRoom();break;
+            case ROOM_CATS: showRoomCats();break;
+            case ROOM_ITEMS: showRoomItems();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
