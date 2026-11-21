@@ -587,6 +587,14 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
+        Button parents=tile("👨‍👩‍👧 Voor ouders","",0xfff3edff,60);
+        addTile(parents,10);
+        parents.setOnClickListener(v->{
+            parentAllowed=false;
+            adultA=10+new Random().nextInt(8);
+            adultB=8+new Random().nextInt(8);
+            move(PARENT_GATE);
+        });
     }
     private void showCategories() {
         header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
@@ -1509,6 +1517,139 @@ public class MainActivity extends Activity {
                 drawingInfo.setText("🎨 Een nieuw wit papier! Veel plezier.");
             }
         });
+    }
+
+
+    private void showParentGate() {
+        header("🔐 Alleen voor ouders","Een kleine rekensom om verder te gaan.");
+        addText("Hoeveel is",22,SUB,25,7);
+        addText(adultA+" + "+adultB+" = ?",34,0xff5e4098,7,20);
+        java.util.List<Integer> answers=new java.util.ArrayList<>();
+        answers.add(adultA+adultB-2);
+        answers.add(adultA+adultB);
+        answers.add(adultA+adultB+3);
+        java.util.Collections.shuffle(answers,new Random());
+        for(Integer value:answers) {
+            int answer=value.intValue();
+            Button b=tile("🔢 "+answer,"",COLORS[(value+6)%6],93);
+            addTile(b,8);
+            b.setOnClickListener(v->{
+                if(answer==adultA+adultB) {
+                    parentAllowed=true;
+                    sound.good();move(PARENT_HOME);
+                } else {
+                    sound.mistake();
+                    adultA=10+new Random().nextInt(8);
+                    adultB=8+new Random().nextInt(8);
+                    showPage();
+                }
+            });
+        }
+    }
+    private void showParentHome() {
+        header("👨‍👩‍👧 Voor ouders","Inzicht en instellingen, alles blijft op dit toestel.");
+        saveUsage();
+        int correct=0,attempts=0,badges=0;
+        for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
+            correct+=scores.get(i).correct;
+            attempts+=scores.get(i).attempts;
+            badges+=scores.get(i).earnedBadges();
+        }
+        addText("⭐ "+correct+" goede antwoorden",23,0xff34856d,10,6);
+        addText("🏅 "+badges+" van 144 badges verdiend",19,0xff9166b7,2,6);
+        addText("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",16,SUB,0,12);
+        Button overview=tile("📊 Bekijk de voortgang","Scores en badges per leerwereld",
+                0xffd7eefe,104);
+        addTile(overview,9);
+        overview.setOnClickListener(v->move(PARENT_WORLDS));
+        Button settings=tile("⚙️ Instellingen","Geluid, animaties en pauzeherinnering",
+                0xffe8dcff,104);
+        addTile(settings,9);
+        settings.setOnClickListener(v->move(PARENT_SETTINGS));
+        Button back=tile("🌈 Terug naar spelen","",0xffd4f3e0,85);
+        addTile(back,11);
+        back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
+    }
+    private void showParentWorlds() {
+        header("📊 Voortgang","Kies een leerwereld.");
+        for(int w=0;w<3;w++) {
+            final int index=w;
+            int correct=0;
+            for(int i=w*8;i<w*8+8;i++)correct+=scores.get(i).correct;
+            Button b=tile(WORLD_ICONS[w]+"  "+WORLDS[w],
+                    "⭐ "+correct+" goed beantwoorde opdrachten",
+                    COLORS[w],104);
+            addTile(b,10);
+            b.setOnClickListener(v->{parentWorld=index;parentStatsPage=0;move(PARENT_STATS);});
+        }
+    }
+    private void showParentStats() {
+        header(WORLD_ICONS[parentWorld]+" "+WORLDS[parentWorld],
+                "Overzicht per leeractiviteit");
+        addText("Pagina "+(parentStatsPage+1)+" / 4",16,0xff8766b0,0,12);
+        for(int i=parentWorld*8+parentStatsPage*2;i<parentWorld*8+parentStatsPage*2+2;i++) {
+            PlaylumiScores.Score score=scores.get(i);
+            String title=ICONS[i]+"  "+LearningGame.GAME_NAMES[i];
+            String info="⭐ "+score.correct+" goed  •  "+score.attempts+
+                    " pogingen  •  🏅 "+score.earnedBadges()+"/6 badges";
+            Button b=tile(title,info,COLORS[i%6],130);
+            b.setEnabled(false);
+            addTile(b,12);
+        }
+        Button more=tile(parentStatsPage<3?"Meer categorieën →":"↩ Eerste categorieën","",
+                0xffe8dcff,80);
+        addTile(more,12);
+        more.setOnClickListener(v->{
+            parentStatsPage=parentStatsPage<3?parentStatsPage+1:0;
+            showPage();
+        });
+    }
+    private void showParentSettings() {
+        header("⚙️ Instellingen","Pas de speelervaring rustig aan.");
+        Button soundButton=tile(sound.isEnabled()?"🔊 Geluid: aan":"🔇 Geluid: uit",
+                "Tik om te veranderen",0xffd6efff,90);
+        addTile(soundButton,7);
+        soundButton.setOnClickListener(v->{
+            sound.setEnabled(!sound.isEnabled());
+            prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
+            showPage();
+        });
+        Button motion=tile(PlaylumiMotion.isReduced()?
+                "🍃 Rustige animaties: aan":"✨ Bewegingen: aan",
+                "Rustige modus beperkt beweging",0xffe6dcff,91);
+        addTile(motion,7);
+        motion.setOnClickListener(v->{
+            PlaylumiMotion.setReduced(!PlaylumiMotion.isReduced());
+            prefs().edit().putBoolean("reduced_motion",PlaylumiMotion.isReduced()).apply();
+            showPage();
+        });
+        addText("⏰ Pauzeherinnering",22,0xff58448a,18,7);
+        addText("Een vriendelijk seintje, nooit een verplichte stop.",15,SUB,0,10);
+        int[] mins={0,15,30,45,60};
+        String[] labels={"Geen herinnering","15 minuten","30 minuten","45 minuten","60 minuten"};
+        for(int i=0;i<mins.length;i++) {
+            final int selected=mins[i];
+            boolean active=usage.limit()==selected;
+            Button b=tile((active?"✅ ":"⏱️ ")+labels[i],"",
+                    active?0xffcef3d9:COLORS[i%6],70);
+            addTile(b,5);
+            b.setOnClickListener(v->{
+                usage.restore(usage.seconds(),selected,false);
+                saveUsage();
+                showPage();
+            });
+        }
+    }
+    private void showBreakScreen() {
+        header("🍃 Tijd voor een pauze","Even rust is ook fijn!");
+        characterHero(165);
+        addText("Je hebt vandaag al veel ontdekt.",22,0xff58448a,20,12);
+        Button rest=tile("🌿 Even lekker uitrusten","",0xffd6f4e2,103);
+        addTile(rest,10);
+        rest.setOnClickListener(v->move(HOME));
+        Button continueButton=tile("🌟 Nog even verder spelen","",0xffe6deff,94);
+        addTile(continueButton,8);
+        continueButton.setOnClickListener(v->move(breakReturn));
     }
 
 }
