@@ -29,7 +29,11 @@ public final class PlaylumiRoomView extends FrameLayout {
         starParams.bottomMargin=dp(11);
         addView(friend,starParams);
         PlaylumiMotion.floatMascot(friend);
-        friend.setOnClickListener(v->{friend.wave();PlaylumiMotion.pop(friend);});
+        friend.setOnClickListener(v->{
+            friend.wave();
+            PlaylumiMotion.pop(friend);
+            PlaylumiDelight.sprinkle(this,friend);
+        });
     }
     private int dp(int v) {return (int)(getResources().getDisplayMetrics().density*v+.5f);}
     private void addEmoji(String value,int size,int gravity,int horizontal,int vertical) {
@@ -37,7 +41,14 @@ public final class PlaylumiRoomView extends FrameLayout {
         item.setText(value);item.setTextSize(size);
         item.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         item.setGravity(Gravity.CENTER);
-        item.setContentDescription(value);
+        item.setContentDescription("Tik om het kamervoorwerp te laten bewegen: "+value);
+        item.setClickable(true);item.setFocusable(true);
+        item.setOnClickListener(v->{
+            PlaylumiDelight.wiggle(item);
+            PlaylumiDelight.sprinkle(this,item);
+        });
+        if((gravity & Gravity.RIGHT)==Gravity.RIGHT)
+            PlaylumiDelight.invite(item);
         LayoutParams lp=new LayoutParams(dp(86),dp(86),gravity);
         if((gravity&Gravity.RIGHT)==Gravity.RIGHT)lp.rightMargin=dp(horizontal);
         else lp.leftMargin=dp(horizontal);
