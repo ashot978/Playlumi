@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
     private String feedback="";
     private PlaylumiAudio sound;
     private PlaylumiMiniChallenge mini;
+    private PlaylumiCharacterView playPal;
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
 
@@ -266,6 +267,15 @@ public class MainActivity extends Activity {
         root.addView(holder,row);
         PlaylumiMotion.floatMascot(character);
     }
+    private void companion(int size) {
+        LinearLayout row=new LinearLayout(this);
+        row.setGravity(Gravity.CENTER);
+        playPal=new PlaylumiCharacterView(this,wardrobe);
+        row.addView(playPal,new LinearLayout.LayoutParams(dp(size),dp(size)));
+        playPal.setContentDescription("Je stervriend. Tik om te zwaaien.");
+        playPal.setOnClickListener(v->{playPal.wave();sound.tap();});
+        root.addView(row,new LinearLayout.LayoutParams(-1,dp(size+4)));
+    }
     private void header(String heading,String subtitle) {
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -286,6 +296,7 @@ public class MainActivity extends Activity {
         if(subtitle!=null && !subtitle.isEmpty())addText(subtitle,14,SUB,0,16);
     }
     private void showPage() {
+        playPal=null;
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
@@ -485,6 +496,7 @@ public class MainActivity extends Activity {
         if(sessionSolved>=SESSION_ROUNDS) {showCompleted();return;}
         LearningGame.Round round=game.round();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
+        companion(83);
         addText("⭐ "+sessionSolved+" / "+SESSION_ROUNDS,18,0xff2c886f,0,7);
         roundProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         roundProgress.setMax(SESSION_ROUNDS);
@@ -554,6 +566,7 @@ public class MainActivity extends Activity {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             feedback="⭐ Goed gedaan! +3 🌟";
             sound.good();
+            if(playPal!=null)playPal.dance();
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                     rounded(0xffb9f5d1,25),null));
             for(Button b:answerButtons)b.setEnabled(false);
@@ -581,6 +594,7 @@ public class MainActivity extends Activity {
         } else {
             feedback="💛 Probeer nog eens!";
             sound.mistake();
+            if(playPal!=null)playPal.react(2);
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffa86a29);
             PlaylumiMotion.shake(touched);
             feedbackText.announceForAccessibility(feedback);
@@ -784,6 +798,7 @@ public class MainActivity extends Activity {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
                 "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
+        companion(82);
         if(miniRound>=20) {
             characterHero(150);
             addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
@@ -807,6 +822,7 @@ public class MainActivity extends Activity {
             @Override public void onSolved() {
                 if(miniSolved)return;
                 miniSolved=true;
+                if(playPal!=null)playPal.dance();
                 recordMiniAnswer();
                 if(nextButton!=null) {
                     nextButton.setVisibility(View.VISIBLE);
@@ -818,6 +834,7 @@ public class MainActivity extends Activity {
             }
             @Override public void onMistake() {
                 sound.mistake();
+                if(playPal!=null)playPal.react(2);
                 // Memory pairs are practice, not a penalized test.
             }
             @Override public void onMatch() { sound.good(); }
