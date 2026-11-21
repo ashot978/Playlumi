@@ -958,6 +958,23 @@ public class MainActivity extends Activity {
      * question and answers into two columns. All answers remain tappable and the
      * ScrollView can still scroll when the user chooses large system fonts.
      */
+    private boolean autoReadEnabled() {
+        return sound!=null && sound.isEnabled() &&
+                prefs().getBoolean("auto_read",age==0);
+    }
+    /** Speak only while the originating page is still visible; TTS may initialize late. */
+    private void readThisPage(String message) {
+        if(!autoReadEnabled() || message==null || message.isEmpty())return;
+        final FrameLayout originating=stage;
+        final int screen=page;
+        originating.postDelayed(()->{
+            if(stage!=originating || page!=screen || !autoReadEnabled())return;
+            if(!sound.speak(message))originating.postDelayed(()->{
+                if(stage==originating && page==screen && autoReadEnabled())
+                    sound.speak(message);
+            },1100L);
+        },500L);
+    }
     private void showPlay() {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
@@ -1031,7 +1048,14 @@ public class MainActivity extends Activity {
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
-        picture.setContentDescription(round.prompt+" "+round.display);
+        picture.setContentDescription("Tik op het plaatje om de vraag te horen");
+        picture.setClickable(true);
+        picture.setFocusable(true);
+        picture.setOnClickListener(v->{
+            if(sound!=null)sound.speak(round.prompt);
+            PlaylumiDelight.hop(picture);
+            PlaylumiDelight.sprinkle(stage,picture);
+        });
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
         feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
@@ -1065,6 +1089,7 @@ public class MainActivity extends Activity {
         answers.addView(nextButton,nextParams);
         nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->continueAfterAnswer());
+        if(!answerLocked)readThisPage(round.prompt);
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
@@ -1102,7 +1127,10 @@ public class MainActivity extends Activity {
             feedbackText.setTextColor(0xff21836e);
             PlaylumiMotion.pop(touched);
             PlaylumiMotion.pop(feedbackText);
-            PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
+            PlaylumiDelight.sprinkle(stage,touched);
+            if(sessionSolved==sessionGoal() ||
+                    scores.get(mode).currentStreak%5==0)
+                PlaylumiMotion.celebrate(stage,scores.get(mode).currentStreak);
             ObjectAnimator animate=ObjectAnimator.ofInt(roundProgress,"progress",
                     Math.max(0,sessionSolved-1),sessionSolved);
             animate.setDuration(430);animate.start();
@@ -1131,7 +1159,7 @@ public class MainActivity extends Activity {
             sound.mistake();
             if(playPal!=null)playPal.react(2);
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffa86a29);
-            PlaylumiMotion.shake(touched);
+            PlaylumiDelight.wiggle(touched);
             feedbackText.announceForAccessibility(feedback);
         }
         saveScore(mode);
@@ -1463,6 +1491,7 @@ public class MainActivity extends Activity {
         addTile(nextButton,4);
         nextButton.setVisibility(miniSolved?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->afterMiniSolve());
+        if(!miniSolved)readThisPage(mini.question);
     }
     private void recordMiniAnswer() {
         int category=miniCategory();
@@ -1756,6 +1785,7 @@ public class MainActivity extends Activity {
         }
         addWidget(storyCard,0,8);
         addText("Wat kies jij?",16,SUB,4,4);
+        readThisPage(scene.prompt);
         String[] options={scene.first,scene.second};
         String[] emojis={"🌼","✨"};
         for(int i=0;i<2;i++) {
@@ -1779,6 +1809,7 @@ public class MainActivity extends Activity {
         reaction.setMinHeight(dp(106));
         reaction.setBackground(rounded(0xffffe9cf,23));
         addWidget(reaction,0,9);
+        readThisPage(result);
         if(sound.isEnabled()) {
             Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,55);
             addTile(speak,4);
