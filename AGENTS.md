@@ -37,3 +37,6 @@ Bellenfeest and Muziekatelier use 300 distinctly shuffled playable layouts at ea
 
 ## Playlumi 0.32.0 living garden
 The existing twelve plants now advance one stage per completed learning session. Existing water/sun actions and reward mask remain authoritative and persistent; first-bloom bonus may only be paid once. Animate growth visually in the native garden scene but do not change scores, profiles or child privacy. Include fresh installable APK after successful Android CI and emulator launch; private signing materials stay out of GitHub.
+
+## Playlumi 0.33.0 navigation and customization
+Always show four intuitive menu tabs (Start, Spelen, Aanpassen, Tuin) without covering content or blocking games. Show every customization category and all seven items directly without page navigation; preserve all owned items, worn items and earned star balances. Do not change parent gates. Every release must provide a new privately signed downloadable APK after CI and emulator smoke checks.
