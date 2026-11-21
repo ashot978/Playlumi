@@ -1876,4 +1876,86 @@ public class MainActivity extends Activity {
         move(BUBBLE_PLAY);
     }
 
+
+    /** Four tiny pet-care activities, displayed two at a time so young kids can focus. */
+    private void showFriendCare() {
+        int friend=wardrobe.equipped(PlaylumiWardrobe.FRIENDS);
+        header("🐾 Mijn dierenvriend","Samen zorgen en leuke dingen doen!");
+        characterHero(139);
+        addText(PlaylumiFriends.FRIEND_ICONS[friend]+"  "+
+                (friend==0?"Mijn stervriend":PlaylumiWardrobe.ITEM_NAMES[PlaylumiWardrobe.FRIENDS][friend]),
+                25,0xff6741a1,5,5);
+        addText("💗 "+friends.progress(friend)+" van 4 lieve momenten",19,0xff2d8b70,4,7);
+        if(!careMessage.isEmpty())addText(careMessage,17,0xff7454aa,3,9);
+        addText((carePage+1)+" / 2",15,0xff9c7ab8,1,9);
+        for(int i=carePage*2;i<Math.min(PlaylumiFriends.CARE_ACTIONS,carePage*2+2);i++){
+            final int action=i;
+            boolean done=friends.cared(friend,i);
+            Button button=tile(PlaylumiFriends.ICONS[i]+"  "+PlaylumiFriends.ACTIONS[i],
+                    done?"💗 Al samen gedaan!":"✨ Een nieuw momentje",
+                    COLORS[i%COLORS.length],103);
+            addTile(button,9);
+            button.setOnClickListener(v->{
+                boolean wasDone=friends.cared(friend,action);
+                boolean rewarded=friends.care(friend,action);
+                saveFriends();
+                if(!wasDone){
+                    sound.good();
+                    careMessage=PlaylumiFriends.REPLIES[action];
+                } else {
+                    sound.hello();
+                    careMessage="Wat gezellig om dit nog eens te doen!";
+                }
+                if(rewarded){
+                    wardrobe.earnFriendBonus();
+                    saveWardrobe();
+                    sound.unlock();
+                    careMessage="🏅 Nieuwe vriendschapssticker! +"+
+                            PlaylumiFriends.FIRST_COMPLETE_BONUS+" sterren!";
+                }
+                showPage();
+                if(character!=null)character.dance();
+                if(rewarded) {
+                    FrameLayout current=stage;
+                    current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,8);});
+                }
+            });
+        }
+        Button browse=tile(carePage==0?"🐾 Nog meer samen doen →":"↩ Eerste momentjes","",
+                0xffe9dfff,74);
+        addTile(browse,9);
+        browse.setOnClickListener(v->{carePage=carePage==0?1:0;showPage();});
+        Button album=tile("📒 Mijn vriendenalbum",
+                "🏅 "+friends.stickers()+" van "+PlaylumiFriends.FRIENDS+" stickers verdiend",
+                0xffffe9b4,85);
+        addTile(album,8);
+        album.setOnClickListener(v->{albumPage=0;move(FRIEND_ALBUM);});
+        Button outfit=tile("🎀 Kies een ander vriendje","",0xffd7f1f8,73);
+        addTile(outfit,8);
+        outfit.setOnClickListener(v->{selectedSlot=PlaylumiWardrobe.FRIENDS;shopPage=0;move(SHOP);});
+    }
+    private void showFriendAlbum() {
+        header("📒 Mijn vriendenalbum","Iedere vriend heeft een eigen sticker!");
+        addText("🏅 "+friends.stickers()+" / "+PlaylumiFriends.FRIENDS,24,0xff8a5da7,9,10);
+        addText((albumPage+1)+" / "+((PlaylumiFriends.FRIENDS+1)/2),
+                15,0xff9571b2,0,10);
+        for(int i=albumPage*2;i<Math.min(PlaylumiFriends.FRIENDS,albumPage*2+2);i++){
+            boolean earned=friends.hasReward(i);
+            String name=i==0?"Mijn stervriend":PlaylumiWardrobe.ITEM_NAMES[PlaylumiWardrobe.FRIENDS][i];
+            Button tile=tile((earned?PlaylumiFriends.FRIEND_ICONS[i]:"🔒")+"  "+name,
+                    earned?"🏅 Vriendschapssticker verdiend!":
+                            "💗 "+friends.progress(i)+" / "+PlaylumiFriends.CARE_ACTIONS+" momentjes",
+                    earned?0xffffe4ae:0xffede9f1,122);
+            addTile(tile,12);
+            tile.setEnabled(false);
+        }
+        Button more=tile(albumPage<(PlaylumiFriends.FRIENDS-1)/2?
+                "✨ Meer stickers →":"↩ Eerste stickers","",0xffe5daff,80);
+        addTile(more,14);
+        more.setOnClickListener(v->{
+            albumPage=albumPage<(PlaylumiFriends.FRIENDS-1)/2?albumPage+1:0;
+            showPage();
+        });
+    }
+
 }
