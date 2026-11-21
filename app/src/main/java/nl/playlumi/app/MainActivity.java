@@ -270,6 +270,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onPause() {
         if(page==DRAW && drawing!=null)drawing.save();
+        if(sound!=null)sound.stopSpeaking();
         saveUsage();
         activeSince=0;
         super.onPause();
@@ -622,6 +623,7 @@ public class MainActivity extends Activity {
             addText(subtitle,14,SUB,0,8);
     }
     private void showPage() {
+        if(sound!=null)sound.stopSpeaking();
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
