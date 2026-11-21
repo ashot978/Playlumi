@@ -576,6 +576,13 @@ public class MainActivity extends Activity {
                 status.setPadding(dp(5),0,dp(5),0);
                 row.addView(status,new LinearLayout.LayoutParams(-2,dp(45)));
             }
+            if(!landscapeScreen()) {
+                View littleStar=wardrobe==null?mascot(31):
+                        new PlaylumiCharacterView(this,wardrobe);
+                LinearLayout.LayoutParams tiny=new LinearLayout.LayoutParams(dp(31),dp(31));
+                tiny.setMargins(dp(3),0,0,0);
+                row.addView(littleStar,tiny);
+            }
         } else {
             View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
             LinearLayout.LayoutParams iconParams=
@@ -1335,7 +1342,6 @@ public class MainActivity extends Activity {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
                 "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
-        companion(82);
         if(miniRound>=20) {
             characterHero(150);
             addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
@@ -1351,8 +1357,12 @@ public class MainActivity extends Activity {
             return;
         }
         if(sound.isEnabled()) {
-            Button listen=tile("🔊 Luister naar de opdracht","",0xffeee4ff,49);
-            addTile(listen,0);
+            Button listen=tile("🔊 Luister naar de opdracht","",0xffeee4ff,42);
+            listen.setTextSize(15);
+            listen.setPadding(dp(6),dp(5),dp(6),dp(5));
+            LinearLayout.LayoutParams speakParams=new LinearLayout.LayoutParams(-1,dp(44));
+            speakParams.setMargins(dp(5),0,dp(5),dp(2));
+            root.addView(listen,speakParams);
             listen.setOnClickListener(v->sound.speak(mini.question));
         }
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
@@ -1377,10 +1387,10 @@ public class MainActivity extends Activity {
             @Override public void onMatch() { sound.good(); }
         });
         LinearLayout.LayoutParams boardParams=new LinearLayout.LayoutParams(-1,-2);
-        boardParams.setMargins(dp(0),dp(6),dp(0),dp(10));
+        boardParams.setMargins(dp(0),dp(2),dp(0),dp(4));
         root.addView(board,boardParams);
-        nextButton=tile("🌟 Verder spelen!","",0xffc9f2dc,85);
-        addTile(nextButton,8);
+        nextButton=tile("🌟 Verder spelen!","",0xffc9f2dc,66);
+        addTile(nextButton,4);
         nextButton.setVisibility(miniSolved?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->afterMiniSolve());
     }
@@ -1992,7 +2002,7 @@ public class MainActivity extends Activity {
             addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
             return;
         }
-        companion(92);
+        // The small star in the navigation row replaces the oversized character panel.
         if(sound.isEnabled()) {
             Button speak=tile("🔊 Luister naar de opdracht","",0xffe8e1ff,49);
             addTile(speak,1);
@@ -2176,7 +2186,7 @@ public class MainActivity extends Activity {
             addTile(other,7);other.setOnClickListener(v->move(MINI_MENU));
             return;
         }
-        companion(95);
+        // More room for the musical instruments and large touch targets.
         addText("🐸 🐱 🐥 🦋",31,0xff7652ac,8,7);
         melodyStatus=text(sound.isEnabled()?
                 "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
