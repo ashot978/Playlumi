@@ -607,6 +607,10 @@ public class MainActivity extends Activity {
             adultB=8+new Random().nextInt(8);
             move(PARENT_GATE);
         });
+        Button profile=tile("👧 Speler "+(activeProfile+1),
+                "Wissel tussen drie aparte speelprofielen",0xffebf3ff,81);
+        addTile(profile,7);
+        profile.setOnClickListener(v->move(PROFILES));
     }
     private void showCategories() {
         header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
@@ -1663,6 +1667,32 @@ public class MainActivity extends Activity {
         Button continueButton=tile("🌟 Nog even verder spelen","",0xffe6deff,94);
         addTile(continueButton,8);
         continueButton.setOnClickListener(v->move(breakReturn));
+    }
+
+
+    private void showProfiles() {
+        header("👧 Kies jouw speler","Iedere speler heeft een eigen wereld.");
+        String[] images={"⭐","🌸","🚀"};
+        for(int i=0;i<3;i++) {
+            final int slot=i;
+            SharedPreferences player=i==0?getPreferences(MODE_PRIVATE):
+                    getSharedPreferences("playlumi-child-"+i,MODE_PRIVATE);
+            int selectedAge=player.getInt("chosen_age",-1);
+            String ageNote=selectedAge<0?"Nog niet begonnen":AGES[Math.min(2,selectedAge)];
+            String subtitle=(i==activeProfile?"✅ Nu aan het spelen  •  ":"")+
+                    ageNote+"  •  ⭐ "+player.getInt("completed_all",0)+" goed";
+            Button b=tile(images[i]+"  Speler "+(i+1),subtitle,
+                    i==activeProfile?0xffcbf3dc:COLORS[i],118);
+            addTile(b,10);
+            b.setOnClickListener(v->{
+                if(slot==activeProfile){move(HOME);return;}
+                saveUsage();
+                if(page==DRAW && drawing!=null)drawing.save();
+                getSharedPreferences("playlumi-global",MODE_PRIVATE).edit()
+                        .putInt("active_profile",slot).apply();
+                recreate();
+            });
+        }
     }
 
 }
