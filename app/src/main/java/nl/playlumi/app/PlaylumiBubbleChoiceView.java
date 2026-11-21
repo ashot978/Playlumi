@@ -82,13 +82,15 @@ public final class PlaylumiBubbleChoiceView extends View {
     @Override protected void onDraw(Canvas canvas){
         super.onDraw(canvas);
         if(getWidth()<=0 || getHeight()<=0)return;
-        float scale=Math.min(getWidth()/dp(190),getHeight()/dp(184));
-        // Use a fixed 190x184 drawing space to keep the bubbles circular,
-        // including on foldables and tablets.
+        float density=getResources().getDisplayMetrics().density;
+        float scale=Math.min(getWidth()/(190f*density),
+                getHeight()/(184f*density));
+        // Exact floating-point sizing keeps the illustrated bubble visible
+        // even in narrow phone columns (<190dp), without stretching.
         canvas.save();
-        canvas.translate((getWidth()-190*dp(1)*scale)/2f,
-                (getHeight()-184*dp(1)*scale)/2f);
-        canvas.scale(dp(1)*scale,dp(1)*scale);
+        canvas.translate((getWidth()-190f*density*scale)/2f,
+                (getHeight()-184f*density*scale)/2f);
+        canvas.scale(density*scale,density*scale);
         PlaylumiBubbleMotion.Frame frame=PlaylumiBubbleMotion.sample(
                 elapsed,seed,PlaylumiMotion.isReduced());
         float shine=frame.sparkle;
