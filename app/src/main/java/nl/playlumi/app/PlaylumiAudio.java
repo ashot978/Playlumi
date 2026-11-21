@@ -108,6 +108,10 @@ public final class PlaylumiAudio {
     public void pop(){cue(PlaylumiTunes.POP,ToneGenerator.TONE_PROP_BEEP);}
     public void dance(){cue(PlaylumiTunes.DANCE,ToneGenerator.TONE_PROP_ACK);}
     public void sparkle(){cue(PlaylumiTunes.SPARKLE,ToneGenerator.TONE_PROP_ACK);}
+    public void note(int index){
+        if(index<0 || index>=PlaylumiMelody.NOTES)throw new IllegalArgumentException("note");
+        cue(PlaylumiTunes.NOTE_GREEN+index,ToneGenerator.TONE_PROP_BEEP);
+    }
     public boolean speak(String text) {
         if(!enabled || !ttsReady || speech==null || released || text==null)return false;
         try {
