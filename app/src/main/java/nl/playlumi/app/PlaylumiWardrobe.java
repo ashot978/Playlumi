@@ -82,6 +82,7 @@ public final class PlaylumiWardrobe {
         selected[slot]=(worn>=0 && worn<OPTIONS && owned(slot,worn))?worn:0;
     }
     public void earnAnswer() { add(STARS_FOR_ANSWER); }
+    public void earnAdventureBonus() { add(PlaylumiAdventure.BONUS); }
     public void earnBadges(int amount) {
         if(amount<0) throw new IllegalArgumentException("negative badges");
         add(STARS_FOR_BADGE*amount);
