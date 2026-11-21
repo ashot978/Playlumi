@@ -2153,4 +2153,92 @@ public class MainActivity extends Activity {
         move(MUSIC_PLAY);
     }
 
+
+    /** Show two seeds at once rather than a crowded garden catalogue. */
+    private void showGardenMenu() {
+        header("🌱 Mijn Magische Tuin","Kies een plant die je wilt laten groeien.");
+        addText("🌸 "+garden.bloomedCount()+" van "+PlaylumiGarden.COUNT+
+                " planten in bloei",20,0xff43886e,6,8);
+        addText((gardenPage+1)+" / "+((PlaylumiGarden.COUNT+1)/2),15,0xff926db4,0,6);
+        for(int p=gardenPage*2;p<Math.min(PlaylumiGarden.COUNT,gardenPage*2+2);p++) {
+            final int plant=p;
+            int growth=garden.stage(p);
+            String name=PlaylumiGarden.NAMES[p];
+            String detail=growth==PlaylumiGarden.STAGES?"🏅 Helemaal in bloei!":
+                    "🌱 Groeifase "+growth+" / "+PlaylumiGarden.STAGES;
+            Button button=tile(garden.picture(p)+"  "+name,detail,
+                    growth==PlaylumiGarden.STAGES?0xffffe5bd:COLORS[p%COLORS.length],126);
+            addTile(button,12);
+            button.setOnClickListener(v->{
+                gardenPlant=plant;
+                gardenMessage="";
+                move(GARDEN_PLANT);
+            });
+        }
+        Button more=tile(gardenPage<(PlaylumiGarden.COUNT-1)/2?
+                "🌿 Meer planten ontdekken →":"↩ Eerste planten","",
+                0xffe7dcff,76);
+        addTile(more,13);
+        more.setOnClickListener(v->{
+            gardenPage=gardenPage<(PlaylumiGarden.COUNT-1)/2?gardenPage+1:0;
+            showPage();
+        });
+    }
+    private void showGardenPlant() {
+        int plant=gardenPlant;
+        header("🌿 "+PlaylumiGarden.NAMES[plant],"Help jouw plant groeien!");
+        PlaylumiGardenView view=new PlaylumiGardenView(this,garden,plant);
+        LinearLayout.LayoutParams scene=new LinearLayout.LayoutParams(-1,dp(257));
+        scene.setMargins(dp(4),dp(7),dp(4),dp(13));
+        root.addView(view,scene);
+        addText("💚 "+garden.stage(plant)+" van "+PlaylumiGarden.STAGES+
+                " groeistapjes",21,0xff2a876a,2,8);
+        if(!gardenMessage.isEmpty())addText(gardenMessage,17,0xff6a4293,0,9);
+        if(garden.bloomed(plant)) {
+            TextView fact=text("💡 "+PlaylumiGarden.FACTS[plant],19,0xff65458a);
+            fact.setPadding(dp(13),dp(17),dp(13),dp(17));
+            fact.setBackground(rounded(0xffe5f7ee,25));
+            addWidget(fact,0,16);
+            if(sound.isEnabled()) {
+                Button listen=tile("🔊 Vertel iets over deze plant","",0xffeee2ff,61);
+                addTile(listen,6);
+                listen.setOnClickListener(v->sound.speak(PlaylumiGarden.FACTS[plant]));
+            }
+            addText("🏅 Je hebt deze plant helemaal grootgebracht!",17,0xff398a72,4,8);
+        } else {
+            int action=garden.nextAction(plant);
+            String title=action==PlaylumiGarden.WATER?
+                    "💧 Geef je plant water!":"☀️ Zet je plant in de zon!";
+            Button grow=tile(title,action==PlaylumiGarden.WATER?
+                    "Help het zaadje wakker te worden":"De plant heeft licht nodig",
+                    action==PlaylumiGarden.WATER?0xffd6eeff:0xffffeac3,116);
+            addTile(grow,11);
+            grow.setOnClickListener(v->{
+                int result=garden.grow(plant,action);
+                saveGarden();
+                if(result==1) {
+                    wardrobe.earnGardenBonus();
+                    saveWardrobe();
+                    sound.unlock();
+                    gardenMessage="🎉 Nieuwe plant! +"+
+                            PlaylumiGarden.FIRST_BLOOM_STARS+" speelsterren";
+                } else {
+                    sound.sparkle();
+                    gardenMessage=action==PlaylumiGarden.WATER?
+                            "💧 Goed gedaan! Het plantje groeit!":"☀️ Heerlijk, wat fijn zonlicht!";
+                }
+                showPage();
+                if(result==1) {
+                    FrameLayout current=stage;
+                    current.post(()->{
+                        if(stage==current)PlaylumiMotion.celebrate(current,10);
+                    });
+                }
+            });
+        }
+        Button back=tile("🌸 Kies een andere plant","",0xffe8dcff,84);
+        addTile(back,10);
+        back.setOnClickListener(v->move(GARDEN_MENU));
+    }
+
 }
