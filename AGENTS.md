@@ -40,3 +40,6 @@ The existing twelve plants now advance one stage per completed learning session.
 
 ## Playlumi 0.33.0 navigation and customization
 Always show four intuitive menu tabs (Start, Spelen, Aanpassen, Tuin) without covering content or blocking games. Show every customization category and all seven items directly without page navigation; preserve all owned items, worn items and earned star balances. Do not change parent gates. Every release must provide a new privately signed downloadable APK after CI and emulator smoke checks.
+
+## Playlumi 0.34.0 safe visual customization
+Do not auto-purchase a locked wardrobe or room option on tap. Show a temporary in-memory preview first, followed by a separate clearly priced confirmation. Owned items remain free to equip. Provide a horizontal category strip and All / Owned / To unlock filters. Save only confirmed purchases and user-chosen owned items. Maintain consistent profile-scoped state and never upload private signing keys. A completed update requires a newly signed APK with CI+emulator evidence.

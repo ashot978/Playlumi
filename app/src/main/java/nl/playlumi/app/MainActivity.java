@@ -14,6 +14,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -58,6 +59,8 @@ public class MainActivity extends Activity {
     private int page,age,world,categoryPage,variantPage,badgePage,difficulty;
     private int closetPage,shopPage,selectedSlot;
     private String shopMessage="";
+    private int outfitPreview=-1, roomPreview=-1;
+    private int outfitFilter=PlaylumiTryOn.ALL, roomFilter=PlaylumiTryOn.ALL;
     private int sessionSolved,sessionAttempts,earnedBadge=-1,lifetimeCount;
     private boolean moving,answerLocked,greeted;
     private int mascotTapCount;
@@ -168,6 +171,10 @@ public class MainActivity extends Activity {
             shopPage=state.getInt("shopPage",0);
             starStagePage=state.getInt("starStagePage",0);
             selectedSlot=state.getInt("selectedSlot",0);
+            outfitPreview=state.getInt("outfitPreview",-1);
+            roomPreview=state.getInt("roomPreview",-1);
+            outfitFilter=state.getInt("outfitFilter",PlaylumiTryOn.ALL);
+            roomFilter=state.getInt("roomFilter",PlaylumiTryOn.ALL);
             carePage=state.getInt("carePage",0);
             albumPage=state.getInt("albumPage",0);
             gardenPage=state.getInt("gardenPage",0);
@@ -306,6 +313,10 @@ public class MainActivity extends Activity {
         out.putInt("shopPage",shopPage);
         out.putInt("starStagePage",starStagePage);
         out.putInt("selectedSlot",selectedSlot);
+        out.putInt("outfitPreview",outfitPreview);
+        out.putInt("roomPreview",roomPreview);
+        out.putInt("outfitFilter",outfitFilter);
+        out.putInt("roomFilter",roomFilter);
         out.putInt("carePage",carePage);
         out.putInt("albumPage",albumPage);
         out.putInt("gardenPage",gardenPage);
@@ -580,7 +591,9 @@ public class MainActivity extends Activity {
             holder.setBackground(softCard(0xffbdece5,29));
             holder.setElevation(dp(4));
         }
-        character=new PlaylumiCharacterView(this,wardrobe);
+        PlaylumiWardrobe display=page==SHOP && outfitPreview>=0 ?
+                PlaylumiTryOn.previewWardrobe(wardrobe,selectedSlot,outfitPreview) : wardrobe;
+        character=new PlaylumiCharacterView(this,display);
         character.setContentDescription("Jouw stervriendje. Tik voor een magische verrassing.");
         character.setOnClickListener(v->{
             mascotTapCount++;
@@ -789,6 +802,72 @@ public class MainActivity extends Activity {
         bar.setMargins(dp(10),0,dp(10),dp(8));
         stage.addView(nav,bar);
         quickNavBar=nav;
+    }
+
+    /** Horizontal, always visible shortcuts between the six/five customization sections. */
+    private void addCategoryStrip(boolean outfitMode) {
+        int slots=outfitMode?PlaylumiWardrobe.SLOTS:PlaylumiRoom.SLOTS;
+        int selected=outfitMode?selectedSlot:roomSlot;
+        HorizontalScrollView scroll=new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setFillViewport(false);
+        LinearLayout row=new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(2),dp(3),dp(2),dp(3));
+        for(int i=0;i<slots;i++) {
+            final int target=i;
+            String icon=outfitMode?PlaylumiWardrobe.SLOT_ICONS[i]:
+                    PlaylumiRoom.SLOT_ICONS[i];
+            String title=outfitMode?PlaylumiWardrobe.SLOT_NAMES[i]:
+                    PlaylumiRoom.LABELS[i];
+            Button tab=tile(icon+" "+title,"",i==selected?0xffc8f2e2:0xffeaf1ff,57);
+            tab.setTextSize(13);
+            tab.setMaxLines(2);
+            tab.setGravity(Gravity.CENTER);
+            tab.setMinWidth(dp(116));
+            LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(dp(121),dp(60));
+            cell.setMargins(dp(2),0,dp(2),0);
+            row.addView(tab,cell);
+            tab.setOnClickListener(v->{
+                if(outfitMode) {
+                    selectedSlot=target;outfitPreview=-1;shopMessage="";
+                    outfitFilter=PlaylumiTryOn.ALL;
+                } else {
+                    roomSlot=target;roomPreview=-1;roomMessage="";
+                    roomFilter=PlaylumiTryOn.ALL;
+                }
+                showPage();
+            });
+        }
+        scroll.addView(row);
+        LinearLayout.LayoutParams position=new LinearLayout.LayoutParams(-1,dp(67));
+        position.setMargins(0,dp(2),0,dp(3));
+        root.addView(scroll,position);
+        scroll.post(()->scroll.smoothScrollTo(Math.max(0,selected-1)*dp(121),0));
+    }
+
+    /** See only owned items, or items still to unlock, without extra pages. */
+    private void addItemFilter(boolean outfitMode,int slot) {
+        LinearLayout row=new LinearLayout(this);
+        for(int filter=0;filter<PlaylumiTryOn.FILTERS;filter++) {
+            final int target=filter;
+            int active=outfitMode?outfitFilter:roomFilter;
+            int count=outfitMode?PlaylumiTryOn.wardrobeCount(wardrobe,slot,filter):
+                    PlaylumiTryOn.roomCount(room,slot,filter);
+            Button tab=tile(PlaylumiTryOn.FILTER_LABELS[filter]+" ("+count+")","",
+                    filter==active?0xffd2f3df:0xffecf0fc,53);
+            tab.setTextSize(12);
+            tab.setPadding(dp(2),dp(4),dp(2),dp(4));
+            LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(55),1f);
+            cell.setMargins(dp(2),0,dp(2),0);
+            row.addView(tab,cell);
+            tab.setOnClickListener(v->{
+                if(outfitMode) outfitFilter=target;
+                else roomFilter=target;
+                redrawKeepingScroll();
+            });
+        }
+        root.addView(row,new LinearLayout.LayoutParams(-1,-2));
     }
 
     /** Compact, touch-friendly grid that shows every item without page cycling. */
@@ -1616,52 +1695,84 @@ public class MainActivity extends Activity {
             String equipped=PlaylumiWardrobe.ITEM_NAMES[slot][wardrobe.equipped(slot)];
             Button b=tile(title,"Nu: "+equipped,COLORS[slot%COLORS.length],89);
             b.setOnClickListener(v->{
-                selectedSlot=selected;shopMessage="";move(SHOP);
+                selectedSlot=selected;shopMessage="";outfitPreview=-1;
+                outfitFilter=PlaylumiTryOn.ALL;move(SHOP);
             });
             options.add(b);
         }
         addOptionGrid(options,98);
     }
 
-    /** All seven items visible as scrollable grid; one tap to buy or equip. */
+    /**
+     * First tap tries a locked item on the star without buying it.
+     * Only the large, clearly priced confirmation spends earned stars.
+     */
     private void showShop() {
         final int slot=selectedSlot;
-        header(PlaylumiWardrobe.SLOT_ICONS[slot]+" "+PlaylumiWardrobe.SLOT_NAMES[slot],
-                "Kies wat je wilt dragen.");
-        characterHero(110);
+        header("🎀 Stervriend aanpassen","Probeer alles eerst rustig uit.");
+        addCategoryStrip(true);
+        characterHero(169);
         addText("⭐ "+wardrobe.stars()+" speelsterren",18,
                 PlaylumiVisualStyle.SUCCESS,0,5);
+        if(outfitPreview>=0 && !wardrobe.owned(slot,outfitPreview)) {
+            final int item=outfitPreview;
+            addText(PlaylumiTryOn.previewLabel(false,
+                    PlaylumiWardrobe.ITEM_NAMES[slot][item]),17,TEXT,1,6);
+            int cost=wardrobe.price(slot,item);
+            Button confirm=tile("⭐ Vrijspelen voor "+cost+" sterren",
+                    "Pas na deze knop gebruik je sterren",0xffc8efd9,79);
+            addTile(confirm,4);
+            confirm.setOnClickListener(v->{
+                int result=wardrobe.buyOrEquip(slot,item);
+                if(result==PlaylumiWardrobe.NOT_ENOUGH) {
+                    shopMessage="💛 Nog "+Math.max(0,cost-wardrobe.stars())+
+                            " speelsterren nodig.";
+                } else {
+                    saveWardrobe();
+                    sound.unlock();
+                    outfitPreview=-1;
+                    shopMessage="🎉 Nieuw item! Je ster draagt het nu.";
+                }
+                redrawKeepingScroll();
+            });
+        } else {
+            addText("👀 Tik op een item om het te zien. Wat je bezit is gratis.",
+                    14,SUB,0,5);
+        }
         if(!shopMessage.isEmpty())addText(shopMessage,16,0xff5b3b90,0,6);
+        addItemFilter(true,slot);
         java.util.List<Button> items=new java.util.ArrayList<>();
         for(int item=0;item<PlaylumiWardrobe.OPTIONS;item++) {
-            final int selected=item;
+            final int chosen=item;
+            boolean owned=wardrobe.owned(slot,item);
+            if(!PlaylumiTryOn.showItem(owned,outfitFilter))continue;
             String title=PlaylumiWardrobe.ITEM_ICONS[slot][item]+" "+
                     PlaylumiWardrobe.ITEM_NAMES[slot][item];
-            String status=PlaylumiQuickNav.wardrobeStatus(wardrobe,slot,item);
-            Button b=tile(title,status,
+            String status=wardrobe.equipped(slot)==item?"✅ Nu aan":
+                    outfitPreview==item?"👀 Bekijk hierboven":
+                    PlaylumiQuickNav.wardrobeStatus(wardrobe,slot,item);
+            Button button=tile(title,status,
+                    outfitPreview==item?0xfffae4b5:
                     wardrobe.equipped(slot)==item?0xffc8f1d8:
-                    wardrobe.owned(slot,item)?0xffe6f8f1:
-                    COLORS[(slot+item)%COLORS.length],92);
-            b.setOnClickListener(v->{
-                int result=wardrobe.buyOrEquip(slot,selected);
-                if(result==PlaylumiWardrobe.NOT_ENOUGH) {
-                    int needed=wardrobe.price(slot,selected)-wardrobe.stars();
-                    shopMessage="💛 Nog "+needed+" sterren nodig.";
-                    redrawKeepingScroll();
-                    return;
+                    owned?0xffe6f8f1:COLORS[(slot+item)%COLORS.length],93);
+            button.setOnClickListener(v->{
+                if(wardrobe.owned(slot,chosen)) {
+                    wardrobe.buyOrEquip(slot,chosen); // free for an owned item
+                    saveWardrobe();
+                    outfitPreview=-1;
+                    shopMessage="✨ Aangetrokken!";
+                    sound.sparkle();
+                } else {
+                    outfitPreview=chosen; // no mutation of real wardrobe/wallet
+                    shopMessage="";
+                    sound.tap();
                 }
-                saveWardrobe();
-                if(result==PlaylumiWardrobe.PURCHASED) sound.unlock();
-                else sound.sparkle();
-                shopMessage=result==PlaylumiWardrobe.PURCHASED?
-                        "🎉 Vrijgespeeld en aangetrokken!":"✨ Aangetrokken!";
                 redrawKeepingScroll();
-                if(character!=null)PlaylumiDelight.sprinkle(stage,character);
             });
-            items.add(b);
+            items.add(button);
         }
-        addOptionGrid(items,105);
-        Button back=tile("🎀 Andere categorie kiezen","",0xffe7dfff,65);
+        addOptionGrid(items,102);
+        Button back=tile("🎀 Terug naar alle categorieën","",0xffe7dfff,65);
         addTile(back,5);back.setOnClickListener(v->move(CLOSET));
     }
 
@@ -1871,7 +1982,9 @@ public class MainActivity extends Activity {
 
 
     private void roomPreview(int height) {
-        PlaylumiRoomView view=new PlaylumiRoomView(this,room,wardrobe);
+        PlaylumiRoom display=page==ROOM_ITEMS && roomPreview>=0 ?
+                PlaylumiTryOn.previewRoom(room,roomSlot,roomPreview) : room;
+        PlaylumiRoomView view=new PlaylumiRoomView(this,display,wardrobe);
         int available=PlaylumiLayout.sceneHeight(height,landscapeScreen(),
                 getResources().getConfiguration().screenHeightDp);
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(available));
@@ -1909,7 +2022,8 @@ public class MainActivity extends Activity {
                     "Nu: "+PlaylumiRoom.NAMES[slot][room.selected(slot)],
                     COLORS[slot%COLORS.length],95);
             b.setOnClickListener(v->{
-                roomSlot=selected;roomMessage="";move(ROOM_ITEMS);
+                roomSlot=selected;roomMessage="";roomPreview=-1;
+                roomFilter=PlaylumiTryOn.ALL;move(ROOM_ITEMS);
             });
             options.add(b);
         }
@@ -1919,44 +2033,73 @@ public class MainActivity extends Activity {
         gardenButton.setOnClickListener(v->move(GARDEN_MENU));
     }
 
-    /** No room item pagination; all 7 items in a single overview. */
+    /** See the room change BEFORE buying a new decoration. */
     private void showRoomItems() {
         final int slot=roomSlot;
-        header(PlaylumiRoom.SLOT_ICONS[slot]+" "+PlaylumiRoom.LABELS[slot],
-                "Zo ziet je kamer eruit.");
-        roomPreview(147);
+        header("🏠 Kamer aanpassen","Bekijk eerst je nieuwe inrichting.");
+        addCategoryStrip(false);
+        roomPreview(195);
         addText("⭐ "+wardrobe.stars()+" speelsterren",18,
                 PlaylumiVisualStyle.SUCCESS,0,5);
+        if(roomPreview>=0 && !room.owned(slot,roomPreview)) {
+            final int item=roomPreview;
+            int price=room.cost(slot,item);
+            addText(PlaylumiTryOn.previewLabel(false,
+                    PlaylumiRoom.NAMES[slot][item]),17,TEXT,1,6);
+            Button confirm=tile("⭐ Plaatsen voor "+price+" sterren",
+                    "Pas na deze knop gebruik je sterren",0xffc8efd9,79);
+            addTile(confirm,4);
+            confirm.setOnClickListener(v->{
+                int cost=room.cost(slot,item);
+                if(!wardrobe.spendStars(cost)) {
+                    roomMessage="💛 Nog "+
+                            Math.max(0,cost-wardrobe.stars())+" sterren nodig.";
+                } else {
+                    room.unlockAndSelect(slot,item);
+                    saveRoom();saveWardrobe();
+                    roomPreview=-1;
+                    sound.unlock();
+                    roomMessage="🎉 Vrijgespeeld en geplaatst!";
+                }
+                redrawKeepingScroll();
+            });
+        } else {
+            addText("👀 Tik op een item: bekijk eerst hoe je kamer eruitziet.",
+                    14,SUB,0,5);
+        }
         if(!roomMessage.isEmpty())addText(roomMessage,16,0xff4e4291,0,7);
+        addItemFilter(false,slot);
         java.util.List<Button> options=new java.util.ArrayList<>();
         for(int item=0;item<PlaylumiRoom.OPTIONS;item++) {
             final int chosen=item;
-            boolean selected=room.selected(slot)==item;
-            Button b=tile(PlaylumiRoom.ICONS[slot][item]+" "+
+            boolean owned=room.owned(slot,item);
+            if(!PlaylumiTryOn.showItem(owned,roomFilter))continue;
+            boolean equipped=room.selected(slot)==item;
+            Button button=tile(PlaylumiRoom.ICONS[slot][item]+" "+
                     PlaylumiRoom.NAMES[slot][item],
+                    equipped?"✅ Nu in je kamer":
+                    roomPreview==item?"👀 Bekijk hierboven":
                     PlaylumiQuickNav.roomStatus(room,slot,item),
-                    selected?0xffd2f5db:
-                    room.owned(slot,item)?0xffe4f4e9:COLORS[(slot+item)%6],96);
-            b.setOnClickListener(v->{
-                int price=room.cost(slot,chosen);
-                if(price>wardrobe.stars() || !wardrobe.spendStars(price)) {
-                    roomMessage="💛 Nog "+
-                            Math.max(0,price-wardrobe.stars())+
-                            " speelsterren nodig.";
-                    redrawKeepingScroll();
-                    return;
+                    roomPreview==item?0xffffe8b9:
+                    equipped?0xffd2f5db:
+                    owned?0xffe4f4e9:COLORS[(slot+item)%6],96);
+            button.setOnClickListener(v->{
+                if(room.owned(slot,chosen)) {
+                    room.select(slot,chosen); // free to use already-owned items
+                    saveRoom();
+                    roomPreview=-1;
+                    roomMessage="✨ Je kamer is aangepast!";
+                    sound.sparkle();
+                } else {
+                    roomPreview=chosen;
+                    roomMessage="";
+                    sound.tap();
                 }
-                boolean newItem=!room.owned(slot,chosen);
-                room.unlockAndSelect(slot,chosen);
-                saveRoom();saveWardrobe();
-                if(newItem)sound.unlock();else sound.sparkle();
-                roomMessage=newItem?"🎉 Vrijgespeeld en geplaatst!":
-                        "✨ Je kamer is aangepast!";
                 redrawKeepingScroll();
             });
-            options.add(b);
+            options.add(button);
         }
-        addOptionGrid(options,103);
+        addOptionGrid(options,105);
         Button back=tile("🏠 Andere kameronderdelen","",0xffe7dfff,65);
         addTile(back,5);back.setOnClickListener(v->move(ROOM_CATS));
     }
