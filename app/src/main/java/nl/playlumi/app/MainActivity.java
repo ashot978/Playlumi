@@ -73,6 +73,8 @@ public class MainActivity extends Activity {
     private PlaylumiGarden garden;
     private int gardenPage,gardenPlant;
     private String gardenMessage="";
+    private String gardenRoundNotice="";
+    private PlaylumiGardenView visibleGarden;
     private int roomPage,roomItemPage,roomSlot;
     private String roomMessage="";
     private PlaylumiCharacterView character;
@@ -169,6 +171,7 @@ public class MainActivity extends Activity {
             albumPage=state.getInt("albumPage",0);
             gardenPage=state.getInt("gardenPage",0);
             gardenPlant=state.getInt("gardenPlant",0);
+            gardenRoundNotice=state.getString("gardenRoundNotice","");
             sessionSolved=state.getInt("sessionSolved",0);
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
@@ -306,6 +309,7 @@ public class MainActivity extends Activity {
         out.putInt("albumPage",albumPage);
         out.putInt("gardenPage",gardenPage);
         out.putInt("gardenPlant",gardenPlant);
+        out.putString("gardenRoundNotice",gardenRoundNotice);
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
@@ -1267,6 +1271,23 @@ public class MainActivity extends Activity {
             }
             wardrobe.earnAnswer();
             wardrobe.earnBadges(newBadges.size());
+            if(sessionSolved==sessionGoal()) {
+                // The exact session-completion event advances ONE garden stage.
+                // Existing manual-care controls and first-bloom reward remain valid.
+                PlaylumiGardenJourney.Growth growth=
+                        PlaylumiGardenJourney.afterCompletedRound(garden);
+                if(growth!=null) {
+                    saveGarden();
+                    gardenRoundNotice="🌱 "+PlaylumiGarden.NAMES[growth.plant]+
+                            " groeit! "+growth.toStage+" / "+PlaylumiGarden.STAGES;
+                    if(growth.firstBloom) {
+                        wardrobe.earnGardenBonus();
+                        gardenRoundNotice="🌸 "+PlaylumiGarden.NAMES[growth.plant]+
+                                " staat in bloei! +"+
+                                PlaylumiGarden.FIRST_BLOOM_STARS+" sterren";
+                    }
+                } else gardenRoundNotice="🌸 Je hele tuin staat in bloei!";
+            }
             saveWardrobe();
             pendingBadges.addAll(newBadges);
             nextButton.setVisibility(View.VISIBLE);
@@ -1312,6 +1333,8 @@ public class MainActivity extends Activity {
         if(storyStage>=0) {
             header("🏆 Avontuur voltooid!","");
             characterHero(172);
+            if(!gardenRoundNotice.isEmpty())
+                addText(gardenRoundNotice,18,PlaylumiVisualStyle.SUCCESS,4,9);
             addText(PlaylumiAdventure.ICONS[world][storyStage]+"  "+
                     PlaylumiAdventure.TITLES[world][storyStage],24,0xff543c97,12,8);
             addText("Je hebt "+sessionGoal()+" uitdagingen opgelost!",17,SUB,0,10);
@@ -1333,6 +1356,8 @@ public class MainActivity extends Activity {
         }
         header("🏆 Jij bent een kampioen!","");
         characterHero(145);
+        if(!gardenRoundNotice.isEmpty())
+            addText(gardenRoundNotice,18,PlaylumiVisualStyle.SUCCESS,4,9);
         addText("🌟 "+sessionGoal()+" vragen goed!",27,0xff4b3488,9,9);
         addText("Dat was knap! Zin in nog een ronde?",17,SUB,0,12);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
@@ -2665,9 +2690,11 @@ public class MainActivity extends Activity {
 
     /** Show two seeds at once rather than a crowded garden catalogue. */
     private void showGardenMenu() {
-        header("🌱 Mijn Magische Tuin","Kies een plant die je wilt laten groeien.");
+        header("🌱 Mijn Magische Tuin","Jouw speelrondes laten de planten groeien!");
         addText("🌸 "+garden.bloomedCount()+" van "+PlaylumiGarden.COUNT+
-                " planten in bloei",20,0xff43886e,6,8);
+                " planten in bloei",20,PlaylumiVisualStyle.SUCCESS,6,8);
+        addText("✨ Iedere afgeronde speelronde helpt een plant een stapje!",
+                16,SUB,1,7);
         addText((gardenPage+1)+" / "+((PlaylumiGarden.COUNT+1)/2),15,0xff926db4,0,6);
         for(int p=gardenPage*2;p<Math.min(PlaylumiGarden.COUNT,gardenPage*2+2);p++) {
             final int plant=p;
@@ -2702,6 +2729,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams scene=new LinearLayout.LayoutParams(-1,dp(gardenHeight));
         scene.setMargins(dp(3),dp(3),dp(3),dp(7));
         root.addView(view,scene);
+        visibleGarden=view;
         view.setContentDescription("Magische plant "+PlaylumiGarden.NAMES[plant]+
                 ". Tik om extra sterren te ontdekken.");
         view.setClickable(true);view.setFocusable(true);
@@ -2733,6 +2761,7 @@ public class MainActivity extends Activity {
                     action==PlaylumiGarden.WATER?0xffd6eeff:0xffffeac3,116);
             addTile(grow,11);
             grow.setOnClickListener(v->{
+                int before=garden.stage(plant);
                 int result=garden.grow(plant,action);
                 saveGarden();
                 if(result==1) {
@@ -2747,6 +2776,8 @@ public class MainActivity extends Activity {
                             "💧 Goed gedaan! Het plantje groeit!":"☀️ Heerlijk, wat fijn zonlicht!";
                 }
                 showPage();
+                if(result>=0 && visibleGarden!=null)
+                    visibleGarden.animateGrowth(before,action);
                 if(result==1) {
                     FrameLayout current=stage;
                     current.post(()->{
