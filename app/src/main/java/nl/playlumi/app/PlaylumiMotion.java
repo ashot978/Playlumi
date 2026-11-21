@@ -3,6 +3,7 @@ package nl.playlumi.app;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
+import android.animation.ValueAnimator;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.graphics.Color;
@@ -51,6 +52,22 @@ public final class PlaylumiMotion {
             }
             return false;
         });
+    }
+    /** Friendly floating mascot; stops cleanly when its screen is removed. */
+    public static void floatMascot(View view) {
+        if (android.os.Build.VERSION.SDK_INT>=26 && !ValueAnimator.areAnimatorsEnabled()) return;
+        ObjectAnimator bob=ObjectAnimator.ofFloat(view,View.TRANSLATION_Y,0f,-dp(view,8),0f);
+        bob.setDuration(2300);
+        bob.setInterpolator(new AccelerateDecelerateInterpolator());
+        bob.setRepeatCount(ValueAnimator.INFINITE);
+        view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) { if(!bob.isStarted()) bob.start(); }
+            @Override public void onViewDetachedFromWindow(View v) {
+                bob.cancel();
+                v.removeOnAttachStateChangeListener(this);
+            }
+        });
+        if(view.isAttachedToWindow())bob.start();
     }
     public static void shake(View view) {
         ObjectAnimator x = ObjectAnimator.ofFloat(view, View.TRANSLATION_X,
