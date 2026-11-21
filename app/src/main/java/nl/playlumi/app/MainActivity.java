@@ -1709,4 +1709,33 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    /** A toy stage: children choose a single funny movement at a time. */
+    private void showStarStage() {
+        header("🎭 Het Sterrenpodium","Jij bent de regisseur van je stervriend!");
+        characterHero(232);
+        addText("Tik op een groot plaatje en kijk wat er gebeurt.",16,SUB,8,14);
+        Button dance=tile("💃 Doe een sterrendans!","",0xffffe1bc,103);
+        addTile(dance,8);
+        dance.setOnClickListener(v->{
+            if(character!=null)character.dance();
+            sound.dance();
+            PlaylumiMotion.pop(dance);
+        });
+        Button wave=tile("👋 Zwaai naar mij!","",0xffd6f3e1,103);
+        addTile(wave,8);
+        wave.setOnClickListener(v->{
+            if(character!=null)character.wave();
+            sound.hello();
+            PlaylumiMotion.pop(wave);
+        });
+        Button magic=tile("✨ Laat sterren toveren!","",0xffe8d9ff,103);
+        addTile(magic,8);
+        magic.setOnClickListener(v->{
+            if(character!=null)character.twirl();
+            sound.sparkle();
+            PlaylumiMotion.celebrate(stage,10);
+        });
+    }
+
 }
