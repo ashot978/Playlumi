@@ -613,6 +613,7 @@ public class MainActivity extends Activity {
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
+        final LinearLayout currentRoot=root;
         final ScrollView currentScroller=scroller;
         stage.setOnApplyWindowInsetsListener((v,insets)->{
             if(scroller==currentScroller) {
