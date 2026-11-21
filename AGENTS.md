@@ -15,3 +15,11 @@ merge to main or publish to stores without an explicit request.
 
 ## Look & feel 0.28.0
 Apply the shared native design language across screens. Preserve game rules, stored scores, profiles and stable app identity. A finished update must include a newly built signed APK and passing Android build, lint and emulator launch; never publish private signing materials.
+
+## 0.29.0 Question decks
+Every one of the 24 learning games, five styles and three difficulty levels
+must expose 300 valid distinct question cards in a random order. Reshuffle
+on every game opening and on "Nog een ronde". Preserve the eight-question
+short-session length and local progress. Theme cards may repeat preschool
+concepts; never misrepresent them as 300 new facts. Ship a signed APK after
+passing Android and emulator checks; do not publish credentials or merge.

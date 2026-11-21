@@ -1008,7 +1008,7 @@ public class MainActivity extends Activity {
         int start=variantPage*2;
         for(int i=start;i<Math.min(start+2,names.length);i++) {
             final int selection=i;
-            Button b=tile(icons[i]+"  "+names[i],"8 opdrachten per speelronde",COLORS[i%6],115);
+            Button b=tile(icons[i]+"  "+names[i],"8 per ronde · 300 vragen op dit niveau",COLORS[i%6],115);
             addTile(b,11);
             b.setOnClickListener(v->{
                 if(smartDifficulty)difficulty=adaptive.level(game.mode(),Math.max(0,age));
@@ -1317,7 +1317,13 @@ public class MainActivity extends Activity {
         PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{
             sessionSolved=0;sessionAttempts=0;
-            advanceRegularRound();move(PLAY);
+            if(smartDifficulty && pendingLevel>=0) {
+                difficulty=pendingLevel;
+                pendingLevel=-1;
+            }
+            game.configure(game.mode(),game.variant(),difficulty);
+            saveRecent();
+            move(PLAY);
         });
         Button home=tile("🌈 Ander spelletje","",0xffeadbff,82);
         addTile(home,6);
