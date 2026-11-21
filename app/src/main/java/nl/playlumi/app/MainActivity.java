@@ -29,7 +29,8 @@ public class MainActivity extends Activity {
             VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11,
             MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15,
             ROOM=16, ROOM_CATS=17, ROOM_ITEMS=18,
-            TROPHY_WORLDS=19, TROPHY_CATS=20;
+            TROPHY_WORLDS=19, TROPHY_CATS=20,
+            STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -73,6 +74,10 @@ public class MainActivity extends Activity {
     private boolean miniSolved;
     private PlaylumiAdventure adventures;
     private PlaylumiAdaptive adaptive;
+    private PlaylumiStories stories;
+    private PlaylumiDrawingView drawing;
+    private int storyLibraryPage;
+    private boolean storyJustCompleted;
     private boolean smartDifficulty,roundHadMistake;
     private boolean badgesFromTrophy;
     private int trophyWorld,trophyPage;
@@ -127,7 +132,13 @@ public class MainActivity extends Activity {
             badgesFromTrophy=state.getBoolean("badgesFromTrophy",false);
             trophyWorld=state.getInt("trophyWorld",0);
             trophyPage=state.getInt("trophyPage",0);
+            storyLibraryPage=state.getInt("storyLibraryPage",0);
+            storyJustCompleted=state.getBoolean("storyJustCompleted",false);
         }
+        stories=new PlaylumiStories();
+        stories.restore(prefs.getInt("stories_completed",0),prefs.getInt("stories_current",-1),
+                prefs.getInt("stories_step",0),prefs.getInt("stories_alts",0),
+                prefs.getInt("stories_choice",-1));
         adaptive=new PlaylumiAdaptive();
         for(int cat=0;cat<PlaylumiScores.CATEGORIES;cat++)
             adaptive.restore(cat,prefs.getInt("learn_lvl_"+cat,-1),
@@ -190,6 +201,8 @@ public class MainActivity extends Activity {
         out.putBoolean("badgesFromTrophy",badgesFromTrophy);
         out.putInt("trophyWorld",trophyWorld);
         out.putInt("trophyPage",trophyPage);
+        out.putInt("storyLibraryPage",storyLibraryPage);
+        out.putBoolean("storyJustCompleted",storyJustCompleted);
         out.putInt("roomPage",roomPage);
         out.putInt("roomItemPage",roomItemPage);
         out.putInt("roomSlot",roomSlot);
@@ -210,6 +223,9 @@ public class MainActivity extends Activity {
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
         if(page==TROPHY_WORLDS) {move(AVATAR);return;}
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
+        if(page==STORY_LIBRARY) {move(WORLD_HUB);return;}
+        if(page==STORY_PLAY || page==STORY_REACTION || page==STORY_END) {move(STORY_LIBRARY);return;}
+        if(page==DRAW) {move(WORLD_HUB);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
@@ -241,6 +257,13 @@ public class MainActivity extends Activity {
             edit.putInt("wardrobe_worn_"+i,wardrobe.equipped(i));
         }
         edit.apply();
+    }
+    private void saveStories() {
+        prefs().edit().putInt("stories_completed",stories.completionMask())
+                .putInt("stories_current",stories.currentStory())
+                .putInt("stories_step",stories.step())
+                .putInt("stories_alts",stories.secondaryChoices())
+                .putInt("stories_choice",stories.choice()).apply();
     }
     private void saveRoom() {
         SharedPreferences.Editor edit=prefs().edit();
@@ -408,6 +431,11 @@ public class MainActivity extends Activity {
             case ROOM_ITEMS: showRoomItems();break;
             case TROPHY_WORLDS: showTrophyWorlds();break;
             case TROPHY_CATS: showTrophyCats();break;
+            case STORY_LIBRARY: showStoryLibrary();break;
+            case STORY_PLAY: showStoryPlay();break;
+            case STORY_REACTION: showStoryReaction();break;
+            case STORY_END: showStoryEnd();break;
+            case DRAW: showDrawing();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
