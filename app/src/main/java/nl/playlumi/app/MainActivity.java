@@ -206,8 +206,14 @@ public class MainActivity extends Activity {
         if(sound!=null)sound.close();
         super.onDestroy();
     }
+    @Override protected void onResume() {
+        super.onResume();
+        activeSince=SystemClock.elapsedRealtime();
+    }
     @Override protected void onPause() {
         if(page==DRAW && drawing!=null)drawing.save();
+        saveUsage();
+        activeSince=0;
         super.onPause();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -276,6 +282,24 @@ public class MainActivity extends Activity {
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
+    }
+    private int dayStamp() {
+        Calendar c=Calendar.getInstance();
+        return c.get(Calendar.YEAR)*10000+(c.get(Calendar.MONTH)+1)*100+c.get(Calendar.DAY_OF_MONTH);
+    }
+    private void saveUsage() {
+        if(usage==null)return;
+        int day=dayStamp();
+        if(prefs().getInt("usage_day",-1)!=day)usage.startNewDay();
+        if(activeSince>0) {
+            long now=SystemClock.elapsedRealtime();
+            long elapsed=Math.max(0,(now-activeSince)/1000L);
+            usage.addSeconds((int)Math.min(86400L,elapsed));
+            activeSince=now;
+        }
+        prefs().edit().putInt("usage_day",day).putInt("usage_seconds",usage.seconds())
+                .putInt("usage_limit",usage.limit())
+                .putBoolean("usage_break_shown",usage.breakShown()).apply();
     }
     private SharedPreferences prefs() {return getPreferences(MODE_PRIVATE);}
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
@@ -435,6 +459,8 @@ public class MainActivity extends Activity {
         if(subtitle!=null && !subtitle.isEmpty())addText(subtitle,14,SUB,0,16);
     }
     private void showPage() {
+        if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
+                page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
@@ -489,21 +515,34 @@ public class MainActivity extends Activity {
             case BREAK_SCREEN: showBreakScreen();break;
             default: throw new IllegalStateException("page");
         }
-        stage.setAlpha(0f);stage.setTranslationX(dp(22));
-        stage.animate().alpha(1).translationX(0).setDuration(280)
-                .setInterpolator(new DecelerateInterpolator()).start();
-        root.post(()->{if(root==currentRoot)PlaylumiMotion.reveal(currentRoot);});
+        if(!PlaylumiMotion.isReduced()) {
+            stage.setAlpha(0f);stage.setTranslationX(dp(22));
+            stage.animate().alpha(1).translationX(0).setDuration(280)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+            root.post(()->{if(root==currentRoot)PlaylumiMotion.reveal(currentRoot);});
+        }
     }
     private void move(int next) {
         if(moving)return;
+        saveUsage();
+        if(usage!=null && page!=BREAK_SCREEN && next!=BREAK_SCREEN &&
+                next!=PARENT_GATE && next!=PARENT_HOME &&
+                next!=PARENT_WORLDS && next!=PARENT_STATS && next!=PARENT_SETTINGS &&
+                usage.shouldSuggestBreak()) {
+            breakReturn=next;next=BREAK_SCREEN;saveUsage();
+        }
+        if(PlaylumiMotion.isReduced()) {
+            page=next;showPage();return;
+        }
         moving=true;
         if(sound!=null)sound.tap();
         FrameLayout previous=stage;
+        final int destination=next;
         previous.animate().cancel();
         previous.animate().alpha(0f).translationX(-dp(23)).setDuration(165)
                 .withEndAction(()->{
                     if(stage!=previous){moving=false;return;}
-                    page=next;moving=false;showPage();
+                    page=destination;moving=false;showPage();
                 }).start();
     }
     private void showAge() {
