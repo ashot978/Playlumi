@@ -26,7 +26,8 @@ import java.util.Random;
 /** One choice per screen, a separate learning world menu, and native Android play motion. */
 public class MainActivity extends Activity {
     private static final int AGE=0, HOME=1, CATEGORIES=2, DETAIL=3, LEVEL=4,
-            VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11;
+            VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11,
+            MINI_MENU=12, MINI_PLAY=13;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -60,6 +61,10 @@ public class MainActivity extends Activity {
     private ProgressBar roundProgress;
     private Button nextButton;
     private String feedback="";
+    private PlaylumiAudio sound;
+    private PlaylumiMiniChallenge mini;
+    private int miniKind,miniRound,rewardReturn=PLAY;
+    private boolean miniSolved;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -69,6 +74,7 @@ public class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=26) flags|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         getWindow().getDecorView().setSystemUiVisibility(flags);
         SharedPreferences prefs=getPreferences(MODE_PRIVATE);
+        sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
         age=prefs.getInt("chosen_age",-1);
         lifetimeCount=prefs.getInt("completed_all",0);
         int mode=prefs.getInt("game_mode",0);
@@ -92,6 +98,9 @@ public class MainActivity extends Activity {
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
             earnedBadge=state.getInt("earnedBadge",-1);
+            miniKind=state.getInt("miniKind",0);
+            miniRound=state.getInt("miniRound",0);
+            rewardReturn=state.getInt("rewardReturn",PLAY);
         }
         scores=new PlaylumiScores();
         for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
@@ -114,9 +123,13 @@ public class MainActivity extends Activity {
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
+        if(page==MINI_PLAY)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         showPage();
     }
-
+    @Override protected void onDestroy() {
+        if(sound!=null)sound.close();
+        super.onDestroy();
+    }
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putInt("age",age);out.putInt("mode",game.mode());out.putInt("variant",game.variant());
         out.putInt("difficulty",difficulty);out.putInt("world",world);
@@ -127,6 +140,9 @@ public class MainActivity extends Activity {
         out.putInt("closetPage",closetPage);
         out.putInt("shopPage",shopPage);
         out.putInt("selectedSlot",selectedSlot);
+        out.putInt("miniKind",miniKind);
+        out.putInt("miniRound",miniRound);
+        out.putInt("rewardReturn",rewardReturn);
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
@@ -135,6 +151,8 @@ public class MainActivity extends Activity {
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
         if(page==SHOP) {move(CLOSET);return;}
+        if(page==MINI_PLAY) {move(MINI_MENU);return;}
+        if(page==MINI_MENU) {move(HOME);return;}
         int back=page==CATEGORIES?HOME:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
@@ -299,6 +317,8 @@ public class MainActivity extends Activity {
             case AVATAR: showAvatar();break;
             case CLOSET: showCloset();break;
             case SHOP: showShop();break;
+            case MINI_MENU: showMiniMenu();break;
+            case MINI_PLAY: showMiniPlay();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
@@ -309,6 +329,7 @@ public class MainActivity extends Activity {
     private void move(int next) {
         if(moving)return;
         moving=true;
+        if(sound!=null)sound.tap();
         FrameLayout previous=stage;
         previous.animate().cancel();
         previous.animate().alpha(0f).translationX(-dp(23)).setDuration(165)
