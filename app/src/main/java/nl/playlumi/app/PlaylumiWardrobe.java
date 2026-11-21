@@ -94,6 +94,13 @@ public final class PlaylumiWardrobe {
         allTimeStars+=amount;
     }
     /** Buy once, equip forever; returns whether item was purchased, equipped or unaffordable. */
+    /** Room decorations use the same earned-star wallet. No real money is involved. */
+    public boolean spendStars(int amount) {
+        if(amount<0)throw new IllegalArgumentException("negative price");
+        if(stars<amount)return false;
+        stars-=amount;
+        return true;
+    }
     public int buyOrEquip(int slot,int item) {
         validate(slot,item);
         if(owned(slot,item)) {
