@@ -22,21 +22,9 @@ jobs:
           gradle-version: '8.9'
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((10000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((12000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
-      - name: Make unsigned APK only on explicit manual build
-        if: github.event_name == 'workflow_dispatch'
-        run: gradle assembleRelease
-      - name: Save unsigned APK only for manual, private signing
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: playlumi-unsigned-release-apk
-          path: app/build/outputs/apk/release/*-unsigned.apk
-          if-no-files-found: error
-          retention-days: 7
-
   emulator-launch:
     needs: build
     runs-on: ubuntu-latest
@@ -48,6 +36,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -64,9 +54,21 @@ jobs:
           profile: pixel_5
           disable-animations: true
           script: bash tools/smoke-android.sh
+      - name: Use increasing Android version code
+        shell: bash
+        run: echo "PLAYLUMI_BUILD_CODE=$((12000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Build unsigned release for local private signing
+        run: gradle assembleRelease
+      - name: Save verified unsigned APK for private signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-unsigned-release-apk
+          path: app/build/outputs/apk/release/*-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
       - name: Clarify what was NOT tested
         if: always()
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
-          echo "The smoke test only checks emulator startup without an immediate crash." >> "$GITHUB_STEP_SUMMARY"
-          echo "Full game interaction, in-place upgrade and Samsung tests are still required before any release." >> "$GITHUB_STEP_SUMMARY"
+          echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash." >> "$GITHUB_STEP_SUMMARY"
+          echo "Unsigned APK artifact must be privately signed. Full gameplay and Samsung update tests are still required for stable release." >> "$GITHUB_STEP_SUMMARY"
