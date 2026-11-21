@@ -650,6 +650,13 @@ public class MainActivity extends Activity {
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             feedback="⭐ Goed gedaan! +3 🌟";
+            if(smartDifficulty && storyStage<0) {
+                if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
+                    pendingLevel=adaptive.level(mode,Math.max(0,age));
+                    feedback="🌟 Wat knap! Een nieuwe uitdaging!";
+                }
+                saveAdaptive(mode);
+            }
             sound.good();
             if(playPal!=null)playPal.dance();
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
@@ -686,6 +693,7 @@ public class MainActivity extends Activity {
             feedbackText.announceForAccessibility(feedback);
         } else {
             feedback="💛 Probeer nog eens!";
+            roundHadMistake=true;
             sound.mistake();
             if(playPal!=null)playPal.react(2);
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffa86a29);
@@ -694,13 +702,20 @@ public class MainActivity extends Activity {
         }
         saveScore(mode);
     }
+    private void advanceRegularRound() {
+        if(smartDifficulty && storyStage<0 && pendingLevel>=0) {
+            difficulty=pendingLevel;
+            game.configure(game.mode(),game.variant(),difficulty);
+            pendingLevel=-1;
+        } else game.nextRound();
+        roundHadMistake=false;
+        saveRecent();
+    }
     private void continueAfterAnswer() {
         if(!pendingBadges.isEmpty()) {
             earnedBadge=pendingBadges.remove(0);move(REWARD);return;
         }
-        if(sessionSolved<sessionGoal()) {
-            game.nextRound();saveRecent();
-        }
+        if(sessionSolved<sessionGoal()) advanceRegularRound();
         feedback="";
         move(PLAY);
     }
@@ -735,7 +750,7 @@ public class MainActivity extends Activity {
         addTile(again,6);
         again.setOnClickListener(v->{
             sessionSolved=0;sessionAttempts=0;
-            game.nextRound();saveRecent();move(PLAY);
+            advanceRegularRound();move(PLAY);
         });
         Button home=tile("🌈 Ander spelletje","",0xffeadbff,82);
         addTile(home,6);
@@ -782,7 +797,7 @@ public class MainActivity extends Activity {
             earnedBadge=pendingBadges.remove(0);showPage();return;
         }
         earnedBadge=-1;
-        if(sessionSolved<sessionGoal()) {game.nextRound();saveRecent();}
+        if(sessionSolved<sessionGoal()) advanceRegularRound();
         feedback="";move(PLAY);
     }
 
