@@ -1067,6 +1067,15 @@ public class MainActivity extends Activity {
         Button free=tile("🎲 Zelf een spel kiezen","Alle spellen in deze wereld",0xffffe2b8,111);
         addTile(free,10);
         free.setOnClickListener(v->{categoryPage=0;move(CATEGORIES);});
+        if(world==0) {
+            Button drawing=tile("🖍️ Tekenstudio","Teken je eigen kunstwerk",0xffe9d9ff,103);
+            addTile(drawing,8);
+            drawing.setOnClickListener(v->move(DRAW));
+        } else if(world==1) {
+            Button books=tile("📖 Verhalenbos","Maak zelf keuzes in zes verhalen",0xffe9d9ff,103);
+            addTile(books,8);
+            books.setOnClickListener(v->{storyLibraryPage=0;move(STORY_LIBRARY);});
+        }
     }
     private void showAdventureMap() {
         header("🗺️ Op avontuur!","Volg de sterren en ontdek nieuwe plekken");
