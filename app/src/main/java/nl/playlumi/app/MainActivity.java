@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
-            MUSIC_PLAY=37;
+            MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -67,6 +67,9 @@ public class MainActivity extends Activity {
     private int carePage,albumPage;
     private String careMessage="";
     private PlaylumiRoom room;
+    private PlaylumiGarden garden;
+    private int gardenPage,gardenPlant;
+    private String gardenMessage="";
     private int roomPage,roomItemPage,roomSlot;
     private String roomMessage="";
     private PlaylumiCharacterView character;
@@ -154,6 +157,8 @@ public class MainActivity extends Activity {
             selectedSlot=state.getInt("selectedSlot",0);
             carePage=state.getInt("carePage",0);
             albumPage=state.getInt("albumPage",0);
+            gardenPage=state.getInt("gardenPage",0);
+            gardenPlant=state.getInt("gardenPlant",0);
             sessionSolved=state.getInt("sessionSolved",0);
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
@@ -218,6 +223,10 @@ public class MainActivity extends Activity {
         friends.restoreRewards(prefs.getInt("friends_rewarded",0));
         for(int f=0;f<PlaylumiFriends.FRIENDS;f++)
             friends.restore(f,prefs.getInt("friends_care_"+f,0));
+        garden=new PlaylumiGarden();
+        garden.restoreRewards(prefs.getInt("garden_rewarded",0));
+        for(int p=0;p<PlaylumiGarden.COUNT;p++)
+            garden.restorePlant(p,prefs.getInt("garden_stage_"+p,0));
         room=new PlaylumiRoom();
         for(int slot=0;slot<PlaylumiRoom.SLOTS;slot++)
             room.restore(slot,prefs.getInt("room_mask_"+slot,1),
@@ -275,6 +284,8 @@ public class MainActivity extends Activity {
         out.putInt("selectedSlot",selectedSlot);
         out.putInt("carePage",carePage);
         out.putInt("albumPage",albumPage);
+        out.putInt("gardenPage",gardenPage);
+        out.putInt("gardenPlant",gardenPlant);
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
@@ -321,6 +332,8 @@ public class MainActivity extends Activity {
         if(page==SHOP) {move(CLOSET);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
+        if(page==GARDEN_MENU) {move(ROOM);return;}
+        if(page==GARDEN_PLANT) {move(GARDEN_MENU);return;}
         if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
@@ -407,6 +420,12 @@ public class MainActivity extends Activity {
         for(int i=0;i<PlaylumiFriends.FRIENDS;i++)
             editor.putInt("friends_care_"+i,friends.mask(i));
         editor.apply();
+    }
+    private void saveGarden() {
+        SharedPreferences.Editor e=prefs().edit().putInt("garden_rewarded",garden.rewardMask());
+        for(int i=0;i<PlaylumiGarden.COUNT;i++)
+            e.putInt("garden_stage_"+i,garden.stage(i));
+        e.apply();
     }
     private void saveRoom() {
         SharedPreferences.Editor edit=prefs().edit();
@@ -594,6 +613,8 @@ public class MainActivity extends Activity {
             case FRIEND_CARE: showFriendCare();break;
             case FRIEND_ALBUM: showFriendAlbum();break;
             case MUSIC_PLAY: showMusicPlay();break;
+            case GARDEN_MENU: showGardenMenu();break;
+            case GARDEN_PLANT: showGardenPlant();break;
             case BUBBLE_PLAY: showBubblePlay();break;
             default: throw new IllegalStateException("page");
         }
@@ -1361,6 +1382,10 @@ public class MainActivity extends Activity {
                 0xffd5f2df,109);
         addTile(decorate,8);
         decorate.setOnClickListener(v->{roomPage=0;move(ROOM_CATS);});
+        Button gardening=tile("🌱 Mijn Magische Tuin","Plant en verzorg twaalf bijzondere planten",
+                0xffd5f4de,111);
+        addTile(gardening,8);
+        gardening.setOnClickListener(v->{gardenPage=0;move(GARDEN_MENU);});
         Button friend=tile("⭐ Terug naar je stervriend","",0xffe8dcff,77);
         addTile(friend,8);
         friend.setOnClickListener(v->move(AVATAR));
