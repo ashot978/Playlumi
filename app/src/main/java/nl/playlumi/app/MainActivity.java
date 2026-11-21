@@ -27,7 +27,7 @@ import java.util.Random;
 public class MainActivity extends Activity {
     private static final int AGE=0, HOME=1, CATEGORIES=2, DETAIL=3, LEVEL=4,
             VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11,
-            MINI_MENU=12, MINI_PLAY=13;
+            MINI_MENU=12, MINI_PLAY=13, WORLD_HUB=14, ADVENTURE_MAP=15;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -66,6 +66,8 @@ public class MainActivity extends Activity {
     private PlaylumiCharacterView playPal;
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
+    private PlaylumiAdventure adventures;
+    private int storyStage=-1,storyPage;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -102,7 +104,12 @@ public class MainActivity extends Activity {
             miniKind=state.getInt("miniKind",0);
             miniRound=state.getInt("miniRound",0);
             rewardReturn=state.getInt("rewardReturn",PLAY);
+            storyStage=state.getInt("storyStage",-1);
+            storyPage=state.getInt("storyPage",0);
         }
+        adventures=new PlaylumiAdventure();
+        for(int w=0;w<PlaylumiAdventure.WORLDS;w++)
+            adventures.restore(w,prefs.getInt("adventure_progress_"+w,0));
         scores=new PlaylumiScores();
         for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
             String prefix="score_"+i+"_";
@@ -144,6 +151,8 @@ public class MainActivity extends Activity {
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("rewardReturn",rewardReturn);
+        out.putInt("storyStage",storyStage);
+        out.putInt("storyPage",storyPage);
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
@@ -154,7 +163,10 @@ public class MainActivity extends Activity {
         if(page==SHOP) {move(CLOSET);return;}
         if(page==MINI_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
-        int back=page==CATEGORIES?HOME:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
+        if(page==WORLD_HUB) {move(HOME);return;}
+        if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
+        if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
+        int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
     }
@@ -330,6 +342,8 @@ public class MainActivity extends Activity {
             case SHOP: showShop();break;
             case MINI_MENU: showMiniMenu();break;
             case MINI_PLAY: showMiniPlay();break;
+            case WORLD_HUB: showWorldHub();break;
+            case ADVENTURE_MAP: showAdventureMap();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
@@ -379,7 +393,7 @@ public class MainActivity extends Activity {
             final int selected=i;
             Button b=tile(WORLD_ICONS[i]+"  "+WORLDS[i],WORLD_DESCS[i],COLORS[i],105);
             addTile(b,5);
-            b.setOnClickListener(v->{world=selected;categoryPage=0;move(CATEGORIES);});
+            b.setOnClickListener(v->{world=selected;categoryPage=0;storyPage=0;move(WORLD_HUB);});
         }
         Button change=tile("🎂 Leeftijd: "+AGES[age],"",0xfff1e9ff,54);
         addTile(change,12);
@@ -410,6 +424,7 @@ public class MainActivity extends Activity {
         more.setOnClickListener(v->{categoryPage=1-categoryPage;showPage();});
     }
     private void selectCategory(int category) {
+        storyStage=-1;
         game.configure(category,0,Math.max(0,age));
         difficulty=Math.max(0,age);
         prefs().edit().putInt("game_mode",category).apply();
@@ -481,6 +496,7 @@ public class MainActivity extends Activity {
                 game.configure(game.mode(),selection,difficulty);
                 saveRecent();
                 prefs().edit().putInt("game_variant",selection).apply();
+                storyStage=-1;
                 sessionSolved=0;sessionAttempts=0;feedback="";
                 pendingBadges.clear();
                 move(PLAY);
