@@ -1,0 +1,33 @@
+name: Motion core checks (not APK release)
+on:
+  push:
+    branches: [main, "feature/**", "fix/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-quality:
+    name: Motion tests and privacy guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Test all motion curves
+        run: bash scripts/test-motion.sh
+      - name: Check committed files
+        run: python3 scripts/check-repository.py
+      - name: Explain release status
+        shell: bash
+        run: |
+          echo "## Playlumi quality gates" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Motion module unit tests: checked." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Binary/signing-secret exclusion: checked." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Android source/project and emulator smoke test: **not yet available**." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Signed APK release: **BLOCKED**. Do not mistake this green workflow for a tested app." >> "$GITHUB_STEP_SUMMARY"
