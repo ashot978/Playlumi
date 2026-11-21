@@ -16,7 +16,7 @@ public final class PlaylumiScores {
     };
     public static final String[] BADGE_HINTS = {
             "1 goed antwoord", "10 goede antwoorden", "50 goede antwoorden",
-            "200 goede antwoorden", "5 antwoorden achter elkaar", "Een sessie van 200 afronden"
+            "200 goede antwoorden", "5 antwoorden achter elkaar", "Een korte speelronde afronden"
     };
     public static final int BADGES = BADGE_NAMES.length;
     private final Score[] scores = new Score[CATEGORIES];
