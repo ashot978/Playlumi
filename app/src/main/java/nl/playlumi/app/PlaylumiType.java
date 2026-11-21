@@ -19,12 +19,12 @@ public final class PlaylumiType {
         int secondBreak = firstBreak < 0 ? -1 : body.indexOf('\n', firstBreak + 1);
         if (secondBreak >= 0) {
             // Category cards: giant illustration, large category name, small explanation.
-            styled.setSpan(new RelativeSizeSpan(2.0f), 0, firstBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new RelativeSizeSpan(1.08f), firstBreak + 1, secondBreak,
+            styled.setSpan(new RelativeSizeSpan(1.6f), 0, firstBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styled.setSpan(new RelativeSizeSpan(1.02f), firstBreak + 1, secondBreak,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             styled.setSpan(new StyleSpan(Typeface.BOLD), firstBreak + 1, secondBreak,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new RelativeSizeSpan(.70f), secondBreak + 1, body.length(),
+            styled.setSpan(new RelativeSizeSpan(.78f), secondBreak + 1, body.length(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             styled.setSpan(new ForegroundColorSpan(0xff68617d), secondBreak + 1, body.length(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -33,15 +33,15 @@ public final class PlaylumiType {
             if (containsEmoji(body.substring(0, firstBreak))) {
                 int split = body.indexOf(' ');
                 if (split < 0 || split > firstBreak) split = firstBreak;
-                styled.setSpan(new RelativeSizeSpan(1.55f), 0, split, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                styled.setSpan(new RelativeSizeSpan(1.30f), 0, split, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
-            styled.setSpan(new RelativeSizeSpan(description.isEmpty() ? 1.1f : .78f),
+            styled.setSpan(new RelativeSizeSpan(description.isEmpty() ? 1.0f : .86f),
                     firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (!description.isEmpty()) styled.setSpan(new ForegroundColorSpan(0xff68617d),
                     firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (containsEmoji(body)) {
             int split=body.indexOf(' ');
-            if(split>0)styled.setSpan(new RelativeSizeSpan(1.5f),0,split,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if(split>0)styled.setSpan(new RelativeSizeSpan(1.27f),0,split,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return styled;
     }
