@@ -71,6 +71,9 @@ public class MainActivity extends Activity {
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
     private PlaylumiAdventure adventures;
+    private PlaylumiAdaptive adaptive;
+    private boolean smartDifficulty,roundHadMistake;
+    private int pendingLevel=-1;
     private int storyStage=-1,storyPage;
     private boolean storyNewReward;
 
@@ -115,7 +118,15 @@ public class MainActivity extends Activity {
             roomItemPage=state.getInt("roomItemPage",0);
             roomSlot=state.getInt("roomSlot",0);
             storyNewReward=state.getBoolean("storyNewReward",false);
+            smartDifficulty=state.getBoolean("smartDifficulty",smartDifficulty);
+            roundHadMistake=state.getBoolean("roundHadMistake",false);
+            pendingLevel=state.getInt("pendingLevel",-1);
         }
+        adaptive=new PlaylumiAdaptive();
+        for(int cat=0;cat<PlaylumiScores.CATEGORIES;cat++)
+            adaptive.restore(cat,prefs.getInt("learn_lvl_"+cat,-1),
+                    prefs.getInt("learn_seen_"+cat,0),prefs.getInt("learn_good_"+cat,0));
+        smartDifficulty=prefs.getBoolean("smart_mode",false);
         adventures=new PlaylumiAdventure();
         for(int w=0;w<PlaylumiAdventure.WORLDS;w++)
             adventures.restore(w,prefs.getInt("adventure_progress_"+w,0));
@@ -167,6 +178,9 @@ public class MainActivity extends Activity {
         out.putInt("storyStage",storyStage);
         out.putInt("storyPage",storyPage);
         out.putBoolean("storyNewReward",storyNewReward);
+        out.putBoolean("smartDifficulty",smartDifficulty);
+        out.putBoolean("roundHadMistake",roundHadMistake);
+        out.putInt("pendingLevel",pendingLevel);
         out.putInt("roomPage",roomPage);
         out.putInt("roomItemPage",roomItemPage);
         out.putInt("roomSlot",roomSlot);
@@ -192,6 +206,11 @@ public class MainActivity extends Activity {
     }
     private SharedPreferences prefs() {return getPreferences(MODE_PRIVATE);}
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
+    private void saveAdaptive(int cat) {
+        prefs().edit().putInt("learn_lvl_"+cat,adaptive.level(cat,Math.max(0,age)))
+                .putInt("learn_seen_"+cat,adaptive.sampleCount(cat))
+                .putInt("learn_good_"+cat,adaptive.sampleCorrect(cat)).apply();
+    }
     private void saveScore(int mode) {
         PlaylumiScores.Score s=scores.get(mode);
         String prefix="score_"+mode+"_";
@@ -484,11 +503,25 @@ public class MainActivity extends Activity {
             Button b=tile(emojis[i]+"  "+LEVELS[i],descriptions[i],COLORS[i+1],119);
             addTile(b,11);
             b.setOnClickListener(v->{
+                smartDifficulty=false;
+                prefs().edit().putBoolean("smart_mode",false).apply();
+                roundHadMistake=false;pendingLevel=-1;
                 difficulty=selected;
                 game.configure(game.mode(),game.variant(),difficulty);
                 saveRecent();variantPage=0;move(VARIANTS);
             });
         }
+        Button smart=tile("✨ Slimme uitdaging","Playlumi past zich rustig aan jouw antwoorden aan",
+                0xffd8f1e9,105);
+        addTile(smart,11);
+        smart.setOnClickListener(v->{
+            smartDifficulty=true;
+            prefs().edit().putBoolean("smart_mode",true).apply();
+            roundHadMistake=false;pendingLevel=-1;
+            difficulty=adaptive.level(game.mode(),Math.max(0,age));
+            game.configure(game.mode(),game.variant(),difficulty);
+            saveRecent();variantPage=0;move(VARIANTS);
+        });
     }
     private String[] variantNames() {
         String[] first;
@@ -524,7 +557,9 @@ public class MainActivity extends Activity {
             Button b=tile(icons[i]+"  "+names[i],"200 vragen om te ontdekken",COLORS[i%6],115);
             addTile(b,11);
             b.setOnClickListener(v->{
+                if(smartDifficulty)difficulty=adaptive.level(game.mode(),Math.max(0,age));
                 game.configure(game.mode(),selection,difficulty);
+                roundHadMistake=false;pendingLevel=-1;
                 saveRecent();
                 prefs().edit().putInt("game_variant",selection).apply();
                 storyStage=-1;
@@ -993,6 +1028,7 @@ public class MainActivity extends Activity {
             addTile(b,9);
             b.setOnClickListener(v->{
                 storyStage=stageIndex;storyNewReward=false;
+                smartDifficulty=false;roundHadMistake=false;pendingLevel=-1;
                 int mode=adventures.category(world,stageIndex);
                 game.configure(mode,adventures.variant(stageIndex),Math.max(0,age));
                 sessionSolved=0;sessionAttempts=0;
