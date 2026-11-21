@@ -1196,6 +1196,10 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     private void showCompleted() {
+        final FrameLayout finishedScreen=stage;
+        finishedScreen.post(()->{
+            if(stage==finishedScreen)PlaylumiMotion.celebrate(stage,10);
+        });
         if(storyStage>=0) {
             header("🏆 Avontuur voltooid!","");
             characterHero(172);
@@ -1224,6 +1228,7 @@ public class MainActivity extends Activity {
         addText("Dat was knap! Zin in nog een ronde?",17,SUB,0,12);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
         addTile(again,6);
+        PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{
             sessionSolved=0;sessionAttempts=0;
             advanceRegularRound();move(PLAY);
@@ -2310,7 +2315,10 @@ public class MainActivity extends Activity {
                             PlaylumiFriends.FIRST_COMPLETE_BONUS+" sterren!";
                 }
                 showPage();
-                if(character!=null)character.dance();
+                if(character!=null){
+                    character.dance();
+                    PlaylumiDelight.sprinkle(stage,character);
+                }
                 if(rewarded) {
                     FrameLayout current=stage;
                     current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,8);});
