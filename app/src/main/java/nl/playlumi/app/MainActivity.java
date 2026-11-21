@@ -754,4 +754,107 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    private int miniCategory() {
+        return miniKind==PlaylumiMiniChallenge.DRAG?LearningGame.SHAPES:
+                miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.NUMBERS:LearningGame.PATTERNS;
+    }
+    private void showMiniMenu() {
+        header("🎪 Het speelplein","Kies een spel om echt mee te spelen!");
+        characterHero(134);
+        String[] detail={"Sleep het goede plaatje naar het huisje",
+                "Tik bewegende ballonnen met het juiste cijfer",
+                "Zoek twee dezelfde diertjes"};
+        for(int i=0;i<3;i++) {
+            final int chosen=i;
+            Button b=tile(PlaylumiMiniChallenge.ICONS[i]+"  "+PlaylumiMiniChallenge.NAMES[i],
+                    detail[i],COLORS[i],108);
+            addTile(b,8);
+            b.setOnClickListener(v->{
+                miniKind=chosen;
+                miniRound=0;
+                miniSolved=false;
+                pendingBadges.clear();
+                mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+                move(MINI_PLAY);
+            });
+        }
+    }
+    private void showMiniPlay() {
+        if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
+                "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
+        if(miniRound>=20) {
+            characterHero(150);
+            addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
+            Button again=tile("🔄 Nog eens spelen!","",0xffd4f5e0,96);
+            addTile(again,9);
+            again.setOnClickListener(v->{
+                miniRound=0;miniSolved=false;
+                mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+                move(MINI_PLAY);
+            });
+            Button back=tile("🎪 Andere minigame","",0xffe8dfff,86);
+            addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
+            return;
+        }
+        if(sound.isEnabled()) {
+            Button listen=tile("🔊 Luister naar de opdracht","",0xffeee4ff,49);
+            addTile(listen,0);
+            listen.setOnClickListener(v->sound.speak(mini.question));
+        }
+        PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
+            @Override public void onSolved() {
+                if(miniSolved)return;
+                miniSolved=true;
+                recordMiniAnswer();
+                if(nextButton!=null) {
+                    nextButton.setVisibility(View.VISIBLE);
+                    PlaylumiMotion.pop(nextButton);
+                    scroller.post(()->scroller.smoothScrollTo(0,
+                            Math.max(0,root.getHeight()-scroller.getHeight())));
+                }
+                PlaylumiMotion.celebrate(stage,miniRound+1);
+            }
+            @Override public void onMistake() {
+                sound.mistake();
+                // Memory pairs are practice, not a penalized test.
+            }
+            @Override public void onMatch() { sound.good(); }
+        });
+        LinearLayout.LayoutParams boardParams=new LinearLayout.LayoutParams(-1,-2);
+        boardParams.setMargins(dp(0),dp(6),dp(0),dp(10));
+        root.addView(board,boardParams);
+        nextButton=tile("🌟 Verder spelen!","",0xffc9f2dc,85);
+        addTile(nextButton,8);
+        nextButton.setVisibility(miniSolved?View.VISIBLE:View.GONE);
+        nextButton.setOnClickListener(v->afterMiniSolve());
+    }
+    private void recordMiniAnswer() {
+        int category=miniCategory();
+        ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(category,true));
+        lifetimeCount++;
+        wardrobe.earnAnswer();
+        wardrobe.earnBadges(newBadges.size());
+        saveWardrobe();
+        saveScore(category);
+        pendingBadges.addAll(newBadges);
+        sound.good();
+    }
+    private void afterMiniSolve() {
+        miniRound++;
+        if(!pendingBadges.isEmpty()) {
+            earnedBadge=pendingBadges.remove(0);
+            rewardReturn=MINI_PLAY;
+            move(REWARD);
+            return;
+        }
+        advanceMini();
+    }
+    private void advanceMini() {
+        mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        miniSolved=false;
+        move(MINI_PLAY);
+    }
+
 }
