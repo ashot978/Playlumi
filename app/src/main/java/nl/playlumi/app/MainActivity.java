@@ -35,7 +35,8 @@ public class MainActivity extends Activity {
             TROPHY_WORLDS=19, TROPHY_CATS=20,
             STORY_LIBRARY=21, STORY_PLAY=22, STORY_REACTION=23, STORY_END=24, DRAW=25,
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
-            PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33;
+            PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
+            BUBBLE_PLAY=34;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -77,6 +78,9 @@ public class MainActivity extends Activity {
     private PlaylumiCharacterView playPal;
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
+    private PlaylumiBubbles bubbles;
+    private int bubbleRound;
+    private boolean bubbleSolved;
     private PlaylumiAdventure adventures;
     private PlaylumiAdaptive adaptive;
     private PlaylumiUsage usage;
@@ -146,6 +150,8 @@ public class MainActivity extends Activity {
             earnedBadge=state.getInt("earnedBadge",-1);
             miniKind=state.getInt("miniKind",0);
             miniRound=state.getInt("miniRound",0);
+            bubbleRound=state.getInt("bubbleRound",0);
+            bubbleSolved=state.getBoolean("bubbleSolved",false);
             rewardReturn=state.getInt("rewardReturn",PLAY);
             storyStage=state.getInt("storyStage",-1);
             storyPage=state.getInt("storyPage",0);
@@ -206,6 +212,15 @@ public class MainActivity extends Activity {
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
         if(page==MINI_PLAY)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(page==BUBBLE_PLAY) {
+            if(state!=null && state.getInt("bubbleTotal",0)>0) {
+                try {
+                    bubbles=PlaylumiBubbles.restore(Math.max(0,age),state.getInt("bubbleTarget",0),
+                            state.getInt("bubbleTotal",0),state.getInt("bubbleMask",0));
+                } catch(IllegalArgumentException ignored) {}
+            }
+            if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        }
         showPage();
     }
     @Override protected void onDestroy() {
@@ -236,6 +251,13 @@ public class MainActivity extends Activity {
         out.putInt("selectedSlot",selectedSlot);
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
+        out.putInt("bubbleRound",bubbleRound);
+        out.putBoolean("bubbleSolved",bubbleSolved);
+        if(bubbles!=null) {
+            out.putInt("bubbleTarget",bubbles.target);
+            out.putInt("bubbleTotal",bubbles.total);
+            out.putInt("bubbleMask",bubbles.mask());
+        }
         out.putInt("rewardReturn",rewardReturn);
         out.putInt("storyStage",storyStage);
         out.putInt("storyPage",storyPage);
@@ -265,7 +287,7 @@ public class MainActivity extends Activity {
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
         if(page==SHOP) {move(CLOSET);return;}
-        if(page==MINI_PLAY) {move(MINI_MENU);return;}
+        if(page==MINI_PLAY || page==BUBBLE_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(HOME);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
@@ -529,6 +551,7 @@ public class MainActivity extends Activity {
             case BREAK_SCREEN: showBreakScreen();break;
             case PROFILES: showProfiles();break;
             case STAR_STAGE: showStarStage();break;
+            case BUBBLE_PLAY: showBubblePlay();break;
             default: throw new IllegalStateException("page");
         }
         if(!PlaylumiMotion.isReduced()) {
@@ -950,6 +973,13 @@ public class MainActivity extends Activity {
         }});
     }
     private void continueAfterBadge() {
+        if(rewardReturn==BUBBLE_PLAY) {
+            if(!pendingBadges.isEmpty()) {
+                earnedBadge=pendingBadges.remove(0);showPage();return;
+            }
+            earnedBadge=-1;rewardReturn=PLAY;
+            advanceBubbles();return;
+        }
         if(rewardReturn==MINI_PLAY) {
             if(!pendingBadges.isEmpty()) {
                 earnedBadge=pendingBadges.remove(0);showPage();return;
@@ -1099,6 +1129,15 @@ public class MainActivity extends Activity {
                 move(MINI_PLAY);
             });
         }
+        Button bubblesButton=tile("🫧 Bellenfeest","Laat precies genoeg bellen knappen!",
+                0xffd4ebff,113);
+        addTile(bubblesButton,9);
+        bubblesButton.setOnClickListener(v->{
+            bubbleRound=0;bubbleSolved=false;
+            bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+            pendingBadges.clear();
+            move(BUBBLE_PLAY);
+        });
     }
     private void showMiniPlay() {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
