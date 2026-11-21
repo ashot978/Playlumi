@@ -91,7 +91,11 @@ public class MainActivity extends Activity {
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
     private PlaylumiBubbles bubbles;
+    private SensoryChallengeDeck<PlaylumiBubbles> bubbleDeck;
+    private long bubbleDeckSeed;
     private PlaylumiMelody melody;
+    private SensoryChallengeDeck<PlaylumiMelody> melodyDeck;
+    private long melodyDeckSeed;
     private int melodyRound;
     private boolean melodySolved;
     private TextView melodyStatus;
@@ -243,22 +247,30 @@ public class MainActivity extends Activity {
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
         if(page==MINI_PLAY)startMiniDeck();
-        if(page==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
-            try {
-                melody=PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
-                        state.getInt("melodyProgress",0));
-            } catch(IllegalArgumentException ignored) {}
-        }
-        if(page==MUSIC_PLAY && melody==null)
-            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
-        if(page==BUBBLE_PLAY) {
-            if(state!=null && state.getInt("bubbleTotal",0)>0) {
+        if(page==MUSIC_PLAY || (page==REWARD && rewardReturn==MUSIC_PLAY)) {
+            restoreMelodyDeck(state);
+            if(state!=null && state.getIntArray("melodyNotes")!=null) {
                 try {
-                    bubbles=PlaylumiBubbles.restore(Math.max(0,age),state.getInt("bubbleTarget",0),
-                            state.getInt("bubbleTotal",0),state.getInt("bubbleMask",0));
+                    int[] order=state.getIntArray("melodyButtonOrder");
+                    melody=order==null?
+                            PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
+                                    state.getInt("melodyProgress",0)):
+                            PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
+                                    state.getInt("melodyProgress",0),order);
                 } catch(IllegalArgumentException ignored) {}
             }
-            if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        }
+        if(page==BUBBLE_PLAY || (page==REWARD && rewardReturn==BUBBLE_PLAY)) {
+            restoreBubbleDeck(state);
+            if(state!=null && state.getInt("bubbleTotal",0)>0) {
+                try {
+                    bubbles=PlaylumiBubbles.restore(Math.max(0,Math.min(2,age)),
+                            state.getInt("bubbleTarget",0),
+                            state.getInt("bubbleTotal",0),
+                            state.getInt("bubbleMask",0),
+                            state.getInt("bubbleLayout",0));
+                } catch(IllegalArgumentException ignored) {}
+            }
         }
         showPage();
     }
@@ -301,13 +313,23 @@ public class MainActivity extends Activity {
         out.putBoolean("melodySolved",melodySolved);
         if(melody!=null) {
             out.putIntArray("melodyNotes",melody.sequence());
+            out.putIntArray("melodyButtonOrder",melody.buttonOrder());
             out.putInt("melodyProgress",melody.progress());
+        }
+        if(melodyDeck!=null) {
+            out.putLong("melodyDeckSeed",melodyDeckSeed);
+            out.putInt("melodyDeckConsumed",melodyDeck.dealt());
         }
         out.putBoolean("bubbleSolved",bubbleSolved);
         if(bubbles!=null) {
             out.putInt("bubbleTarget",bubbles.target);
             out.putInt("bubbleTotal",bubbles.total);
             out.putInt("bubbleMask",bubbles.mask());
+            out.putInt("bubbleLayout",bubbles.layoutCode());
+        }
+        if(bubbleDeck!=null) {
+            out.putLong("bubbleDeckSeed",bubbleDeckSeed);
+            out.putInt("bubbleDeckConsumed",bubbleDeck.dealt());
         }
         out.putInt("rewardReturn",rewardReturn);
         out.putInt("storyStage",storyStage);
@@ -1542,7 +1564,7 @@ public class MainActivity extends Activity {
                 0xffd4ebff,104);
         bubblesButton.setOnClickListener(v->{
             bubbleRound=0;bubbleSolved=false;
-            bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+            startBubbleDeck();
             pendingBadges.clear();
             move(BUBBLE_PLAY);
         });
@@ -1551,7 +1573,7 @@ public class MainActivity extends Activity {
         musicButton.setOnClickListener(v->{
             melodyRound=0;melodySolved=false;
             pendingBadges.clear();
-            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+            startMelodyDeck();
             move(MUSIC_PLAY);
         });
         addTwo(first[0],first[1],103);
@@ -2306,9 +2328,40 @@ public class MainActivity extends Activity {
     }
 
 
+    private void startBubbleDeck() {
+        bubbleDeckSeed=new Random().nextLong();
+        bubbleDeck=SensoryChallengeDeck.bubbles(Math.max(0,Math.min(2,age)),bubbleDeckSeed);
+        bubbles=bubbleDeck.next();
+    }
+    private void restoreBubbleDeck(Bundle state) {
+        if(state==null || !state.containsKey("bubbleDeckSeed")) {
+            startBubbleDeck();return;
+        }
+        bubbleDeckSeed=state.getLong("bubbleDeckSeed");
+        bubbleDeck=SensoryChallengeDeck.bubbles(Math.max(0,Math.min(2,age)),bubbleDeckSeed);
+        try{bubbleDeck.skip(state.getInt("bubbleDeckConsumed",0));}
+        catch(IllegalArgumentException invalid){startBubbleDeck();}
+    }
+    private void startMelodyDeck() {
+        melodyDeckSeed=new Random().nextLong();
+        melodyDeck=SensoryChallengeDeck.melodies(Math.max(0,Math.min(2,age)),melodyDeckSeed);
+        melody=melodyDeck.next();
+    }
+    private void restoreMelodyDeck(Bundle state) {
+        if(state==null || !state.containsKey("melodyDeckSeed")) {
+            startMelodyDeck();return;
+        }
+        melodyDeckSeed=state.getLong("melodyDeckSeed");
+        melodyDeck=SensoryChallengeDeck.melodies(Math.max(0,Math.min(2,age)),melodyDeckSeed);
+        try{melodyDeck.skip(state.getInt("melodyDeckConsumed",0));}
+        catch(IllegalArgumentException invalid){startMelodyDeck();}
+    }
     /** New sensory counting minigame, with one clear goal at a time. */
     private void showBubblePlay() {
-        if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        if(bubbles==null) {
+            if(bubbleDeck==null)startBubbleDeck();
+            else bubbles=bubbleDeck.next();
+        }
         header("🫧 Het Bellenfeest","Ronde "+Math.min(bubbleRound+1,20)+" van 20");
         if(bubbleRound>=20) {
             characterHero(170);
@@ -2317,7 +2370,7 @@ public class MainActivity extends Activity {
             addTile(again,10);
             again.setOnClickListener(v->{
                 bubbleRound=0;bubbleSolved=false;
-                bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+                startBubbleDeck();
                 move(BUBBLE_PLAY);
             });
             Button back=tile("🎪 Een ander spel","",0xffe8deff,89);
@@ -2375,7 +2428,8 @@ public class MainActivity extends Activity {
     }
     private void advanceBubbles() {
         bubbleSolved=false;
-        bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+        if(bubbleDeck==null)startBubbleDeck();
+        else bubbles=bubbleDeck.next();
         move(BUBBLE_PLAY);
     }
 
@@ -2494,7 +2548,10 @@ public class MainActivity extends Activity {
         },melody.length()*470L+220L);
     }
     private void showMusicPlay() {
-        if(melody==null)melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        if(melody==null) {
+            if(melodyDeck==null)startMelodyDeck();
+            else melody=melodyDeck.next();
+        }
         header("🎵 Het Muziekatelier","Melodie "+Math.min(melodyRound+1,PlaylumiMelody.ROUNDS)+
                 " / "+PlaylumiMelody.ROUNDS);
         if(melodyRound>=PlaylumiMelody.ROUNDS) {
@@ -2504,15 +2561,21 @@ public class MainActivity extends Activity {
             addTile(again,9);
             again.setOnClickListener(v->{
                 melodyRound=0;melodySolved=false;
-                melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+                startMelodyDeck();
                 move(MUSIC_PLAY);
             });
             Button other=tile("🎪 Ander spelletje","",0xffe9deff,80);
             addTile(other,7);other.setOnClickListener(v->move(MINI_MENU));
             return;
         }
-        // More room for the musical instruments and large touch targets.
-        addText("🐸 🐱 🐥 🦋",31,0xff7652ac,8,7);
+        // Fresh order of the four familiar animals on each musical board.
+        int[] instrumentOrder=melody.buttonOrder();
+        StringBuilder instruments=new StringBuilder();
+        for(int note:instrumentOrder) {
+            if(instruments.length()>0)instruments.append("  ");
+            instruments.append(PlaylumiMelody.ANIMALS[note]);
+        }
+        addText(instruments.toString(),31,0xff7652ac,8,7);
         melodyStatus=text(sound.isEnabled()?
                 "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
                 20,0xff65418f);
@@ -2533,7 +2596,7 @@ public class MainActivity extends Activity {
             sound.sparkle();
         });
         for(int i=0;i<4;i+=2) {
-            final int first=i,second=i+1;
+            final int first=instrumentOrder[i],second=instrumentOrder[i+1];
             Button one=tile(PlaylumiMelody.ANIMALS[first]+"\n"+
                     PlaylumiMelody.NAMES[first],"",COLORS[first],107);
             Button two=tile(PlaylumiMelody.ANIMALS[second]+"\n"+
@@ -2594,7 +2657,8 @@ public class MainActivity extends Activity {
     }
     private void advanceMelody() {
         melodySolved=false;
-        melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        if(melodyDeck==null)startMelodyDeck();
+        else melody=melodyDeck.next();
         move(MUSIC_PLAY);
     }
 

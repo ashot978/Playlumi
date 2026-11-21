@@ -63,7 +63,7 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                 b.setPadding(dp(3),dp(3),dp(3),dp(3));
                 b.setContentDescription("Zeepbel "+(index+1)+" van "+state.total+", tik om te prikken");
                 GradientDrawable shape=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                        GRADIENTS[i%GRADIENTS.length]);
+                        GRADIENTS[state.paletteIndex(i)]);
                 shape.setShape(GradientDrawable.OVAL);
                 shape.setStroke(dp(2),0xeaffffff);
                 b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66ffffff),shape,null));

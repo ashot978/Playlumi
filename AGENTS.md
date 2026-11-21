@@ -31,3 +31,6 @@ levels, shuffled freshly on entry and again on Replay. Preserve the required
 drag/drop rule, correct matches, small-screen layouts, local data and rewards.
 A feature update must deliver a newly signed installable APK, with test and
 emulator evidence; never upload the private signing key.
+
+## Playlumi 0.31.0
+Bellenfeest and Muziekatelier use 300 distinctly shuffled playable layouts at each level. Preserve note identity, scores, local progress and saved bubble colors on rotation. Each finished feature release MUST include signed APK tested in CI and emulator; do not upload signing secrets.
