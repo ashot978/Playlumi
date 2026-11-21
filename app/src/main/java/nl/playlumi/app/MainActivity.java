@@ -1996,4 +1996,136 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    private String melodyIcons() {
+        if(melody==null)return "";
+        StringBuilder b=new StringBuilder();
+        for(int i=0;i<melody.length();i++){
+            if(i>0)b.append("  ");
+            b.append(PlaylumiMelody.ANIMALS[melody.noteAt(i)]);
+        }
+        return b.toString();
+    }
+    private void playMelodyPreview() {
+        if(melody==null || melodySolved)return;
+        final FrameLayout active=stage;
+        melodyStatus.setText("🎶 Luister goed ...");
+        for(int i=0;i<melody.length();i++) {
+            final int note=melody.noteAt(i);
+            final int beat=i;
+            active.postDelayed(()->{
+                if(stage!=active || page!=MUSIC_PLAY)return;
+                sound.note(note);
+                melodyStatus.setText("🎶 "+PlaylumiMelody.ANIMALS[note]+
+                        "  ("+(beat+1)+" / "+melody.length()+")");
+            },i*470L);
+        }
+        active.postDelayed(()->{
+            if(stage==active && page==MUSIC_PLAY)
+                melodyStatus.setText("🌟 Nu jij! Tik de dierenvriendjes aan.");
+        },melody.length()*470L+220L);
+    }
+    private void showMusicPlay() {
+        if(melody==null)melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        header("🎵 Het Muziekatelier","Melodie "+Math.min(melodyRound+1,PlaylumiMelody.ROUNDS)+
+                " / "+PlaylumiMelody.ROUNDS);
+        if(melodyRound>=PlaylumiMelody.ROUNDS) {
+            characterHero(170);
+            addText("🏆 Wat een muzikale ster!",26,0xff61418f,10,14);
+            Button again=tile("🎶 Nog eens muziek maken","",0xffd4f3dd,96);
+            addTile(again,9);
+            again.setOnClickListener(v->{
+                melodyRound=0;melodySolved=false;
+                melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+                move(MUSIC_PLAY);
+            });
+            Button other=tile("🎪 Ander spelletje","",0xffe9deff,80);
+            addTile(other,7);other.setOnClickListener(v->move(MINI_MENU));
+            return;
+        }
+        companion(95);
+        addText("🐸 🐱 🐥 🦋",31,0xff7652ac,8,7);
+        melodyStatus=text(sound.isEnabled()?
+                "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
+                20,0xff65418f);
+        melodyStatus.setPadding(dp(9),dp(14),dp(9),dp(14));
+        melodyStatus.setBackground(rounded(0xfff1e5ff,23));
+        addWidget(melodyStatus,5,11);
+        Button replay=tile(sound.isEnabled()?"🔊 Speel de melodie af":"👀 Bekijk de melodie",
+                "",0xffd5f0ff,87);
+        addTile(replay,8);
+        replay.setOnClickListener(v->{
+            if(sound.isEnabled())playMelodyPreview();
+            else melodyStatus.setText(melodyIcons());
+        });
+        Button reveal=tile("💡 Laat de volgorde zien","",0xffffedc3,61);
+        addTile(reveal,5);
+        reveal.setOnClickListener(v->{
+            melodyStatus.setText(melodyIcons());
+            sound.sparkle();
+        });
+        for(int i=0;i<4;i+=2) {
+            final int first=i,second=i+1;
+            Button one=tile(PlaylumiMelody.ANIMALS[first]+"\n"+
+                    PlaylumiMelody.NAMES[first],"",COLORS[first],107);
+            Button two=tile(PlaylumiMelody.ANIMALS[second]+"\n"+
+                    PlaylumiMelody.NAMES[second],"",COLORS[second],107);
+            addTwo(one,two,110);
+            one.setOnClickListener(v->tapMelody(first,one));
+            two.setOnClickListener(v->tapMelody(second,two));
+        }
+        if(melodySolved)melodyStatus.setText("🎉 Geweldig! Je kon de melodie spelen!");
+        nextButton=tile("🌟 Volgende melodie","",0xffd2f5da,90);
+        addTile(nextButton,10);
+        nextButton.setVisibility(melodySolved?View.VISIBLE:View.GONE);
+        nextButton.setOnClickListener(v->finishMelodyRound());
+    }
+    private void tapMelody(int note,Button pressed) {
+        if(melodySolved || melody==null)return;
+        sound.note(note);
+        int status=melody.tap(note);
+        if(status==0) {
+            melodyStatus.setText("💗 Oeps! Probeer de melodie nog eens.");
+            if(playPal!=null)playPal.react(2);
+            PlaylumiMotion.shake(pressed);
+        } else if(status==1) {
+            melodyStatus.setText("✨ Goed! "+melody.progress()+" van "+
+                    melody.length()+" tonen.");
+            PlaylumiMotion.pop(pressed);
+        } else if(status==2) {
+            melodySolved=true;
+            melodyStatus.setText("🎉 Helemaal goed! +3 speelsterren");
+            if(playPal!=null)playPal.dance();
+            PlaylumiMotion.celebrate(stage,melodyRound+2);
+            ArrayList<Integer> badges=new ArrayList<>(
+                    scores.answer(LearningGame.PATTERNS,true));
+            lifetimeCount++;
+            wardrobe.earnAnswer();
+            wardrobe.earnBadges(badges.size());
+            saveWardrobe();saveScore(LearningGame.PATTERNS);
+            pendingBadges.addAll(badges);
+            sound.good();
+            nextButton.setVisibility(View.VISIBLE);
+            PlaylumiMotion.pop(nextButton);
+            scroller.post(()->scroller.smoothScrollTo(0,
+                    Math.max(0,root.getHeight()-scroller.getHeight())));
+        }
+    }
+    private void finishMelodyRound() {
+        if(!melodySolved)return;
+        melodyRound++;
+        if(!pendingBadges.isEmpty()){
+            earnedBadge=pendingBadges.remove(0);
+            rewardReturn=MUSIC_PLAY;
+            move(REWARD);
+            return;
+        }
+        advanceMelody();
+    }
+    private void advanceMelody() {
+        melodySolved=false;
+        melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        move(MUSIC_PLAY);
+    }
+
 }
