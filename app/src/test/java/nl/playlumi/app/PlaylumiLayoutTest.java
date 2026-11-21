@@ -4,6 +4,9 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class PlaylumiLayoutTest {
+    @Test public void miniSessionsAreAchievableWithoutErasingLifetimeProgress() {
+        assertEquals(8,PlaylumiLayout.SHORT_ROUND_QUESTIONS);
+    }
     @Test public void smallerPhonesKeepComfortableTouchTargets() {
         assertFalse(PlaylumiLayout.useWideLayout(360,false));
         assertEquals(12,PlaylumiLayout.sidePadding(360));
