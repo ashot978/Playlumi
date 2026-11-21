@@ -37,7 +37,8 @@ public class MainActivity extends Activity {
             PARENT_GATE=26, PARENT_HOME=27, PARENT_WORLDS=28, PARENT_STATS=29,
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
-            MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39;
+            MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
+            WORLD_PICKER=40, HOME_OPTIONS=41;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -325,7 +326,13 @@ public class MainActivity extends Activity {
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
-        if(page==AGE || page==HOME) { super.onBackPressed(); return; }
+        if(page==AGE) {
+            if(prefs().contains("chosen_age"))move(HOME_OPTIONS);
+            else super.onBackPressed();
+            return;
+        }
+        if(page==HOME) {super.onBackPressed();return;}
+        if(page==WORLD_PICKER || page==HOME_OPTIONS) {move(HOME);return;}
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
@@ -336,7 +343,7 @@ public class MainActivity extends Activity {
         if(page==GARDEN_PLANT) {move(GARDEN_MENU);return;}
         if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
-        if(page==WORLD_HUB) {move(HOME);return;}
+        if(page==WORLD_HUB) {move(WORLD_PICKER);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
         if(page==STAR_STAGE) {move(AVATAR);return;}
         if(page==ROOM) {move(AVATAR);return;}
@@ -649,6 +656,8 @@ public class MainActivity extends Activity {
         switch(page) {
             case AGE: showAge();break;
             case HOME: showHome();break;
+            case WORLD_PICKER: showWorldPicker();break;
+            case HOME_OPTIONS: showHomeOptions();break;
             case CATEGORIES: showCategories();break;
             case DETAIL: showDetail();break;
             case LEVEL: showLevel();break;
@@ -736,43 +745,69 @@ public class MainActivity extends Activity {
         }
     }
     private void showHome() {
-        header("🌟 Kies een wereld","Waar wil je vandaag spelen?");
-        characterHero(158);
-        addText("✨ "+wardrobe.stars()+" speelsterren",19,0xffb87a2e,3,8);
-        Button miniButton=tile("🎪 Het speelplein","Sleep, tik en zoek! Drie bewegende spellen",0xffd0f6e3,94);
-        addTile(miniButton,4);
-        miniButton.setOnClickListener(v->move(MINI_MENU));
-        Button avatarButton=tile("🎁 Mijn stervriend","Kleed je eigen karakter aan",0xffffdfb4,98);
-        addTile(avatarButton,4);
-        avatarButton.setOnClickListener(v->move(AVATAR));
+        header("🌟 Welkom bij Playlumi","Wat zullen we vandaag doen?");
+        characterHero(137);
+        addText("⭐ "+wardrobe.stars()+" speelsterren",18,0xffa77933,0,5);
+
+        Button worlds=tile("🌈 Op ontdekkingsreis","Spelen en leren in drie werelden",
+                0xffdceeff,116);
+        addTile(worlds,5);
+        worlds.setOnClickListener(v->move(WORLD_PICKER));
+
+        Button play=tile("🎪 Het speelplein","Slepen, zoeken, bellen en muziek",
+                0xffd7f3e4,116);
+        addTile(play,5);
+        play.setOnClickListener(v->move(MINI_MENU));
+
+        Button friend=tile("⭐ Mijn stervriend","Kleding, kamer, diertjes en prijzen",
+                0xffffe7bb,116);
+        addTile(friend,5);
+        friend.setOnClickListener(v->move(AVATAR));
+
+        Button options=tile("⚙️ Leeftijd, speler en instellingen","",0xffece5ff,66);
+        addTile(options,12);
+        options.setOnClickListener(v->move(HOME_OPTIONS));
+    }
+    private void showWorldPicker() {
+        header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
+        String[] worlds={"Kleuren, tellen en vormen","Letters, rijmen en verhalen",
+                "Dieren, natuur en om ons heen"};
         for(int i=0;i<3;i++) {
             final int selected=i;
-            Button b=tile(WORLD_ICONS[i]+"  "+WORLDS[i],WORLD_DESCS[i],COLORS[i],105);
-            addTile(b,5);
-            b.setOnClickListener(v->{world=selected;categoryPage=0;storyPage=0;move(WORLD_HUB);});
+            Button b=tile(WORLD_ICONS[i]+"  "+WORLDS[i],worlds[i],
+                    COLORS[i],114);
+            addTile(b,7);
+            b.setOnClickListener(v->{
+                world=selected;categoryPage=0;storyPage=0;
+                move(WORLD_HUB);
+            });
         }
-        Button change=tile("🎂 Leeftijd: "+AGES[age],"",0xfff1e9ff,54);
-        addTile(change,12);
-        change.setOnClickListener(v->move(AGE));
-        Button audioToggle=tile(sound.isEnabled()?"🔊 Geluid aan":"🔇 Geluid uit","",0xffeeeaff,58);
-        addTile(audioToggle,6);
-        audioToggle.setOnClickListener(v->{
+    }
+    private void showHomeOptions() {
+        header("⚙️ Instellingen","Kies wat bij jou past.");
+        Button ageButton=tile("🎂 Leeftijd: "+AGES[age],"Kies je leeftijd",0xfff1e9ff,91);
+        addTile(ageButton,6);
+        ageButton.setOnClickListener(v->move(AGE));
+        Button profile=tile("👧 Speler "+(activeProfile+1),"Wissel van speler",0xffdeeeff,91);
+        addTile(profile,6);
+        profile.setOnClickListener(v->move(PROFILES));
+        Button soundButton=tile(sound.isEnabled()?"🔊 Geluid aan":"🔇 Geluid uit",
+                "Tik om geluid te veranderen",0xffe1f4ec,87);
+        addTile(soundButton,6);
+        soundButton.setOnClickListener(v->{
             sound.setEnabled(!sound.isEnabled());
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        Button parents=tile("👨‍👩‍👧 Voor ouders","",0xfff3edff,60);
-        addTile(parents,10);
+        Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
+                0xffffe9ca,91);
+        addTile(parents,6);
         parents.setOnClickListener(v->{
             parentAllowed=false;
             adultA=10+new Random().nextInt(8);
             adultB=8+new Random().nextInt(8);
             move(PARENT_GATE);
         });
-        Button profile=tile("👧 Speler "+(activeProfile+1),
-                "Wissel tussen drie aparte speelprofielen",0xffebf3ff,81);
-        addTile(profile,7);
-        profile.setOnClickListener(v->move(PROFILES));
     }
     private void showCategories() {
         header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
