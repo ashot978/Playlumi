@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private boolean miniSolved;
     private PlaylumiAdventure adventures;
     private int storyStage=-1,storyPage;
+    private boolean storyNewReward;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -106,6 +107,7 @@ public class MainActivity extends Activity {
             rewardReturn=state.getInt("rewardReturn",PLAY);
             storyStage=state.getInt("storyStage",-1);
             storyPage=state.getInt("storyPage",0);
+            storyNewReward=state.getBoolean("storyNewReward",false);
         }
         adventures=new PlaylumiAdventure();
         for(int w=0;w<PlaylumiAdventure.WORLDS;w++)
@@ -153,6 +155,7 @@ public class MainActivity extends Activity {
         out.putInt("rewardReturn",rewardReturn);
         out.putInt("storyStage",storyStage);
         out.putInt("storyPage",storyPage);
+        out.putBoolean("storyNewReward",storyNewReward);
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
@@ -507,15 +510,18 @@ public class MainActivity extends Activity {
         addTile(more,14);
         more.setOnClickListener(v->{variantPage=variantPage<2?variantPage+1:0;showPage();});
     }
+    private int sessionGoal() {
+        return storyStage>=0?PlaylumiAdventure.QUESTIONS_PER_MISSION:SESSION_ROUNDS;
+    }
     private void showPlay() {
         int mode=game.mode();
-        if(sessionSolved>=SESSION_ROUNDS) {showCompleted();return;}
+        if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
         companion(83);
-        addText("⭐ "+sessionSolved+" / "+SESSION_ROUNDS,18,0xff2c886f,0,7);
+        addText("⭐ "+sessionSolved+" / "+sessionGoal(),18,0xff2c886f,0,7);
         roundProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-        roundProgress.setMax(SESSION_ROUNDS);
+        roundProgress.setMax(sessionGoal());
         roundProgress.setProgress(sessionSolved);
         roundProgress.setProgressTintList(ColorStateList.valueOf(0xff64c7a7));
         roundProgress.setProgressBackgroundTintList(ColorStateList.valueOf(0xffe4d9f0));
@@ -596,7 +602,15 @@ public class MainActivity extends Activity {
             ObjectAnimator animate=ObjectAnimator.ofInt(roundProgress,"progress",
                     Math.max(0,sessionSolved-1),sessionSolved);
             animate.setDuration(430);animate.start();
-            if(sessionSolved==SESSION_ROUNDS)newBadges.addAll(scores.finishSession(mode));
+            if(sessionSolved==sessionGoal()) {
+                if(storyStage>=0) {
+                    storyNewReward=adventures.complete(world,storyStage);
+                    if(storyNewReward) {
+                        wardrobe.earnAdventureBonus();
+                        prefs().edit().putInt("adventure_progress_"+world,adventures.progress(world)).apply();
+                    }
+                } else newBadges.addAll(scores.finishSession(mode));
+            }
             wardrobe.earnAnswer();
             wardrobe.earnBadges(newBadges.size());
             saveWardrobe();
@@ -621,7 +635,7 @@ public class MainActivity extends Activity {
         if(!pendingBadges.isEmpty()) {
             earnedBadge=pendingBadges.remove(0);move(REWARD);return;
         }
-        if(sessionSolved<SESSION_ROUNDS) {
+        if(sessionSolved<sessionGoal()) {
             game.nextRound();saveRecent();
         }
         feedback="";
@@ -683,7 +697,7 @@ public class MainActivity extends Activity {
             earnedBadge=pendingBadges.remove(0);showPage();return;
         }
         earnedBadge=-1;
-        if(sessionSolved<SESSION_ROUNDS) {game.nextRound();saveRecent();}
+        if(sessionSolved<sessionGoal()) {game.nextRound();saveRecent();}
         feedback="";move(PLAY);
     }
 
