@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41;
+            WORLD_PICKER=40, HOME_OPTIONS=41, PICTURE_PLAY=42;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=PlaylumiVisualStyle.INK, SUB=PlaylumiVisualStyle.MUTED;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -124,6 +124,7 @@ public class MainActivity extends Activity {
     private boolean eraseAsked;
     private boolean storyJustCompleted;
     private boolean smartDifficulty,roundHadMistake;
+    private boolean pictureLaunch;
     private boolean badgesFromTrophy;
     private int trophyWorld,trophyPage;
     private int pendingLevel=-1;
@@ -202,6 +203,7 @@ public class MainActivity extends Activity {
             storyNewReward=state.getBoolean("storyNewReward",false);
             smartDifficulty=state.getBoolean("smartDifficulty",smartDifficulty);
             roundHadMistake=state.getBoolean("roundHadMistake",false);
+            pictureLaunch=state.getBoolean("pictureLaunch",false);
             pendingLevel=state.getInt("pendingLevel",-1);
             badgesFromTrophy=state.getBoolean("badgesFromTrophy",false);
             trophyWorld=state.getInt("trophyWorld",0);
@@ -359,6 +361,7 @@ public class MainActivity extends Activity {
         out.putBoolean("storyNewReward",storyNewReward);
         out.putBoolean("smartDifficulty",smartDifficulty);
         out.putBoolean("roundHadMistake",roundHadMistake);
+        out.putBoolean("pictureLaunch",pictureLaunch);
         out.putInt("pendingLevel",pendingLevel);
         out.putBoolean("badgesFromTrophy",badgesFromTrophy);
         out.putInt("trophyWorld",trophyWorld);
@@ -383,7 +386,7 @@ public class MainActivity extends Activity {
             return;
         }
         if(page==HOME) {super.onBackPressed();return;}
-        if(page==WORLD_PICKER || page==HOME_OPTIONS) {move(HOME);return;}
+        if(page==WORLD_PICKER || page==HOME_OPTIONS || page==PICTURE_PLAY) {move(HOME);return;}
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
@@ -425,6 +428,7 @@ public class MainActivity extends Activity {
         if(page==PROFILES) {move(HOME);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
+        if(page==PLAY && pictureLaunch) {move(PICTURE_PLAY);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
@@ -461,6 +465,7 @@ public class MainActivity extends Activity {
 
     /** Start a NEW shuffled round from a previously chosen configuration. */
     private void resumeRecent(PlaylumiPlayHistory.Entry item) {
+        pictureLaunch=false;
         storyStage=-1;storyNewReward=false;roundHadMistake=false;pendingLevel=-1;
         sessionSolved=0;sessionAttempts=0;feedback="";
         pendingBadges.clear();
@@ -858,7 +863,7 @@ public class MainActivity extends Activity {
                 return PlaylumiQuickNav.CUSTOMIZE;
             case GARDEN_MENU:case GARDEN_PLANT:
                 return PlaylumiQuickNav.GARDEN;
-            case MINI_MENU:case WORLD_PICKER:case WORLD_HUB:case CATEGORIES:
+            case MINI_MENU:case PICTURE_PLAY:case WORLD_PICKER:case WORLD_HUB:case CATEGORIES:
             case DETAIL:case LEVEL:case VARIANTS:case ADVENTURE_MAP:
             case STORY_LIBRARY:case BADGES:
                 return PlaylumiQuickNav.PLAY;
@@ -895,7 +900,7 @@ public class MainActivity extends Activity {
             nav.addView(button,cell);
             button.setOnClickListener(v->{
                 int target=destination==PlaylumiQuickNav.START?HOME:
-                        destination==PlaylumiQuickNav.PLAY?MINI_MENU:
+                        destination==PlaylumiQuickNav.PLAY?PICTURE_PLAY:
                         destination==PlaylumiQuickNav.CUSTOMIZE?AVATAR:GARDEN_MENU;
                 if(page!=target)move(target);
             });
@@ -1074,6 +1079,7 @@ public class MainActivity extends Activity {
             case CLOSET: showCloset();break;
             case SHOP: showShop();break;
             case MINI_MENU: showMiniMenu();break;
+            case PICTURE_PLAY: showPicturePlay();break;
             case MINI_PLAY: showMiniPlay();break;
             case WORLD_HUB: showWorldHub();break;
             case ADVENTURE_MAP: showAdventureMap();break;
@@ -1156,6 +1162,7 @@ public class MainActivity extends Activity {
                 prefs().getInt("last_played_category",0));
         int variation=PlaylumiEasyPlay.variant(
                 prefs().getInt("last_played_variant",0));
+        pictureLaunch=false;
         storyStage=-1;smartDifficulty=true;roundHadMistake=false;
         pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";
         pendingBadges.clear();
@@ -1181,6 +1188,13 @@ public class MainActivity extends Activity {
         showFavoriteGames();
         showRecentGames(true);
 
+        Button bigPlay=tile("🧸 Kies een plaatje","Zes grote spelletjes voor jouw leeftijd",
+                0xffffe4bd,115);
+        bigPlay.setTextSize(21);
+        bigPlay.setContentDescription("Kies een plaatje om direct te spelen");
+        addTile(bigPlay,5);
+        bigPlay.setOnClickListener(v->move(PICTURE_PLAY));
+
         Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
         worlds.setOnClickListener(v->move(WORLD_PICKER));
 
@@ -1196,6 +1210,61 @@ public class MainActivity extends Activity {
         addTile(options,8);
         options.setOnClickListener(v->move(HOME_OPTIONS));
     }
+    /**
+     * The picture-first path uses just one tap after choosing a simple icon.
+     * No forced level, world or variant screens. Older children retain all
+     * advanced modes via the separate full-catalog button.
+     */
+    private void showPicturePlay() {
+        header("🧸 Kies een plaatje","Tik op wat je wilt doen!");
+        java.util.List<Button> choices=new java.util.ArrayList<>();
+        int chosenAge=Math.max(0,Math.min(2,age));
+        for(int i=0;i<PlaylumiPicturePlay.COUNT;i++) {
+            final int selected=i;
+            String icon=PlaylumiPicturePlay.icon(chosenAge,i);
+            String name=PlaylumiPicturePlay.label(chosenAge,i);
+            Button button=tile(icon+"\n"+name,"",
+                    COLORS[i%COLORS.length],141);
+            button.setTextSize(25);
+            button.setMinHeight(dp(141));
+            button.setMaxLines(3);
+            button.setContentDescription("Speel "+name);
+            button.setOnClickListener(v->startPictureGame(selected));
+            choices.add(button);
+        }
+        addOptionGrid(choices,154);
+        Button all=tile("🎮 Alle spellen bekijken",
+                "Meer spelletjes en moeilijkheidsgraden",0xffe5e3ff,79);
+        addTile(all,7);
+        all.setOnClickListener(v->move(MINI_MENU));
+        readThisPage("Kies een plaatje en speel!");
+    }
+
+    private void startPictureGame(int selection) {
+        int chosenAge=Math.max(0,Math.min(2,age));
+        int mode=PlaylumiPicturePlay.game(chosenAge,selection);
+        int variation=PlaylumiPicturePlay.variant(chosenAge,selection);
+        pictureLaunch=true;
+        storyStage=-1;
+        storyNewReward=false;
+        smartDifficulty=false;
+        roundHadMistake=false;
+        pendingLevel=-1;
+        sessionSolved=0;sessionAttempts=0;feedback="";
+        pendingBadges.clear();
+        difficulty=PlaylumiPicturePlay.difficulty(chosenAge);
+        world=Math.min(2,mode/8);
+        game.configure(mode,variation,difficulty);
+        saveRecent();
+        rememberPlay();
+        prefs().edit().putInt("game_mode",mode)
+                .putInt("game_variant",variation)
+                .putInt("last_played_category",mode)
+                .putInt("last_played_variant",variation)
+                .putBoolean("smart_mode",false).apply();
+        move(PLAY);
+    }
+
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
         String[] worlds={"Kleuren, tellen en vormen","Letters, rijmen en verhalen",
@@ -1252,6 +1321,7 @@ public class MainActivity extends Activity {
         addOptionGrid(options,117);
     }
     private void selectCategory(int category) {
+        pictureLaunch=false;
         storyStage=-1;
         game.configure(category,0,Math.max(0,age));
         difficulty=Math.max(0,age);
@@ -1345,6 +1415,7 @@ public class MainActivity extends Activity {
                         .putInt("last_played_category",game.mode())
                         .putInt("last_played_variant",selection).apply();
                 storyStage=-1;
+                pictureLaunch=false;
                 sessionSolved=0;sessionAttempts=0;feedback="";
                 pendingBadges.clear();
                 rememberPlay();
@@ -1673,7 +1744,7 @@ public class MainActivity extends Activity {
         });
         Button home=tile("🌈 Ander spelletje","",0xffeadbff,82);
         addTile(home,6);
-        home.setOnClickListener(v->move(CATEGORIES));
+        home.setOnClickListener(v->move(pictureLaunch?PICTURE_PLAY:CATEGORIES));
     }
     private void showBadges() {
         PlaylumiScores.Score score=scores.get(game.mode());
@@ -1921,7 +1992,11 @@ public class MainActivity extends Activity {
                 miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.NUMBERS:LearningGame.PATTERNS;
     }
     private void showMiniMenu() {
-        header("🎮 Spelen","Kies een leerwereld of een minispel.");
+        header("🎮 Spelen","Kies hoe jij wilt spelen.");
+        Button simple=tile("🧸 Spelen met plaatjes","Groot, duidelijk en meteen starten",
+                0xffffdfb3,113);
+        addTile(simple,4);
+        simple.setOnClickListener(v->move(PICTURE_PLAY));
         showFavoriteGames();
         showRecentGames(false);
         Button learn=tile("🌈 Leerwerelden","Tellen, taal, vormen en dieren",

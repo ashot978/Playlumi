@@ -49,3 +49,6 @@ Per child, store up to four last-used standard activities, including variant and
 
 ## Playlumi 0.36.0 favorites and outfit presets
 Favorites and three saved outfit selections are strictly per child profile and local. Favorite game tap starts a new shuffled round. A saved outfit may equip only already-owned items, never award/unlock/spend stars. Do not mutate outfit preview or child data on saving favorites. Publish each completed update as a new signed APK with stable package and signing cert following full Android tests and emulator start.
+
+## Playlumi 0.37.0 picture-first play
+Provide six big illustrated one-tap learning games suitable for each age (2 columns on phone, 3 on tablet), preserving 300 shuffled question cards and every prior progression mechanic. Picture-play back and end-of-round 'another game' return to picture selector, not advanced variant menus. Keep full advanced world/category/variant navigation accessible. Maintain offline and privacy rules, same private release signing identity and release APK requirement.
