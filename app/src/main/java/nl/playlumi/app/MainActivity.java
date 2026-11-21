@@ -576,12 +576,12 @@ public class MainActivity extends Activity {
                 status.setPadding(dp(5),0,dp(5),0);
                 row.addView(status,new LinearLayout.LayoutParams(-2,dp(45)));
             }
-            if(!landscapeScreen()) {
-                View littleStar=wardrobe==null?mascot(31):
-                        new PlaylumiCharacterView(this,wardrobe);
-                LinearLayout.LayoutParams tiny=new LinearLayout.LayoutParams(dp(31),dp(31));
-                tiny.setMargins(dp(3),0,0,0);
-                row.addView(littleStar,tiny);
+            if(wardrobe!=null) {
+                playPal=new PlaylumiCharacterView(this,wardrobe);
+                playPal.setContentDescription("Je stervriend danst als je iets goed doet");
+                LinearLayout.LayoutParams tiny=new LinearLayout.LayoutParams(dp(32),dp(32));
+                tiny.setMargins(dp(4),0,0,0);
+                row.addView(playPal,tiny);
             }
         } else {
             View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
