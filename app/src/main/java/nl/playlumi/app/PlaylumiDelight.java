@@ -56,6 +56,14 @@ public final class PlaylumiDelight {
         anim.setInterpolator(new AccelerateDecelerateInterpolator());
         anim.start();
     }
+    /** One short pirouette when invited, never constant spinning. */
+    public static void spin(View view) {
+        if(!available() || !view.isAttachedToWindow())return;
+        ObjectAnimator anim=ObjectAnimator.ofFloat(view,View.ROTATION,0f,360f);
+        anim.setDuration(780);
+        anim.setInterpolator(new DecelerateInterpolator());
+        anim.start();
+    }
     /** Gentle idle pulse on one primary action; cancels when its screen disappears. */
     public static void invite(View view) {
         if(!available())return;
