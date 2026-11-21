@@ -1179,8 +1179,8 @@ public class MainActivity extends Activity {
             String detail=unlocked?"🌟 Verdiend!":
                     score.badgeProgress(i)+" / "+score.badgeGoal(i)+"  •  "+PlaylumiScores.BADGE_HINTS[i];
             Button badge=tile(line,detail,unlocked?0xffffe5b4:0xffeceaf2,130);
-            badge.setEnabled(false);
-            addTile(badge,12);
+            badge.setClickable(false);badge.setFocusable(false);
+            addTile(badge,9);
         }
         Button more=tile(badgePage<2?"✨ Meer badges →":"↩ Eerste badges","",0xffe7ddff,74);
         addTile(more,12);
@@ -1934,8 +1934,8 @@ public class MainActivity extends Activity {
             String info="⭐ "+score.correct+" goed  •  "+score.attempts+
                     " pogingen  •  🏅 "+score.earnedBadges()+"/6 badges";
             Button b=tile(title,info,COLORS[i%6],130);
-            b.setEnabled(false);
-            addTile(b,12);
+            b.setClickable(false);b.setFocusable(false);
+            addTile(b,9);
         }
         Button more=tile(parentStatsPage<3?"Meer categorieën →":"↩ Eerste categorieën","",
                 0xffe8dcff,80);
@@ -1968,18 +1968,22 @@ public class MainActivity extends Activity {
         addText("Een vriendelijk seintje, nooit een verplichte stop.",15,SUB,0,10);
         int[] mins={0,15,30,45,60};
         String[] labels={"Geen herinnering","15 minuten","30 minuten","45 minuten","60 minuten"};
+        Button[] choices=new Button[mins.length];
         for(int i=0;i<mins.length;i++) {
             final int selected=mins[i];
             boolean active=usage.limit()==selected;
-            Button b=tile((active?"✅ ":"⏱️ ")+labels[i],"",
-                    active?0xffcef3d9:COLORS[i%6],70);
-            addTile(b,5);
-            b.setOnClickListener(v->{
+            choices[i]=tile((active?"✅ ":"⏱️ ")+labels[i],"",
+                    active?0xffcef3d9:COLORS[i%6],72);
+            choices[i].setContentDescription(labels[i]+
+                    (active?", geselecteerd":", tik om in te stellen"));
+            choices[i].setOnClickListener(v->{
                 usage.restore(usage.seconds(),selected,false);
-                saveUsage();
-                showPage();
+                saveUsage();showPage();
             });
         }
+        addTile(choices[0],4);
+        addTwo(choices[1],choices[2],72);
+        addTwo(choices[3],choices[4],72);
     }
     private void showBreakScreen() {
         header("🍃 Tijd voor een pauze","Even rust is ook fijn!");
@@ -2192,8 +2196,8 @@ public class MainActivity extends Activity {
                     earned?"🏅 Vriendschapssticker verdiend!":
                             "💗 "+friends.progress(i)+" / "+PlaylumiFriends.CARE_ACTIONS+" momentjes",
                     earned?0xffffe4ae:0xffede9f1,122);
-            addTile(tile,12);
-            tile.setEnabled(false);
+            addTile(tile,9);
+            tile.setClickable(false);tile.setFocusable(false);
         }
         Button more=tile(albumPage<(PlaylumiFriends.FRIENDS-1)/2?
                 "✨ Meer stickers →":"↩ Eerste stickers","",0xffe5daff,80);
