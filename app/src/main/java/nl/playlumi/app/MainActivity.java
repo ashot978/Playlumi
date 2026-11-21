@@ -636,8 +636,14 @@ public class MainActivity extends Activity {
         b.setPadding(dp(description.isEmpty()?13:18),dp(10),
                 dp(description.isEmpty()?13:16),dp(10));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
+        boolean playfulPage=page==HOME || page==PICTURE_PLAY ||
+                page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
+                page==MINI_MENU || page==AVATAR || page==CLOSET ||
+                page==SHOP || page==ROOM_CATS || page==ROOM_ITEMS ||
+                page==GARDEN_MENU || page==FRIEND_CARE || page==STAR_STAGE;
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),
-                softCard(color,24),null));
+                playfulPage?new PlaylumiCloudDrawable(color):softCard(color,24),
+                null));
         b.setElevation(dp(3));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
@@ -999,6 +1005,28 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * The picture chooser uses true round animated shapes, not Button tiles.
+     * Each remains a focusable, accessible click target with >140dp height.
+     */
+    private void addBubbleChoiceGrid(java.util.List<View> choices) {
+        int columns=PlaylumiPicturePlay.columns(
+                getResources().getConfiguration().screenWidthDp);
+        for(int start=0;start<choices.size();start+=columns) {
+            LinearLayout row=new LinearLayout(this);
+            row.setGravity(Gravity.CENTER);
+            for(int column=0;column<columns;column++) {
+                int index=start+column;
+                View choice=index<choices.size()?choices.get(index):new View(this);
+                LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,
+                        dp(179),1f);
+                cell.setMargins(dp(1),dp(3),dp(1),dp(3));
+                row.addView(choice,cell);
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
+
     /** Stay at the selected wardrobe / room option after changing an item. */
     private void redrawKeepingScroll() {
         final int position=scroller==null?0:scroller.getScrollY();
@@ -1020,10 +1048,16 @@ public class MainActivity extends Activity {
                         PlaylumiVisualStyle.PAGE_MIDDLE,
                         PlaylumiVisualStyle.PAGE_BOTTOM});
         stage.setBackground(bg);
-        if(page==HOME || page==WORLD_PICKER || page==WORLD_HUB ||
-                page==AVATAR || page==CLOSET || page==ROOM ||
-                page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
-                page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
+        boolean wonderland=page==HOME || page==PICTURE_PLAY ||
+                page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
+                page==MINI_MENU || page==AVATAR || page==CLOSET ||
+                page==SHOP || page==ROOM || page==ROOM_CATS ||
+                page==ROOM_ITEMS || page==GARDEN_MENU || page==STAR_STAGE;
+        if(wonderland) {
+            stage.addView(new PlaylumiWonderlandView(this),
+                    new FrameLayout.LayoutParams(-1,-1));
+        } else if(page==STORY_LIBRARY || page==STORY_END ||
+                page==REWARD || page==TROPHY_WORLDS) {
             stage.addView(new PlaylumiSkyView(this),
                     new FrameLayout.LayoutParams(-1,-1));
         }
@@ -1217,22 +1251,21 @@ public class MainActivity extends Activity {
      */
     private void showPicturePlay() {
         header("🧸 Kies een plaatje","Tik op wat je wilt doen!");
-        java.util.List<Button> choices=new java.util.ArrayList<>();
+        java.util.List<View> choices=new java.util.ArrayList<>();
         int chosenAge=Math.max(0,Math.min(2,age));
         for(int i=0;i<PlaylumiPicturePlay.COUNT;i++) {
             final int selected=i;
-            String icon=PlaylumiPicturePlay.icon(chosenAge,i);
-            String name=PlaylumiPicturePlay.label(chosenAge,i);
-            Button button=tile(icon+"\n"+name,"",
-                    COLORS[i%COLORS.length],141);
-            button.setTextSize(25);
-            button.setMinHeight(dp(141));
-            button.setMaxLines(3);
-            button.setContentDescription("Speel "+name);
-            button.setOnClickListener(v->startPictureGame(selected));
-            choices.add(button);
+            PlaylumiBubbleChoiceView bubble=new PlaylumiBubbleChoiceView(this,
+                    PlaylumiPicturePlay.icon(chosenAge,i),
+                    PlaylumiPicturePlay.label(chosenAge,i),
+                    COLORS[i%COLORS.length],i);
+            bubble.setOnClickListener(v->{
+                sound.tap();
+                startPictureGame(selected);
+            });
+            choices.add(bubble);
         }
-        addOptionGrid(choices,154);
+        addBubbleChoiceGrid(choices);
         Button all=tile("🎮 Alle spellen bekijken",
                 "Meer spelletjes en moeilijkheidsgraden",0xffe5e3ff,79);
         addTile(all,7);
@@ -1500,7 +1533,7 @@ public class MainActivity extends Activity {
         TextView question=text(round.prompt,wide?18:20,TEXT);
         question.setText(PlaylumiType.emphasizedQuestion(round.prompt));
         question.setPadding(dp(14),dp(11),dp(14),dp(11));
-        question.setBackground(softCard(0xffe7e0fc,22));
+        question.setBackground(new PlaylumiCloudDrawable(0xffe7e0fc));
         question.setElevation(dp(1));
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
@@ -1522,7 +1555,7 @@ public class MainActivity extends Activity {
                 round.display.length()>12?30:wide?32:38;
         TextView picture=text(round.display,pictureSize,round.displayColor);
         picture.setPadding(dp(13),dp(12),dp(13),dp(12));
-        picture.setBackground(softCard(0xffe6f7fa,24));
+        picture.setBackground(new PlaylumiCloudDrawable(0xffe6f7fa));
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
@@ -1550,6 +1583,9 @@ public class MainActivity extends Activity {
                 final int answer=j;
                 String value=round.answers.get(j);
                 Button button=tile(value,"",COLORS[(mode+j)%6],wide?60:70);
+                button.setBackground(new RippleDrawable(
+                        ColorStateList.valueOf(0x22ffffff),
+                        new PlaylumiCloudDrawable(COLORS[(mode+j)%6]),null));
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:
                         value.length()>=6?20:27);
                 button.setPadding(dp(5),dp(7),dp(5),dp(7));
@@ -1609,8 +1645,9 @@ public class MainActivity extends Activity {
                 if (highFive) playPal.highFive();
                 else playPal.dance();
             }
-            touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                    rounded(0xffb9f5d1,25),null));
+            touched.setBackground(new RippleDrawable(
+                    ColorStateList.valueOf(0x35ffffff),
+                    new PlaylumiCloudDrawable(0xffb9f5d1),null));
             for(Button b:answerButtons)b.setEnabled(false);
             feedbackText.setText(feedback);
             feedbackText.setTextColor(PlaylumiVisualStyle.SUCCESS);
