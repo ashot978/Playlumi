@@ -543,6 +543,18 @@ public class MainActivity extends Activity {
         int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),showFull,
                 getResources().getConfiguration().screenHeightDp);
         holder.addView(character,new LinearLayout.LayoutParams(dp(actual),dp(actual)));
+        if(page==HOME && !greeted) {
+            greeted=true;
+            final PlaylumiCharacterView helloFriend=character;
+            final FrameLayout helloStage=stage;
+            holder.postDelayed(()->{
+                if(stage==helloStage && character==helloFriend) {
+                    helloFriend.wave();
+                    if(sound!=null)sound.hello();
+                    PlaylumiDelight.sprinkle(stage,helloFriend);
+                }
+            },550L);
+        }
         LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(actual+4));
         row.setMargins(0,dp(1),0,dp(1));
         root.addView(holder,row);
