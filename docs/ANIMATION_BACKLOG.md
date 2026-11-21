@@ -5,7 +5,7 @@ Eerstvolgende fase: **veilige animaties**, niet nóg een bytecode-patch. De anim
 | Nr | Animatie | Waar | Beweging | Implementatie | Appstatus |
 |---|---|---|---|---|---|
 | A01 | Sterrenspoor | Goed antwoord | Ster vliegt op boog naar sterrenteller; fonkelspoor | Motion core: STAR_TRAIL | Nog niet geïntegreerd |
-| A02 | Vormenmagneet | Sleep de vormen | Vorm veert zacht in het huisje | Motion core: SHAPE_MAGNET | Nog niet geïntegreerd |
+| A02 | Vormenmagneet | Sleep de vormen | 560 ms gebogen glijbeweging, zacht landen, drie fonkels | ShapeMagnet met echte start/doelposities; 153.684 lokale testcontroles | Module klaar, **niet** in APK |
 | A03 | Mascotte-high-five | Reeks goede antwoorden | Korte sprong met handje omhoog | Motion core: MASCOT_HIGH_FIVE | Nog niet geïntegreerd |
 | A04 | Magische groeituin | Einde speelronde | Plantje krijgt blaadje / bloem | Motion core: GARDEN_BLOOM | Nog niet geïntegreerd |
 | A05 | Regenboogbrug | Level voltooid | Glijdende regenboog over podium | Motion core: RAINBOW_BRIDGE | Nog niet geïntegreerd |
