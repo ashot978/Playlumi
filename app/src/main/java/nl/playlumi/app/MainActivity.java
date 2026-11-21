@@ -381,7 +381,12 @@ public class MainActivity extends Activity {
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
-        if(page==SHOP) {move(CLOSET);return;}
+        if(page==SHOP) {
+            if(outfitPreview>=0) {
+                outfitPreview=-1;shopMessage="";showPage();
+            } else move(CLOSET);
+            return;
+        }
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
         if(page==GARDEN_MENU) {move(HOME);return;}
@@ -393,7 +398,12 @@ public class MainActivity extends Activity {
         if(page==STAR_STAGE) {move(AVATAR);return;}
         if(page==ROOM) {move(AVATAR);return;}
         if(page==ROOM_CATS) {move(AVATAR);return;}
-        if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
+        if(page==ROOM_ITEMS) {
+            if(roomPreview>=0) {
+                roomPreview=-1;roomMessage="";showPage();
+            } else move(ROOM_CATS);
+            return;
+        }
         if(page==TROPHY_WORLDS) {move(AVATAR);return;}
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
         if(page==STORY_LIBRARY) {move(WORLD_HUB);return;}
@@ -738,6 +748,15 @@ public class MainActivity extends Activity {
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
     }
+    /** A preview always appears at the TOP so the child actually sees it. */
+    private void showPreview() {
+        showPage();
+        final ScrollView previewScroller=scroller;
+        previewScroller.post(()->{
+            if(scroller==previewScroller)previewScroller.scrollTo(0,0);
+        });
+    }
+
     /** A stable bottom navigation bar on menus; gameplay keeps maximum room. */
     private boolean showQuickNavigation() {
         return page!=AGE && page!=BREAK_SCREEN && page!=PARENT_GATE &&
@@ -1766,6 +1785,8 @@ public class MainActivity extends Activity {
                     outfitPreview=chosen; // no mutation of real wardrobe/wallet
                     shopMessage="";
                     sound.tap();
+                    showPreview();
+                    return;
                 }
                 redrawKeepingScroll();
             });
@@ -2094,6 +2115,8 @@ public class MainActivity extends Activity {
                     roomPreview=chosen;
                     roomMessage="";
                     sound.tap();
+                    showPreview();
+                    return;
                 }
                 redrawKeepingScroll();
             });
