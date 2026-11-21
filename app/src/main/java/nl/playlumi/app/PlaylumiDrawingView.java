@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.view.MotionEvent;
+import android.os.SystemClock;
 import android.view.View;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -30,6 +31,8 @@ public final class PlaylumiDrawingView extends View {
     private Bitmap background;
     private Stroke current;
     private int ink=PALETTE[0];
+    private float sparkleX,sparkleY;
+    private long sparkleAt;
     public PlaylumiDrawingView(Context context,File savedFile) {
         super(context);
         this.savedFile=savedFile;
@@ -86,6 +89,24 @@ public final class PlaylumiDrawingView extends View {
     @Override protected void onDraw(Canvas c) {
         super.onDraw(c);
         drawArtwork(c);
+        if(!PlaylumiMotion.isReduced() && sparkleAt>0) {
+            long since=SystemClock.uptimeMillis()-sparkleAt;
+            if(since>=0 && since<280) {
+                float fade=1f-since/280f;
+                paint.reset();paint.setAntiAlias(true);
+                paint.setColor((Math.round(175*fade)<<24)|0x00f7bb46);
+                float radius=3f*getResources().getDisplayMetrics().density;
+                c.drawCircle(sparkleX+radius*4,sparkleY-radius*5,radius*fade+1,paint);
+                c.drawCircle(sparkleX-radius*4,sparkleY-radius*2,radius*fade+1,paint);
+                paint.setColor((Math.round(190*fade)<<24)|0x009f85ee);
+                c.drawCircle(sparkleX+radius*2,sparkleY+radius*3,radius*fade+1,paint);
+                postInvalidateDelayed(45);
+            }
+        }
+    }
+    private void trackSparkle(float x,float y) {
+        if(PlaylumiMotion.isReduced())return;
+        sparkleX=x;sparkleY=y;sparkleAt=SystemClock.uptimeMillis();
     }
     @Override public boolean onTouchEvent(MotionEvent event) {
         float x=Math.max(0,Math.min(getWidth(),event.getX()));
@@ -95,15 +116,18 @@ public final class PlaylumiDrawingView extends View {
                 if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(true);
                 current=new Stroke(ink);current.path.moveTo(x,y);
                 current.path.lineTo(x+.01f,y+.01f);
-                lines.add(current);invalidate();return true;
+                lines.add(current);trackSparkle(x,y);invalidate();return true;
             case MotionEvent.ACTION_MOVE:
                 if(current!=null){
                     current.path.lineTo(x,y);
-                    invalidate();
+                    trackSparkle(x,y);invalidate();
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                if(current!=null){current.path.lineTo(x,y);current=null;invalidate();}
+                if(current!=null){
+                    current.path.lineTo(x,y);current=null;
+                    trackSparkle(x,y);invalidate();
+                }
                 if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(false);
                 performClick();return true;
             case MotionEvent.ACTION_CANCEL:
