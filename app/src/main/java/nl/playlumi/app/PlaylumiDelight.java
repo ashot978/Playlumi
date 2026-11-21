@@ -37,6 +37,16 @@ public final class PlaylumiDelight {
         anim.setInterpolator(new DecelerateInterpolator());
         anim.start();
     }
+    /** A little card flip for memory, without relying on the flip for input. */
+    public static void flip(View card) {
+        if(!available() || !card.isAttachedToWindow())return;
+        card.setCameraDistance(dp(card,1100));
+        ObjectAnimator effect=ObjectAnimator.ofFloat(card,View.ROTATION_Y,
+                0f,82f,0f);
+        effect.setDuration(350);
+        effect.setInterpolator(new DecelerateInterpolator());
+        effect.start();
+    }
     /** A brief soft bounce used when a child chooses something. */
     public static void hop(View view) {
         if(!available() || !view.isAttachedToWindow())return;
