@@ -23,3 +23,11 @@ on every game opening and on "Nog een ronde". Preserve the eight-question
 short-session length and local progress. Theme cards may repeat preschool
 concepts; never misrepresent them as 300 new facts. Ship a signed APK after
 passing Android and emulator checks; do not publish credentials or merge.
+
+## Playlumi 0.30.0 interactive minigame decks
+Every one of the three interactive board minigames (shape drag, number balloons,
+animal memory) uses 300 distinct board layouts at each of three difficulty
+levels, shuffled freshly on entry and again on Replay. Preserve the required
+drag/drop rule, correct matches, small-screen layouts, local data and rewards.
+A feature update must deliver a newly signed installable APK, with test and
+emulator evidence; never upload the private signing key.
