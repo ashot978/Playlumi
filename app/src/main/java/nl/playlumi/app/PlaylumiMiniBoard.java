@@ -163,6 +163,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         }
     }
     private void floatBalloon(Button b,int index) {
+        if(PlaylumiMotion.isReduced())return;
         ObjectAnimator motion=ObjectAnimator.ofFloat(b,View.TRANSLATION_Y,0,-dp(9+index%3*4),0);
         motion.setDuration(1650+index*180);
         motion.setStartDelay(index*145);
