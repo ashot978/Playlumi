@@ -22,6 +22,7 @@ public final class LearningGame {
     private int mode, variant, level;
     private Round current;
     private QuestionHistory history;
+    private QuestionDeck questionDeck;
 
     public static final class Round {
         public final String prompt, display;
@@ -53,12 +54,30 @@ public final class LearningGame {
         if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > 4 || level < 0 || level > 2)
             throw new IllegalArgumentException("Invalid game configuration");
         this.mode = mode; this.variant = variant; this.level = level;
+        reshuffle();
+    }
+    /** Explicitly requested size of this game's current offline question pool. */
+    public int questionPoolSize() {
+        return questionDeck == null ? 0 : questionDeck.size();
+    }
+
+    /** Every entry or new play session builds another shuffled set of 300. */
+    public void reshuffle() {
+        questionDeck = QuestionDeck.create(random, () -> {
+            generateRound();
+            return current;
+        });
         nextRound();
     }
+
     private int pool(int max) { return Math.min(max, level == 0 ? 3 : level == 1 ? 5 : 10); }
     private int pick(int bound) { return random.nextInt(bound); }
 
     public void nextRound() {
+        if (questionDeck != null) {
+            current = questionDeck.next(history);
+            return;
+        }
         if (history == null) { generateRound(); return; }
         Round best = null;
         int oldest = Integer.MAX_VALUE;
