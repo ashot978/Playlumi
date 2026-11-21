@@ -13,3 +13,26 @@ Wanneer de bestaande broncode beschikbaar is:
 8. Test op emulator met crashlog en minimaal twee schermformaten, daarna op het doeltoestel.
 
 `MotionEffects` kent geen scores, namen, netwerk, accounts, Android-permissies of opgeslagen voortgang.
+
+## A02: echte slepende vorm naar juist doel
+
+De generieke `MotionEffects.Kind.SHAPE_MAGNET` gebruikt voorbeeldcoordinaten.
+Gebruik deze **niet** om een echte vorm te plaatsen. De afzonderlijke
+`ShapeMagnet.sample(fromX, fromY, targetX, targetY, elapsedMillis, reduceMotion)`
+berekent de frames uit de daadwerkelijk gemeten begin- en eindpositie.
+
+- Normaliseer beide punten binnen **hetzelfde tekenvlak**, niet een lokaal
+  kaartvak voor het ene punt en de hele schermbreedte voor het andere.
+- Trigger pas nadat de bestaande spelcode de vorm als correct heeft beoordeeld.
+- Teken na drop een **visuele overlay**, niet de interactieve drag-view zelf,
+  zodat pointer-events, antwoordcontrole en score ongemoeid blijven.
+- Gebruik frame.x/y, scale, rotationDegrees, sparkleOpacity, sparkleRadius
+  en targetGlow. Zet drie fonkels gelijkmatig verdeeld rondom het midden.
+- Stop redraws bij frame.finished en verwijder de overlay.
+- Als de gebruiker de app verlaat tijdens de animatie: verwijder de overlay
+  zonder spelstatus te veranderen.
+- Bij reduceMotion: toon direct het statische resultaat en doe geen redraw.
+- Geen APK afleveren tot broncode, Android-build, emulator smoke en Samsung-
+  update-test daadwerkelijk zijn gedaan.
+
+Zie `docs/FEATURE_A02.md` voor acceptatiecriteria en bewijslast.
