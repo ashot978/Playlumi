@@ -1797,7 +1797,9 @@ public class MainActivity extends Activity {
         header("🖍️ Mijn Tekenstudio","Teken met je vinger. Alles mag!");
         drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),PlaylumiProfiles.artworkFile(activeProfile)));
         drawing.setElevation(dp(5));
-        LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,dp(330));
+        LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,
+                dp(PlaylumiLayout.drawingHeight(landscapeScreen(),
+                        getResources().getConfiguration().screenHeightDp)));
         drawParams.setMargins(dp(4),dp(8),dp(4),dp(12));
         root.addView(drawing,drawParams);
         drawingInfo=text("🎨 Kies jouw lievelingskleur",17,0xff7157a7);
@@ -1813,6 +1815,7 @@ public class MainActivity extends Activity {
                 row.addView(button,p);
                 final int ink=PlaylumiDrawingView.PALETTE[idx];
                 button.setOnClickListener(v->{
+                    eraseAsked=false;
                     drawing.color(ink);
                     drawingInfo.setText("✨ Mooie kleur! Teken maar.");
                     sound.tap();
@@ -1821,11 +1824,15 @@ public class MainActivity extends Activity {
             root.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
         Button undo=tile("↩  Laatste lijn weg","",0xffe6dfff,68);
-        addTile(undo,8);
-        undo.setOnClickListener(v->{drawing.undo();drawingInfo.setText("Nog een keer proberen?");});
-        Button save=tile("💾 Bewaar mijn kunstwerk","",0xffd0f3dd,86);
-        addTile(save,7);
+        undo.setOnClickListener(v->{
+            eraseAsked=false;
+            drawing.undo();
+            drawingInfo.setText("Laatste lijn weggehaald");
+        });
+        Button save=tile("💾 Bewaar tekening","",0xffd0f3dd,77);
+        addTwo(undo,save,73);
         save.setOnClickListener(v->{
+            eraseAsked=false;
             if(!drawing.save()) {
                 drawingInfo.setText("Oeps! Probeer nog eens te bewaren.");
                 return;
