@@ -1,13 +1,13 @@
 package nl.playlumi.app;
 
-/** Six original Dutch choose-your-own-adventure stories with meaningful branching endings. */
+/** Twelve original Dutch choose-your-path stories; old progress remains compatible. */
 public final class PlaylumiStories {
-    public static final String[] NAMES={
+    private static final String[] BASE_NAMES={
             "De verdwaalde vlinder","De regenboogbrug","De sterrenraket",
             "Het kleine zaadje","De vrienden in zee","De lieve draak"
     };
-    public static final String[] ICONS={"🦋","🌈","🚀","🌱","🐠","🐉"};
-    public static final String[] ENDINGS_A={
+    private static final String[] BASE_ICONS={"🦋","🌈","🚀","🌱","🐠","🐉"};
+    private static final String[] BASE_ENDINGS_A={
             "De vlinder vliegt vrolijk naar de bloemen. Jullie zijn goede vrienden!",
             "De brug schittert vol kleuren. De wolkjes maken een vrolijk dansje!",
             "De sterrenraket landt veilig op een prachtige nieuwe planeet!",
@@ -15,7 +15,7 @@ public final class PlaylumiStories {
             "Alle zeediertjes vieren feest. Iedereen voelt zich welkom!",
             "De draak laat trots zijn zachte vuurwerk van sterren zien!"
     };
-    public static final String[] ENDINGS_B={
+    private static final String[] BASE_ENDINGS_B={
             "De vlinder vindt de weg naar huis. Hij zwaait je nog één keer toe!",
             "Er verschijnt een geheime regenboogtuin achter de brug!",
             "De raket ontdekt een maan vol grappige, dansende kraters!",
@@ -31,7 +31,7 @@ public final class PlaylumiStories {
             this.firstResult=firstResult;this.secondResult=secondResult;
         }
     }
-    private static final Scene[][] STORIES={
+    private static final Scene[][] BASE_STORIES={
         {
             new Scene("🦋","Een kleine vlinder is verdwaald. Wat doen we?",
                     "Zoek samen bloemen","Vraag de bij om hulp",
@@ -141,6 +141,24 @@ public final class PlaylumiStories {
                     "De dieren eten samen onder de sterren.")
         }
     };
+
+    private static String[] concat(String[] a,String[] b) {
+        String[] combined=new String[a.length+b.length];
+        System.arraycopy(a,0,combined,0,a.length);
+        System.arraycopy(b,0,combined,a.length,b.length);
+        return combined;
+    }
+    private static Scene[][] combineStories(Scene[][] a,Scene[][] b) {
+        Scene[][] combined=new Scene[a.length+b.length][];
+        System.arraycopy(a,0,combined,0,a.length);
+        System.arraycopy(b,0,combined,a.length,b.length);
+        return combined;
+    }
+    public static final String[] NAMES=concat(BASE_NAMES,PlaylumiMoreStories.NAMES);
+    public static final String[] ICONS=concat(BASE_ICONS,PlaylumiMoreStories.ICONS);
+    public static final String[] ENDINGS_A=concat(BASE_ENDINGS_A,PlaylumiMoreStories.ENDINGS_A);
+    public static final String[] ENDINGS_B=concat(BASE_ENDINGS_B,PlaylumiMoreStories.ENDINGS_B);
+    private static final Scene[][] STORIES=combineStories(BASE_STORIES,PlaylumiMoreStories.EXTRA);
     private int story=-1,step,choice=-1,secondaryChoices,completedMask;
 
     public void start(int index) {
