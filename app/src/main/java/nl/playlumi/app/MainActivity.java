@@ -26,7 +26,7 @@ import java.util.Random;
 /** One choice per screen, a separate learning world menu, and native Android play motion. */
 public class MainActivity extends Activity {
     private static final int AGE=0, HOME=1, CATEGORIES=2, DETAIL=3, LEVEL=4,
-            VARIANTS=5, PLAY=6, BADGES=7, REWARD=8;
+            VARIANTS=5, PLAY=6, BADGES=7, REWARD=8, AVATAR=9, CLOSET=10, SHOP=11;
     private static final int SESSION_ROUNDS=200;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -44,11 +44,15 @@ public class MainActivity extends Activity {
     private final ArrayList<Button> answerButtons=new ArrayList<>();
     private final ArrayList<Integer> pendingBadges=new ArrayList<>();
     private int page,age,world,categoryPage,variantPage,badgePage,difficulty;
+    private int closetPage,shopPage,selectedSlot;
+    private String shopMessage="";
     private int sessionSolved,sessionAttempts,earnedBadge=-1,lifetimeCount;
     private boolean moving,answerLocked;
     private LearningGame game;
     private QuestionHistory recent;
     private PlaylumiScores scores;
+    private PlaylumiWardrobe wardrobe;
+    private PlaylumiCharacterView character;
     private LinearLayout root;
     private FrameLayout stage;
     private ScrollView scroller;
@@ -81,6 +85,9 @@ public class MainActivity extends Activity {
             categoryPage=state.getInt("categoryPage",0);
             variantPage=state.getInt("variantPage",0);
             badgePage=state.getInt("badgePage",0);
+            closetPage=state.getInt("closetPage",0);
+            shopPage=state.getInt("shopPage",0);
+            selectedSlot=state.getInt("selectedSlot",0);
             sessionSolved=state.getInt("sessionSolved",0);
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
@@ -93,6 +100,15 @@ public class MainActivity extends Activity {
                     prefs.getInt(prefix+"best",0),prefs.getInt(prefix+"streak",0),
                     prefs.getInt(prefix+"sessions",0));
         }
+        int starter=PlaylumiWardrobe.STARTER_STARS+Math.min(90,Math.max(0,lifetimeCount)*2);
+        wardrobe=new PlaylumiWardrobe(starter);
+        if(prefs.getBoolean("wardrobe_initialized",false)) {
+            wardrobe.restoreBalance(prefs.getInt("wardrobe_stars",starter),
+                    prefs.getInt("wardrobe_total_earned",starter));
+            for(int i=0;i<PlaylumiWardrobe.SLOTS;i++)
+                wardrobe.restoreSlot(i,prefs.getInt("wardrobe_owned_"+i,1),
+                        prefs.getInt("wardrobe_worn_"+i,0));
+        } else saveWardrobe();
         recent=new QuestionHistory(prefs.getString("recent_questions",""));
         game=new LearningGame(new Random());
         game.setHistory(recent);
@@ -108,11 +124,17 @@ public class MainActivity extends Activity {
         out.putInt("badgePage",badgePage);out.putInt("sessionSolved",sessionSolved);
         out.putInt("sessionAttempts",sessionAttempts);out.putInt("page",page);
         out.putInt("earnedBadge",earnedBadge);
+        out.putInt("closetPage",closetPage);
+        out.putInt("shopPage",shopPage);
+        out.putInt("selectedSlot",selectedSlot);
         super.onSaveInstanceState(out);
     }
     @Override public void onBackPressed() {
         if(page==AGE || page==HOME) { super.onBackPressed(); return; }
         if(page==REWARD) { continueAfterBadge();return; }
+        if(page==AVATAR) {move(HOME);return;}
+        if(page==CLOSET) {move(AVATAR);return;}
+        if(page==SHOP) {move(CLOSET);return;}
         int back=page==CATEGORIES?HOME:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
@@ -126,6 +148,17 @@ public class MainActivity extends Activity {
                 .putInt(prefix+"best",s.bestStreak).putInt(prefix+"streak",s.currentStreak)
                 .putInt(prefix+"sessions",s.completedSessions)
                 .putInt("completed_all",lifetimeCount).apply();
+    }
+    private void saveWardrobe() {
+        SharedPreferences.Editor edit=prefs().edit()
+            .putBoolean("wardrobe_initialized",true)
+            .putInt("wardrobe_stars",wardrobe.stars())
+            .putInt("wardrobe_total_earned",wardrobe.allTimeStars());
+        for(int i=0;i<PlaylumiWardrobe.SLOTS;i++) {
+            edit.putInt("wardrobe_owned_"+i,wardrobe.ownedMask(i));
+            edit.putInt("wardrobe_worn_"+i,wardrobe.equipped(i));
+        }
+        edit.apply();
     }
     private int dp(int x) {return (int)(x*getResources().getDisplayMetrics().density+.5f);}
     private GradientDrawable rounded(int color,int radius) {
@@ -197,6 +230,16 @@ public class MainActivity extends Activity {
         root.addView(holder,p);
         PlaylumiMotion.floatMascot(star);
     }
+    private void characterHero(int size) {
+        LinearLayout holder=new LinearLayout(this);
+        holder.setGravity(Gravity.CENTER);
+        character=new PlaylumiCharacterView(this,wardrobe);
+        holder.addView(character,new LinearLayout.LayoutParams(dp(size),dp(size)));
+        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,dp(size+7));
+        row.setMargins(0,dp(4),0,dp(2));
+        root.addView(holder,row);
+        PlaylumiMotion.floatMascot(character);
+    }
     private void header(String heading,String subtitle) {
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -245,6 +288,9 @@ public class MainActivity extends Activity {
             case PLAY: showPlay();break;
             case BADGES: showBadges();break;
             case REWARD: showReward();break;
+            case AVATAR: showAvatar();break;
+            case CLOSET: showCloset();break;
+            case SHOP: showShop();break;
             default: throw new IllegalStateException("page");
         }
         stage.setAlpha(0f);stage.setTranslationX(dp(22));
