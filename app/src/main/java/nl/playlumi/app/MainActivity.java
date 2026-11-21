@@ -22,6 +22,7 @@ import android.widget.TextView;
 import android.view.animation.DecelerateInterpolator;
 import java.util.ArrayList;
 import java.util.Random;
+import java.io.File;
 
 /** One choice per screen, a separate learning world menu, and native Android play motion. */
 public class MainActivity extends Activity {
@@ -77,6 +78,8 @@ public class MainActivity extends Activity {
     private PlaylumiStories stories;
     private PlaylumiDrawingView drawing;
     private int storyLibraryPage;
+    private TextView drawingInfo;
+    private boolean eraseAsked;
     private boolean storyJustCompleted;
     private boolean smartDifficulty,roundHadMistake;
     private boolean badgesFromTrophy;
@@ -1252,6 +1255,172 @@ public class MainActivity extends Activity {
         more.setOnClickListener(v->{
             trophyPage=trophyPage<3?trophyPage+1:0;
             showPage();
+        });
+    }
+
+
+    private void showStoryLibrary() {
+        header("📖 Het Verhalenbos","Jij beslist hoe het verhaal verdergaat!");
+        addText("📚 "+stories.completedCount()+" van 6 verhalen ontdekt",18,0xff36836d,0,9);
+        addText((storyLibraryPage+1)+" / 3",15,0xff9771bb,0,9);
+        for(int i=storyLibraryPage*2;i<Math.min(storyLibraryPage*2+2,PlaylumiStories.NAMES.length);i++) {
+            final int story=i;
+            String subtitle=stories.completed(i)?"🌟 Al eens gelezen":
+                    "✨ Een nieuw avontuur";
+            Button book=tile(PlaylumiStories.ICONS[i]+"  "+PlaylumiStories.NAMES[i],
+                    subtitle,COLORS[i%6],121);
+            addTile(book,10);
+            book.setOnClickListener(v->{
+                storyJustCompleted=false;
+                if(stories.currentStory()!=story || stories.finished())
+                    stories.start(story);
+                saveStories();
+                move(stories.choice()>=0?STORY_REACTION:STORY_PLAY);
+            });
+        }
+        Button more=tile(storyLibraryPage<2?"📚 Meer verhalen →":"↩ Eerste verhalen","",
+                0xffe8ddff,78);
+        addTile(more,14);
+        more.setOnClickListener(v->{
+            storyLibraryPage=storyLibraryPage<2?storyLibraryPage+1:0;
+            showPage();
+        });
+    }
+    private void showStoryPlay() {
+        if(stories.finished()) {showStoryEnd();return;}
+        int id=stories.currentStory();
+        PlaylumiStories.Scene scene=stories.scene();
+        header(PlaylumiStories.ICONS[id]+" "+PlaylumiStories.NAMES[id],
+                "Hoofdstuk "+(stories.step()+1)+" / 4");
+        addText(scene.emoji,92,0xff8661b6,6,14);
+        TextView situation=text(scene.prompt,25,0xff563c8d);
+        situation.setMinHeight(dp(130));
+        situation.setPadding(dp(14),dp(20),dp(14),dp(20));
+        situation.setBackground(rounded(0xfff0e4ff,27));
+        addWidget(situation,0,16);
+        if(sound.isEnabled()) {
+            Button speak=tile("🔊 Lees het verhaal voor","",0xffe6e0ff,54);
+            addTile(speak,4);
+            speak.setOnClickListener(v->sound.speak(scene.prompt));
+        }
+        String[] options={scene.first,scene.second};
+        String[] emojis={"🌼","✨"};
+        for(int i=0;i<2;i++) {
+            final int choice=i;
+            Button b=tile(emojis[i]+"  "+options[i],"",COLORS[(id+i)%6],107);
+            addTile(b,12);
+            b.setOnClickListener(v->{
+                stories.choose(choice);
+                saveStories();
+                sound.good();
+                move(STORY_REACTION);
+            });
+        }
+    }
+    private void showStoryReaction() {
+        int id=stories.currentStory();
+        PlaylumiStories.Scene scene=stories.scene();
+        String result=stories.choice()==0?scene.firstResult:scene.secondResult;
+        header("✨ Wat leuk!","Jouw keuze verandert het verhaal.");
+        addText(scene.emoji,98,0xff7856b4,14,9);
+        TextView reaction=text(result,24,0xff533b87);
+        reaction.setPadding(dp(17),dp(23),dp(17),dp(23));
+        reaction.setMinHeight(dp(150));
+        reaction.setBackground(rounded(0xffffe9cf,25));
+        addWidget(reaction,0,20);
+        if(sound.isEnabled()) {
+            Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,52);
+            addTile(speak,5);
+            speak.setOnClickListener(v->sound.speak(result));
+        }
+        Button next=tile("🌟 En toen...","",0xffd1f3dd,92);
+        addTile(next,14);
+        next.setOnClickListener(v->{
+            stories.next();saveStories();
+            move(stories.finished()?STORY_END:STORY_PLAY);
+        });
+    }
+    private void showStoryEnd() {
+        int id=stories.currentStory();
+        if(stories.awardOnce()) {
+            storyJustCompleted=true;
+            wardrobe.earnStoryBonus();saveWardrobe();
+            saveStories();
+        }
+        header("🎉 Het einde!","");
+        characterHero(149);
+        addText(PlaylumiStories.ICONS[id]+"  "+PlaylumiStories.NAMES[id],
+                23,0xff654695,7,10);
+        TextView ending=text(stories.ending(),23,0xff523e8b);
+        ending.setPadding(dp(15),dp(20),dp(15),dp(20));
+        ending.setMinHeight(dp(140));
+        ending.setBackground(rounded(0xfff4e5ff,28));
+        addWidget(ending,0,10);
+        if(storyJustCompleted)
+            addText("🎁 +15 speelsterren voor jouw nieuwe verhaal!",17,0xff31856d,0,15);
+        Button back=tile("📖 Een nieuw verhaal kiezen","",0xffd2f3dd,92);
+        addTile(back,10);
+        back.setOnClickListener(v->move(STORY_LIBRARY));
+        FrameLayout current=stage;
+        current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,10);});
+    }
+    private void showDrawing() {
+        header("🖍️ Mijn Tekenstudio","Teken met je vinger. Alles mag!");
+        drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),"playlumi-kunstwerk.png"));
+        drawing.setElevation(dp(5));
+        LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,dp(330));
+        drawParams.setMargins(dp(4),dp(8),dp(4),dp(12));
+        root.addView(drawing,drawParams);
+        drawingInfo=text("🎨 Kies jouw lievelingskleur",17,0xff7157a7);
+        addWidget(drawingInfo,0,9);
+        String[] symbols={"🌺","💜","💙","💚","🌟","🖤"};
+        for(int r=0;r<2;r++) {
+            LinearLayout row=new LinearLayout(this);
+            for(int c=0;c<3;c++) {
+                int idx=r*3+c;
+                Button button=tile(symbols[idx],"",COLORS[idx],56);
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(57),1f);
+                p.setMargins(dp(4),dp(4),dp(4),dp(4));
+                row.addView(button,p);
+                final int ink=PlaylumiDrawingView.PALETTE[idx];
+                button.setOnClickListener(v->{
+                    drawing.color(ink);
+                    drawingInfo.setText("✨ Mooie kleur! Teken maar.");
+                    sound.tap();
+                });
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+        Button undo=tile("↩  Laatste lijn weg","",0xffe6dfff,68);
+        addTile(undo,8);
+        undo.setOnClickListener(v->{drawing.undo();drawingInfo.setText("Nog een keer proberen?");});
+        Button save=tile("💾 Bewaar mijn kunstwerk","",0xffd0f3dd,86);
+        addTile(save,7);
+        save.setOnClickListener(v->{
+            if(!drawing.save()) {
+                drawingInfo.setText("Oeps! Probeer nog eens te bewaren.");
+                return;
+            }
+            boolean first=!prefs().getBoolean("drawing_saved_once",false);
+            if(first) {
+                prefs().edit().putBoolean("drawing_saved_once",true).apply();
+                wardrobe.earnCreativeBonus();saveWardrobe();
+                drawingInfo.setText("🌟 Kunstwerk bewaard! +9 speelsterren!");
+                FrameLayout current=stage;
+                current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,10);});
+            } else drawingInfo.setText("💜 Jouw kunstwerk is veilig bewaard!");
+            sound.good();
+        });
+        Button clear=tile("🧽 Begin met leeg papier","",0xffffe9df,65);
+        addTile(clear,9);
+        clear.setOnClickListener(v->{
+            if(!eraseAsked) {
+                eraseAsked=true;
+                drawingInfo.setText("Tik nog eens op wissen als je zeker bent.");
+            } else {
+                drawing.clear();eraseAsked=false;
+                drawingInfo.setText("🎨 Een nieuw wit papier! Veel plezier.");
+            }
         });
     }
 
