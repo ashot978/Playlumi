@@ -21,11 +21,15 @@ import java.util.Random;
 /** Native Android motion; avoids webviews, long-running loops, assets and permissions. */
 public final class PlaylumiMotion {
     private PlaylumiMotion() {}
+    private static volatile boolean reduced;
+    public static void setReduced(boolean disabled) {reduced=disabled;}
+    public static boolean isReduced() {return reduced;}
     private static int dp(View view, int amount) {
         return (int) (view.getResources().getDisplayMetrics().density * amount + .5f);
     }
     /** Gentle staggered reveal, using real Android ViewPropertyAnimator. */
     public static void reveal(ViewGroup root) {
+        if(reduced)return;
         for (int i = 0; i < root.getChildCount(); i++) {
             View child = root.getChildAt(i);
             child.animate().cancel();
@@ -41,6 +45,7 @@ public final class PlaylumiMotion {
     /** Press and release feedback; a button continues to handle click/accessibility normally. */
     public static void tactile(Button button) {
         button.setOnTouchListener((view, event) -> {
+            if(reduced)return false;
             int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN) {
                 view.animate().cancel();
@@ -55,6 +60,7 @@ public final class PlaylumiMotion {
     }
     /** Friendly floating mascot; stops cleanly when its screen is removed. */
     public static void floatMascot(View view) {
+        if(reduced)return;
         if (android.os.Build.VERSION.SDK_INT>=26 && !ValueAnimator.areAnimatorsEnabled()) return;
         ObjectAnimator bob=ObjectAnimator.ofFloat(view,View.TRANSLATION_Y,0f,-dp(view,8),0f);
         bob.setDuration(2300);
@@ -70,12 +76,14 @@ public final class PlaylumiMotion {
         if(view.isAttachedToWindow())bob.start();
     }
     public static void shake(View view) {
+        if(reduced)return;
         ObjectAnimator x = ObjectAnimator.ofFloat(view, View.TRANSLATION_X,
                 0, -dp(view, 12), dp(view, 9), -dp(view, 6), dp(view, 4), 0);
         x.setDuration(340);
         x.start();
     }
     public static void pop(View view) {
+        if(reduced)return;
         view.animate().cancel();
         view.setScaleX(.8f); view.setScaleY(.8f);
         view.animate().scaleX(1.10f).scaleY(1.10f).setDuration(210)
@@ -84,6 +92,7 @@ public final class PlaylumiMotion {
     }
     /** A short, non-blocking reward. Particles are automatically removed. */
     public static void celebrate(FrameLayout layer, int streak) {
+        if(reduced)return;
         final String[] symbols = streak > 0 && streak % 10 == 0
                 ? new String[]{"🏆","⭐","🎉","🌟","💛","🎊","✨","⭐","🎉"}
                 : new String[]{"⭐","✨","🌟","💛","⭐","✨"};
