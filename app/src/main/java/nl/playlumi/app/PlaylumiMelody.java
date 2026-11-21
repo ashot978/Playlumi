@@ -11,10 +11,12 @@ public final class PlaylumiMelody {
     public static final String[] ANIMALS={"🐸","🐱","🐥","🦋"};
     public static final String[] NAMES={"Kikker","Katje","Kuikentje","Vlinder"};
     private final int[] tune;
+    private final int[] buttons;
     private int position;
     private boolean completed;
-    private PlaylumiMelody(int[] notes,int heard) {
+    private PlaylumiMelody(int[] notes,int heard,int[] order) {
         tune=notes.clone();
+        buttons=order.clone();
         position=Math.max(0,Math.min(notes.length,heard));
         completed=position==notes.length;
     }
@@ -23,14 +25,29 @@ public final class PlaylumiMelody {
         int count=age+2;
         int[] notes=new int[count];
         for(int i=0;i<count;i++)notes[i]=random.nextInt(NOTES);
-        return new PlaylumiMelody(notes,0);
+        java.util.List<Integer> keys=new java.util.ArrayList<>();
+        for(int i=0;i<NOTES;i++)keys.add(i);
+        java.util.Collections.shuffle(keys,random);
+        int[] order=new int[NOTES];
+        for(int i=0;i<NOTES;i++)order[i]=keys.get(i);
+        return new PlaylumiMelody(notes,0,order);
     }
     public static PlaylumiMelody restore(int[] notes,int position) {
-        if(notes==null || notes.length<2 || notes.length>4 || position<0||position>notes.length)
+        return restore(notes,position,new int[]{0,1,2,3});
+    }
+    public static PlaylumiMelody restore(int[] notes,int position,int[] order) {
+        if(notes==null || notes.length<2 || notes.length>4 || position<0||
+                position>notes.length || order==null || order.length!=NOTES)
             throw new IllegalArgumentException("invalid melody");
         for(int n:notes)if(n<0||n>=NOTES)throw new IllegalArgumentException("note");
-        return new PlaylumiMelody(notes,position);
+        boolean[] seen=new boolean[NOTES];
+        for(int n:order) {
+            if(n<0 || n>=NOTES || seen[n])throw new IllegalArgumentException("layout");
+            seen[n]=true;
+        }
+        return new PlaylumiMelody(notes,position,order);
     }
+    public int[] buttonOrder(){return buttons.clone();}
     public int[] sequence(){return tune.clone();}
     public int length(){return tune.length;}
     public int progress(){return position;}
