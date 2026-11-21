@@ -47,9 +47,9 @@ public final class PlaylumiRoomTest {
     }
     @Test public void catalogIsConsistent() {
         for(int s=0;s<PlaylumiRoom.SLOTS;s++) {
-            assertEquals(5,PlaylumiRoom.NAMES[s].length);
-            assertEquals(5,PlaylumiRoom.ICONS[s].length);
-            assertEquals(5,PlaylumiRoom.PRICES[s].length);
+            assertEquals(PlaylumiRoom.OPTIONS,PlaylumiRoom.NAMES[s].length);
+            assertEquals(PlaylumiRoom.OPTIONS,PlaylumiRoom.ICONS[s].length);
+            assertEquals(PlaylumiRoom.OPTIONS,PlaylumiRoom.PRICES[s].length);
             for(int i=1;i<PlaylumiRoom.OPTIONS;i++) {
                 assertTrue(PlaylumiRoom.PRICES[s][i]>PlaylumiRoom.PRICES[s][i-1]);
                 assertFalse(PlaylumiRoom.NAMES[s][i].isEmpty());
@@ -63,5 +63,19 @@ public final class PlaylumiRoomTest {
     @Test(expected=IllegalArgumentException.class)
     public void negativeWalletSpendRejected() {
         new PlaylumiWardrobe().spendStars(-1);
+    }
+
+    @Test public void savesNewRareRoomDecorationsWithoutChangingOldItems() {
+        PlaylumiRoom room=new PlaylumiRoom();
+        room.restore(PlaylumiRoom.WALL,1|(1<<4),4);
+        assertEquals(4,room.selected(PlaylumiRoom.WALL));
+        room.unlockAndSelect(PlaylumiRoom.WINDOW,6);
+        assertTrue(room.owned(PlaylumiRoom.WINDOW,6));
+        PlaylumiRoom restored=new PlaylumiRoom();
+        for(int i=0;i<PlaylumiRoom.SLOTS;i++)
+            restored.restore(i,room.ownedMask(i),room.selected(i));
+        assertEquals(6,restored.selected(PlaylumiRoom.WINDOW));
+        assertEquals(4,restored.selected(PlaylumiRoom.WALL));
+        assertTrue(restored.owned(PlaylumiRoom.WALL,4));
     }
 }
