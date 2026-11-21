@@ -1713,28 +1713,36 @@ public class MainActivity extends Activity {
         PlaylumiStories.Scene scene=stories.scene();
         header(PlaylumiStories.ICONS[id]+" "+PlaylumiStories.NAMES[id],
                 "Hoofdstuk "+(stories.step()+1)+" / 4");
-        addText(scene.emoji,92,0xff8661b6,6,14);
-        TextView situation=text(scene.prompt,25,0xff563c8d);
-        situation.setMinHeight(dp(130));
-        situation.setPadding(dp(14),dp(20),dp(14),dp(20));
-        situation.setBackground(rounded(0xfff0e4ff,27));
-        addWidget(situation,0,16);
+
+        addText(scene.emoji,landscapeScreen()?45:61,0xff8661b6,2,6);
+        LinearLayout storyCard=new LinearLayout(this);
+        storyCard.setGravity(Gravity.CENTER_VERTICAL);
+        storyCard.setBackground(rounded(0xfff0e4ff,22));
+        TextView situation=text(scene.prompt,landscapeScreen()?19:21,0xff563c8d);
+        situation.setPadding(dp(12),dp(13),dp(8),dp(13));
+        situation.setMinHeight(dp(90));
+        situation.setMaxLines(5);
+        storyCard.addView(situation,new LinearLayout.LayoutParams(0,-2,1));
         if(sound.isEnabled()) {
-            Button speak=tile("🔊 Lees het verhaal voor","",0xffe6e0ff,54);
-            addTile(speak,4);
+            Button speak=tile("🔊","",0xffe6e0ff,49);
+            speak.setTextSize(22);speak.setPadding(dp(2),dp(2),dp(2),dp(2));
+            speak.setContentDescription("Lees het verhaal voor");
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(53),dp(55));
+            p.setMargins(0,0,dp(7),0);
+            storyCard.addView(speak,p);
             speak.setOnClickListener(v->sound.speak(scene.prompt));
         }
+        addWidget(storyCard,0,8);
+        addText("Wat kies jij?",16,SUB,4,4);
         String[] options={scene.first,scene.second};
         String[] emojis={"🌼","✨"};
         for(int i=0;i<2;i++) {
             final int choice=i;
-            Button b=tile(emojis[i]+"  "+options[i],"",COLORS[(id+i)%6],107);
-            addTile(b,12);
+            Button b=tile(emojis[i]+"  "+options[i],"",COLORS[(id+i)%6],91);
+            addTile(b,6);
             b.setOnClickListener(v->{
-                stories.choose(choice);
-                saveStories();
-                sound.good();
-                move(STORY_REACTION);
+                stories.choose(choice);saveStories();
+                sound.good();move(STORY_REACTION);
             });
         }
     }
@@ -1742,20 +1750,20 @@ public class MainActivity extends Activity {
         int id=stories.currentStory();
         PlaylumiStories.Scene scene=stories.scene();
         String result=stories.choice()==0?scene.firstResult:scene.secondResult;
-        header("✨ Wat leuk!","Jouw keuze verandert het verhaal.");
-        addText(scene.emoji,98,0xff7856b4,14,9);
-        TextView reaction=text(result,24,0xff533b87);
-        reaction.setPadding(dp(17),dp(23),dp(17),dp(23));
-        reaction.setMinHeight(dp(150));
-        reaction.setBackground(rounded(0xffffe9cf,25));
-        addWidget(reaction,0,20);
+        header("✨ Jouw avontuur","Hoofdstuk "+(stories.step()+1)+" / 4");
+        addText(scene.emoji,landscapeScreen()?44:61,0xff7856b4,3,7);
+        TextView reaction=text(result,landscapeScreen()?19:21,0xff533b87);
+        reaction.setPadding(dp(13),dp(14),dp(13),dp(14));
+        reaction.setMinHeight(dp(106));
+        reaction.setBackground(rounded(0xffffe9cf,23));
+        addWidget(reaction,0,9);
         if(sound.isEnabled()) {
-            Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,52);
-            addTile(speak,5);
+            Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,55);
+            addTile(speak,4);
             speak.setOnClickListener(v->sound.speak(result));
         }
-        Button next=tile("🌟 En toen...","",0xffd1f3dd,92);
-        addTile(next,14);
+        Button next=tile("🌟 Verder met het verhaal","",0xffd1f3dd,82);
+        addTile(next,8);
         next.setOnClickListener(v->{
             stories.next();saveStories();
             move(stories.finished()?STORY_END:STORY_PLAY);
