@@ -68,6 +68,8 @@ public class MainActivity extends Activity {
     private LearningGame game;
     private QuestionHistory recent;
     private PlaylumiPlayHistory playHistory;
+    private PlaylumiFavorites favorites;
+    private PlaylumiSavedLooks savedLooks;
     private PlaylumiScores scores;
     private PlaylumiWardrobe wardrobe;
     private PlaylumiFriends friends;
@@ -255,6 +257,8 @@ public class MainActivity extends Activity {
                     prefs.getInt("room_item_"+slot,0));
         recent=new QuestionHistory(prefs.getString("recent_questions",""));
         playHistory=PlaylumiPlayHistory.restore(prefs.getString("recent_games",""));
+        favorites=PlaylumiFavorites.restore(prefs.getString("favorite_games",""));
+        savedLooks=PlaylumiSavedLooks.restore(prefs.getString("outfit_presets",""));
         game=new LearningGame(new Random());
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
@@ -473,6 +477,36 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
 
+    private void saveFavorites() {
+        prefs().edit().putString("favorite_games",favorites.serialize()).apply();
+    }
+    private void showFavoriteGames() {
+        if(favorites.size()==0)return;
+        addText("💛 Mijn favoriete spellen",20,TEXT,7,5);
+        java.util.List<Button> buttons=new java.util.ArrayList<>();
+        for(int i=0;i<favorites.size();i++) {
+            final PlaylumiPlayHistory.Entry item=favorites.get(i);
+            String title="⭐ "+LearningGame.GAME_NAMES[item.mode];
+            String description="▶ Spelvorm "+(item.variant+1)+" · "+
+                    (item.smart?"Slim niveau":LEVELS[item.difficulty]);
+            Button button=tile(title,description,0xffffeaca,99);
+            button.setOnClickListener(v->resumeRecent(item));
+            buttons.add(button);
+        }
+        addOptionGrid(buttons,105);
+    }
+    private void toggleFavorite(PlaylumiPlayHistory.Entry item) {
+        boolean pinned=favorites.toggle(item);
+        saveFavorites();
+        sound.sparkle();
+        // A filled list leaves the game unpinned; explain the limit in UI.
+        if(!pinned && !favorites.contains(item.mode,item.variant) &&
+                favorites.size()==PlaylumiFavorites.CAPACITY) {
+            // The user can remove a favorite through the star next to a recent game.
+        }
+        redrawKeepingScroll();
+    }
+
     /** Compact recent-game cards appear on the Home and Play menus. */
     private void showRecentGames(boolean atHome) {
         if(playHistory.size()==0)return;
@@ -487,6 +521,11 @@ public class MainActivity extends Activity {
                     COLORS[item.mode%COLORS.length],93);
             button.setOnClickListener(v->resumeRecent(item));
             options.add(button);
+            Button star=tile(favorites.contains(item.mode,item.variant)?
+                    "💛 Uit favorieten":"🤍 Favoriet",
+                    "Tik om dit spel vast te zetten",0xfff6e9c9,78);
+            star.setOnClickListener(v->toggleFavorite(item));
+            options.add(star);
         }
         addOptionGrid(options,105);
     }
@@ -1139,6 +1178,7 @@ public class MainActivity extends Activity {
         addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
         PlaylumiDelight.invite(quick);
+        showFavoriteGames();
         showRecentGames(true);
 
         Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
@@ -1745,12 +1785,45 @@ public class MainActivity extends Activity {
         addTwo(stageButton,trophies,90);
     }
 
+    /** One-tap outfit presets, never bought, never equipped from a preview. */
+    private void addSavedLooks() {
+        addText("🎀 Mijn bewaarde outfits",20,TEXT,4,4);
+        for(int i=0;i<PlaylumiSavedLooks.SLOTS;i++) {
+            final int slot=i;
+            String current=savedLooks.describe(slot);
+            addText("Outfit "+(slot+1)+" · "+current,14,SUB,2,3);
+            Button save=tile("💾 Bewaar look "+(slot+1),"Huidige kleding bewaren",
+                    0xffd9eaff,76);
+            Button wear=tile(savedLooks.isFilled(slot)?
+                    "✨ Draag look "+(slot+1):"🔒 Nog leeg",
+                    savedLooks.isFilled(slot)?"Gratis aantrekken":"Bewaar eerst een look",
+                    0xffd7f4e7,76);
+            save.setOnClickListener(v->{
+                savedLooks.save(slot,wardrobe);
+                prefs().edit().putString("outfit_presets",savedLooks.serialize()).apply();
+                sound.sparkle();redrawKeepingScroll();
+            });
+            wear.setEnabled(savedLooks.isFilled(slot));
+            wear.setOnClickListener(v->{
+                if(savedLooks.wear(slot,wardrobe)) {
+                    saveWardrobe();
+                    sound.sparkle();
+                    redrawKeepingScroll();
+                }
+            });
+            addTwo(save,wear,80);
+        }
+        addText("Bewaarde looks gebruiken alleen spullen die je bezit.",
+                13,SUB,2,6);
+    }
+
     /** All six wardrobe categories at once, without page arrows. */
     private void showCloset() {
         header("🎀 Mijn kledingkast","Tik wat je wilt veranderen.");
         characterHero(117);
         addText("⭐ "+wardrobe.stars()+" speelsterren",18,
                 PlaylumiVisualStyle.SUCCESS,0,8);
+        addSavedLooks();
         java.util.List<Button> options=new java.util.ArrayList<>();
         for(int slot=0;slot<PlaylumiWardrobe.SLOTS;slot++) {
             final int selected=slot;
@@ -1849,6 +1922,7 @@ public class MainActivity extends Activity {
     }
     private void showMiniMenu() {
         header("🎮 Spelen","Kies een leerwereld of een minispel.");
+        showFavoriteGames();
         showRecentGames(false);
         Button learn=tile("🌈 Leerwerelden","Tellen, taal, vormen en dieren",
                 0xffe5e3ff,84);

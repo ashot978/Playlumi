@@ -57,7 +57,9 @@ public final class PlaylumiFavorites {
     public static PlaylumiFavorites restore(String saved){
         PlaylumiFavorites result=new PlaylumiFavorites();
         if(saved==null || saved.length()>512)return result;
-        for(String row:saved.split(";")){
+        String[] rows=saved.split(";",-1);
+        for(int index=rows.length-1;index>=0;index--){
+            String row=rows[index];
             String[] parts=row.split(",",-1);
             if(parts.length!=4 || (!parts[3].equals("0") && !parts[3].equals("1")))continue;
             try {
