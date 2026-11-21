@@ -35,7 +35,7 @@ public final class PlaylumiMiniChallenge {
         List<String> options=new ArrayList<>();
         if(kind==DRAG) {
             // Every target is a specific shape symbol, never an ambiguous shape name.
-            int available=level==0?5:level==1?8:SHAPES.length;
+            int available=level==0?7:level==1?8:SHAPES.length;
             List<Integer> indices=uniqueIndices(random,count,available);
             for(int index:indices)options.add(SHAPES[index]);
             int answer=random.nextInt(options.size());

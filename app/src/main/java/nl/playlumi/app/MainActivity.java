@@ -86,6 +86,7 @@ public class MainActivity extends Activity {
     private String feedback="";
     private PlaylumiAudio sound;
     private PlaylumiMiniChallenge mini;
+    private MiniChallengeDeck miniDeck;
     private PlaylumiCharacterView playPal;
     private int miniKind,miniRound,rewardReturn=PLAY;
     private boolean miniSolved;
@@ -241,7 +242,7 @@ public class MainActivity extends Activity {
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
-        if(page==MINI_PLAY)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(page==MINI_PLAY)startMiniDeck();
         if(page==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
             try {
                 melody=PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
@@ -1523,8 +1524,8 @@ public class MainActivity extends Activity {
     private void showMiniMenu() {
         header("🎪 Het speelplein","Tik een spelletje aan.");
         String[] names={"Sleep de vormen","Tik de ballon","Dierenmemory"};
-        String[] notes={"Sleep naar het huisje","Vind de juiste ballon",
-                "Zoek dezelfde diertjes"};
+        String[] notes={"300 geschudde vormborden","300 geschudde ballonborden",
+                "300 geschudde memoryborden"};
         Button[] first=new Button[3];
         for(int i=0;i<3;i++) {
             final int kind=i;
@@ -1533,7 +1534,7 @@ public class MainActivity extends Activity {
             first[i].setOnClickListener(v->{
                 miniKind=kind;miniRound=0;miniSolved=false;
                 pendingBadges.clear();
-                mini=PlaylumiMiniChallenge.generate(kind,Math.max(0,age),new Random());
+                startMiniDeck();
                 move(MINI_PLAY);
             });
         }
@@ -1558,8 +1559,16 @@ public class MainActivity extends Activity {
         addTile(musicButton,7);
     }
 
+    /** Rebuild a 300-board deck on every entry, using a fresh shuffle. */
+    private void startMiniDeck() {
+        miniDeck=MiniChallengeDeck.create(miniKind,Math.max(0,Math.min(2,age)),new Random());
+        mini=miniDeck.next();
+    }
     private void showMiniPlay() {
-        if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(mini==null) {
+            if(miniDeck==null)startMiniDeck();
+            else mini=miniDeck.next();
+        }
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
                 "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
         if(miniRound>=20) {
@@ -1569,7 +1578,7 @@ public class MainActivity extends Activity {
             addTile(again,9);
             again.setOnClickListener(v->{
                 miniRound=0;miniSolved=false;
-                mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+                startMiniDeck();
                 move(MINI_PLAY);
             });
             Button back=tile("🎪 Andere minigame","",0xffe8dfff,86);
@@ -1637,7 +1646,8 @@ public class MainActivity extends Activity {
         advanceMini();
     }
     private void advanceMini() {
-        mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(miniDeck==null)startMiniDeck();
+        else mini=miniDeck.next();
         miniSolved=false;
         move(MINI_PLAY);
     }
