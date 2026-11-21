@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
     private String shopMessage="";
     private int sessionSolved,sessionAttempts,earnedBadge=-1,lifetimeCount;
     private boolean moving,answerLocked,greeted;
+    private int mascotTapCount;
     private LearningGame game;
     private QuestionHistory recent;
     private PlaylumiScores scores;
@@ -523,13 +524,15 @@ public class MainActivity extends Activity {
         character=new PlaylumiCharacterView(this,wardrobe);
         character.setContentDescription("Jouw stervriendje. Tik voor een magische verrassing.");
         character.setOnClickListener(v->{
-            character.surprised();
-            if(sound!=null)sound.hello();
+            mascotTapCount++;
+            switch(mascotTapCount%4){
+                case 0: character.twirl();if(sound!=null)sound.sparkle();break;
+                case 1: character.wave();if(sound!=null)sound.hello();break;
+                case 2: character.dance();if(sound!=null)sound.dance();break;
+                default: character.surprised();if(sound!=null)sound.pop();break;
+            }
             PlaylumiMotion.pop(v);
-            FrameLayout active=stage;
-            active.post(()->{
-                if(stage==active)PlaylumiMotion.celebrate(active,1);
-            });
+            PlaylumiDelight.sprinkle(stage,character);
         });
         boolean showFull=page==AVATAR || page==STAR_STAGE || page==STORY_END ||
                 page==REWARD || page==BREAK_SCREEN || page==SHOP;
@@ -1382,6 +1385,8 @@ public class MainActivity extends Activity {
                             "🎉 Nieuw! "+PlaylumiWardrobe.ITEM_NAMES[slot][selected]:
                             "✨ Superleuk! Aangetrokken.";
                     showPage();
+                    if(character!=null)
+                        PlaylumiDelight.sprinkle(stage,character);
                     if(result==PlaylumiWardrobe.PURCHASED) {
                         FrameLayout active=stage;
                         active.post(()->{
