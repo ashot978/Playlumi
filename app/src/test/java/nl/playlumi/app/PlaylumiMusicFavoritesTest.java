@@ -110,6 +110,29 @@ public final class PlaylumiMusicFavoritesTest {
     public void adjacentRejectsUnsupportedDirection() {
         new PlaylumiMusicFavorites(0).adjacent(false,0,0);
     }
+    @Test public void navigatingAllPagesWrapsInBothDirections() {
+        PlaylumiMusicFavorites favorites=new PlaylumiMusicFavorites(0);
+        assertEquals(3,favorites.pages(false));
+        assertEquals(2,favorites.movePage(false,0,-1));
+        assertEquals(0,favorites.movePage(false,2,1));
+        assertEquals(1,favorites.movePage(false,0,1));
+        assertEquals(0,favorites.movePage(false,1,-1));
+    }
+    @Test public void navigatingPartialAndEmptyFavoritesPagesIsSafe() {
+        PlaylumiMusicFavorites favorites=new PlaylumiMusicFavorites(0);
+        assertEquals(0,favorites.movePage(true,0,-1));
+        assertEquals(0,favorites.movePage(true,42,1));
+        for(int tune:new int[]{0,2,4,6,8,10,12})favorites.toggle(tune);
+        assertEquals(2,favorites.pages(true));
+        assertEquals(1,favorites.movePage(true,0,-1));
+        assertEquals(0,favorites.movePage(true,1,1));
+        assertEquals(1,favorites.movePage(true,42,1));
+        assertEquals(1,favorites.onPage(true,1).length);
+    }
+    @Test(expected=IllegalArgumentException.class)
+    public void invalidPageDirectionIsRejected() {
+        new PlaylumiMusicFavorites(0).movePage(false,0,0);
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidIndexIsRejected(){new PlaylumiMusicFavorites(0).toggle(18);}
 }
