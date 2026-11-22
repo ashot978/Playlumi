@@ -51,6 +51,18 @@ public final class PlaylumiMusicBoxTest {
             assertTrue(initial.add(PlaylumiMusicBox.surprise(-1,d)));
         assertEquals(18,initial.size());
     }
+    @Test public void selectedAndFavoriteMarkersAlwaysMatchTrackState(){
+        for(int i=0;i<PlaylumiMusicBox.COUNT;i++){
+            String plain=PlaylumiMusicBox.displayTitle(i,false,false);
+            String selected=PlaylumiMusicBox.displayTitle(i,true,false);
+            String favorite=PlaylumiMusicBox.displayTitle(i,false,true);
+            String both=PlaylumiMusicBox.displayTitle(i,true,true);
+            assertEquals(PlaylumiMusicBox.title(i),plain);
+            assertEquals("🎵 "+plain,selected);
+            assertEquals("⭐ "+plain,favorite);
+            assertEquals("🎵 ⭐ "+plain,both);
+        }
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidTrackRejected(){PlaylumiMusicBox.effect(18);}
     @Test(expected=IllegalArgumentException.class)
