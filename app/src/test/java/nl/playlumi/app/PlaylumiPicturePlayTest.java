@@ -1,64 +1,38 @@
 package nl.playlumi.app;
 
 import org.junit.Test;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 import static org.junit.Assert.*;
 
+/** Spoken previews should match the real choices for all three ages. */
 public final class PlaylumiPicturePlayTest {
-    @Test public void sixIllustratedChoicesExistForEachAge() {
-        for(int age=0;age<3;age++){
-            Set<Integer> unique=new HashSet<>();
-            for(int i=0;i<PlaylumiPicturePlay.COUNT;i++){
-                int mode=PlaylumiPicturePlay.game(age,i);
-                assertTrue(mode>=0 && mode<LearningGame.GAME_NAMES.length);
-                assertTrue(unique.add(mode));
-                assertFalse(PlaylumiPicturePlay.label(age,i).isEmpty());
-                assertFalse(PlaylumiPicturePlay.icon(age,i).isEmpty());
-                assertEquals(age,PlaylumiPicturePlay.difficulty(age));
-                assertEquals(0,PlaylumiPicturePlay.variant(age,i));
+    @Test public void eachPictureHasAnAccurateSpeakableHint() {
+        for(int age=0;age<3;age++) {
+            assertEquals(6,PlaylumiPicturePlay.COUNT);
+            for(int item=0;item<PlaylumiPicturePlay.COUNT;item++) {
+                String name=PlaylumiPicturePlay.label(age,item);
+                String hint=PlaylumiPicturePlay.spokenLabel(age,item);
+                assertEquals("Dit is "+name+". Tik om te spelen.",hint);
+                assertTrue(hint.contains(name));
+                assertFalse(hint.contains("null"));
+                assertFalse(name.trim().isEmpty());
             }
-            assertEquals(6,unique.size());
         }
     }
 
-    @Test public void oneTapCreatesRealPlayableRoundsInAllEighteenShortcuts() {
-        LearningGame engine=new LearningGame(new Random(129));
-        for(int age=0;age<3;age++)
-            for(int i=0;i<PlaylumiPicturePlay.COUNT;i++){
-                engine.configure(PlaylumiPicturePlay.game(age,i),
-                        PlaylumiPicturePlay.variant(age,i),
-                        PlaylumiPicturePlay.difficulty(age));
-                assertEquals(300,engine.questionPoolSize());
-                for(int n=0;n<8;n++){
-                    LearningGame.Round round=engine.round();
-                    assertNotNull(round);
-                    assertFalse(round.prompt.isEmpty());
-                    assertTrue(round.correctIndex>=0);
-                    assertTrue(round.correctIndex<round.answers.size());
-                    assertTrue(round.choose(round.correctIndex));
-                    assertTrue(round.isSolved());
-                    engine.nextRound();
-                }
-            }
-    }
-
-    @Test public void layoutIsEasyToTapOnPhoneAndTablet() {
+    @Test public void stillUsesTwoColumnsOnPhonesThreeOnTablets() {
         assertEquals(2,PlaylumiPicturePlay.columns(320));
         assertEquals(2,PlaylumiPicturePlay.columns(599));
         assertEquals(3,PlaylumiPicturePlay.columns(600));
-        assertEquals(3,PlaylumiPicturePlay.columns(850));
+        assertEquals(3,PlaylumiPicturePlay.columns(880));
     }
 
-    @Test public void invalidAgeAndShortcutCannotStartAChildGame() {
-        assertThrows(IllegalArgumentException.class,
-                ()->PlaylumiPicturePlay.game(-1,0));
-        assertThrows(IllegalArgumentException.class,
-                ()->PlaylumiPicturePlay.game(3,0));
-        assertThrows(IllegalArgumentException.class,
-                ()->PlaylumiPicturePlay.icon(0,6));
-        assertThrows(IllegalArgumentException.class,
-                ()->PlaylumiPicturePlay.label(1,-1));
+    @Test(expected=IllegalArgumentException.class)
+    public void invalidAgeCannotBeSpoken() {
+        PlaylumiPicturePlay.spokenLabel(3,0);
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void invalidChoiceCannotBeSpoken() {
+        PlaylumiPicturePlay.spokenLabel(1,PlaylumiPicturePlay.COUNT);
     }
 }

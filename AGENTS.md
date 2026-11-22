@@ -55,3 +55,11 @@ Provide six big illustrated one-tap learning games suitable for each age (2 colu
 
 ## Playlumi 0.38.0 — organic storybook interface
 The child-facing UI uses rounded, organic cloud shapes rather than uniform rectangular cards. Six one-tap age-appropriate games use real circular, animated Canvas choices with independently accessible labels and tap targets. A native animated meadow with clouds, flowers and butterflies makes Home, world-selection and customization screens feel alive. Gameplay questions/illustrations/answer selections use soft curved organic shapes; keep question text fully accessible. All movement must be decorative, finite or lifecycle-cancelled; reduced-motion setting freezes all decorative motion. Never require motion to understand a question or earn a reward. Keep the full 300-question randomized decks, privacy, profiles and original signing requirements.
+
+## Playlumi 0.39.0 - listening before choosing
+The six age-specific picture buttons keep their original one-tap launch. Holding
+one briefly reads its title and explains the tap action using existing local
+Android text-to-speech, only when sound is enabled. Keep the preview harmless:
+no launch, score mutation, account, internet, new permission or saved answers.
+Verify every age/choice, preserve Playlumi's stable certificate and app ID,
+and deliver a new privately signed, verified APK after passing Android CI.
