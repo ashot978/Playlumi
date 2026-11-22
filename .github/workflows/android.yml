@@ -73,6 +73,51 @@ jobs:
           path: app/build/outputs/apk/release/*-unsigned.apk
           if-no-files-found: error
           retention-days: 7
+      - name: Sign release only with the original verified Playlumi certificate
+        id: sign_release
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+          EXPECTED_CERT_SHA256: ${{ secrets.PLAYLUMI_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ] && [ -z "$EXPECTED_CERT_SHA256" ]; then
+            echo "Original release signing unavailable: unsigned build only."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ] || [ -z "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::Release signing secrets incomplete. No APK will be published."
+            exit 1
+          fi
+          STORE_PATH="$RUNNER_TEMP/playlumi-original-release.p12"
+          trap 'rm -f "$STORE_PATH"' EXIT
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 --decode > "$STORE_PATH"
+          chmod 600 "$STORE_PATH"
+          PLAYLUMI_STORE_FILE="$STORE_PATH" PLAYLUMI_SIGNING_PASSWORD="$RELEASE_PASSWORD" gradle --no-daemon assembleRelease --rerun-tasks
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APK_SIGNER"
+          "$APK_SIGNER" verify --print-certs "$APK"
+          ACTUAL="$("$APK_SIGNER" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::APK signature does not match the original verified certificate."
+            rm -f "$APK"
+            exit 1
+          fi
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "Release APK signed with the verified original certificate."
+      - name: Publish verified original-signed update APK
+        if: steps.sign_release.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-original-signed-release-update
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Clarify what was NOT tested
         if: always()
         run: |
