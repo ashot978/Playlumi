@@ -2251,12 +2251,21 @@ public class MainActivity extends Activity {
             status.setText("🍃 Gestopt. Kies een nieuw deuntje!");
         });
         if(numberOfPages>1) {
-            Button next=tile(musicBoxPage==numberOfPages-1?
-                    "↩ Terug naar de eerste pagina":"✨ Volgende deuntjes →",
-                    (musicBoxPage+1)+" / "+numberOfPages,0xffe5ecff,69);
-            addTile(next,9);
-            next.setOnClickListener(v->{
-                musicBoxPage=(musicBoxPage+1)%numberOfPages;
+            Button previousPage=tile("⬅ Vorige pagina",
+                    "Bekijk de vorige zes deuntjes",0xffe5ecff,70);
+            Button nextPage=tile("Volgende pagina ➡",
+                    "Bekijk de volgende zes deuntjes",0xffdff4ec,70);
+            addTwo(previousPage,nextPage,78);
+            addText("Pagina "+(musicBoxPage+1)+" van "+numberOfPages,
+                    15,SUB,5,6);
+            previousPage.setOnClickListener(v->{
+                musicBoxPage=musicBoxFavorites.movePage(musicBoxFavoritesOnly,
+                        musicBoxPage,-1);
+                showPage();
+            });
+            nextPage.setOnClickListener(v->{
+                musicBoxPage=musicBoxFavorites.movePage(musicBoxFavoritesOnly,
+                        musicBoxPage,1);
                 showPage();
             });
         }
