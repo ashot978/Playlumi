@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
     private SensoryChallengeDeck<PlaylumiBubbles> bubbleDeck;
     private long bubbleDeckSeed;
     private PlaylumiMelody melody;
+    private final PlaylumiMelodyPlayback melodyPlayback=new PlaylumiMelodyPlayback();
     private SensoryChallengeDeck<PlaylumiMelody> melodyDeck;
     private long melodyDeckSeed;
     private int melodyRound;
@@ -311,7 +312,11 @@ public class MainActivity extends Activity {
     }
     @Override protected void onPause() {
         if(page==DRAW && drawing!=null)drawing.save();
-        if(sound!=null)sound.stopSpeaking();
+        melodyPlayback.stop();
+        if(sound!=null) {
+            sound.stopSpeaking();
+            sound.stopNotes();
+        }
         saveUsage();
         activeSince=0;
         super.onPause();
@@ -1044,7 +1049,11 @@ public class MainActivity extends Activity {
     }
 
     private void showPage() {
-        if(sound!=null)sound.stopSpeaking();
+        melodyPlayback.stop();
+        if(sound!=null) {
+            sound.stopSpeaking();
+            sound.stopNotes();
+        }
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
@@ -3181,24 +3190,32 @@ public class MainActivity extends Activity {
         }
         return b.toString();
     }
+    /** Every new replay invalidates the previous delayed notes, without auto-play. */
     private void playMelodyPreview() {
-        if(melody==null || melodySolved)return;
+        if(melody==null || melodySolved || sound==null || !sound.isEnabled())return;
         final FrameLayout active=stage;
+        final PlaylumiMelody shownMelody=melody;
+        final long playbackId=melodyPlayback.begin();
+        sound.stopNotes();
         melodyStatus.setText("🎶 Luister goed ...");
-        for(int i=0;i<melody.length();i++) {
-            final int note=melody.noteAt(i);
+        for(int i=0;i<shownMelody.length();i++) {
+            final int note=shownMelody.noteAt(i);
             final int beat=i;
             active.postDelayed(()->{
-                if(stage!=active || page!=MUSIC_PLAY)return;
+                if(stage!=active || page!=MUSIC_PLAY || melody!=shownMelody ||
+                        !melodyPlayback.isActive(playbackId) || !sound.isEnabled())return;
                 sound.note(note);
                 melodyStatus.setText("🎶 "+PlaylumiMelody.ANIMALS[note]+
-                        "  ("+(beat+1)+" / "+melody.length()+")");
+                        "  ("+(beat+1)+" / "+shownMelody.length()+")");
             },i*470L);
         }
         active.postDelayed(()->{
-            if(stage==active && page==MUSIC_PLAY)
+            if(stage==active && page==MUSIC_PLAY && melody==shownMelody &&
+                    melodyPlayback.isActive(playbackId)) {
+                melodyPlayback.stop();
                 melodyStatus.setText("🌟 Nu jij! Tik de dierenvriendjes aan.");
-        },melody.length()*470L+220L);
+            }
+        },shownMelody.length()*470L+220L);
     }
     private void showMusicPlay() {
         if(melody==null) {
@@ -3230,18 +3247,30 @@ public class MainActivity extends Activity {
         }
         addText(instruments.toString(),31,0xff7652ac,8,7);
         melodyStatus=text(sound.isEnabled()?
-                "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
+                "👂 Tik op de luisterknop en speel het deuntje na.":
+                "👀 Bekijk de plaatjes en tik ze na.",
                 20,0xff65418f);
         melodyStatus.setPadding(dp(9),dp(14),dp(9),dp(14));
         melodyStatus.setBackground(rounded(0xfff1e5ff,23));
         addWidget(melodyStatus,5,11);
         Button replay=tile(sound.isEnabled()?"🔊 Speel de melodie af":"👀 Bekijk de melodie",
-                "",0xffd5f0ff,87);
+                "Start alleen als je op deze knop tikt",0xffd5f0ff,87);
         addTile(replay,8);
         replay.setOnClickListener(v->{
             if(sound.isEnabled())playMelodyPreview();
             else melodyStatus.setText(melodyIcons());
         });
+        if(sound.isEnabled()) {
+            Button stop=tile("⏹ Stop de melodie",
+                    "Onderbreek het luisteren meteen",0xffe8e6f7,62);
+            stop.setContentDescription("Stop de melodie die nu wordt afgespeeld");
+            addTile(stop,4);
+            stop.setOnClickListener(v->{
+                melodyPlayback.stop();
+                sound.stopNotes();
+                melodyStatus.setText("🌟 Klaar om zelf te spelen of opnieuw te luisteren.");
+            });
+        }
         Button reveal=tile("💡 Laat de volgorde zien","",0xffffedc3,61);
         addTile(reveal,5);
         reveal.setOnClickListener(v->{
@@ -3266,6 +3295,9 @@ public class MainActivity extends Activity {
     }
     private void tapMelody(int note,Button pressed) {
         if(melodySolved || melody==null)return;
+        // A child's instrument tap interrupts any preview, never overlaps it.
+        melodyPlayback.stop();
+        sound.stopNotes();
         sound.note(note);
         PlaylumiDelight.hop(pressed);
         int status=melody.tap(note);

@@ -119,3 +119,15 @@ selected device voice name and speed within the child's local preferences.
 Never list non-Dutch or network-required voices. Never auto-play a preview on
 initialization or after settings navigation, and never add Internet permission.
 Keep original signing certificate, app-ID and saved gameplay data.
+
+## Playlumi 0.45.0 — keep musical learning audible but peaceful
+Separate intentionally requested learning notes from decorative jingles:
+Muziekatelier's notes must work whenever the global Geluid switch is on,
+even when optional Geluidseffecten is off (default). Global mute remains
+authoritative for all audio. Every melody playback is explicitly triggered;
+never automatically play on opening or advancing a screen. A replay request
+invalidates earlier scheduled notes. Pressing the dedicated Stop control,
+playing an instrument, leaving the page or backgrounding the app cancels
+queued preview notes and stops the currently playing note. Never overlap
+multiple notes from earlier replays. Preserve saved state, rewards, privacy,
+Android compatibility, and original signed APK release requirements.
