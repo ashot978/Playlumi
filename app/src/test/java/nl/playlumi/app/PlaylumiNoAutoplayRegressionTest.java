@@ -17,6 +17,8 @@ public final class PlaylumiNoAutoplayRegressionTest {
         assertFalse(code.contains("readThisPage("));
         assertFalse(code.contains("auto_read"));
         assertTrue(code.contains("Geluidseffecten: aan"));
+        assertTrue(code.contains("effects_on\",false"));
+        assertTrue(code.contains("Test de voorleesstem"));
         assertTrue(code.contains("Lees de vraag voor"));
     }
 }
