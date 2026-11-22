@@ -108,6 +108,22 @@ public final class PlaylumiAudio {
     public void story(){cue(PlaylumiTunes.STORY);}
     public void match(){cue(PlaylumiTunes.MATCH);}
     public void party(){cue(PlaylumiTunes.PARTY);}
+    /** Play only a child-selected instrumental melody, without voice. */
+    public boolean playMusicBox(int track) {
+        int effect=PlaylumiMusicBox.effect(track);
+        if(released || !enabled)return false;
+        SoundPool current=pool;
+        if(current==null || loaded.get(effect)!=1)return false;
+        int id=soundIds.get(effect);
+        if(id<=0)return false;
+        try {
+            stopNotes();
+            int stream=current.play(id,.52f,.52f,1,0,1f);
+            if(stream<=0)return false;
+            activeNoteStream=stream;
+            return true;
+        } catch(RuntimeException ignored) {return false;}
+    }
     public void sample(){
         cue(choose(previewTurn,PlaylumiTunes.BONUS,PlaylumiTunes.GARDEN,
                 PlaylumiTunes.STORY,PlaylumiTunes.MATCH,PlaylumiTunes.DISCOVER,

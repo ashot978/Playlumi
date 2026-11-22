@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, PICTURE_PLAY=42;
+            WORLD_PICKER=40, HOME_OPTIONS=41, PICTURE_PLAY=42, MUSIC_BOX=43;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=PlaylumiVisualStyle.INK, SUB=PlaylumiVisualStyle.MUTED;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -112,6 +112,7 @@ public class MainActivity extends Activity {
     private long melodyDeckSeed;
     private int melodyRound;
     private boolean melodySolved;
+    private int musicBoxPage,musicBoxTrack=-1;
     private TextView melodyStatus;
     private int bubbleRound;
     private boolean bubbleSolved;
@@ -181,6 +182,8 @@ public class MainActivity extends Activity {
             closetPage=state.getInt("closetPage",0);
             shopPage=state.getInt("shopPage",0);
             starStagePage=state.getInt("starStagePage",0);
+            musicBoxPage=PlaylumiMusicBox.safePage(state.getInt("musicBoxPage",0));
+            musicBoxTrack=PlaylumiMusicBox.safeSelected(state.getInt("musicBoxTrack",-1));
             selectedSlot=state.getInt("selectedSlot",0);
             outfitPreview=state.getInt("outfitPreview",-1);
             roomPreview=state.getInt("roomPreview",-1);
@@ -330,6 +333,8 @@ public class MainActivity extends Activity {
         out.putInt("closetPage",closetPage);
         out.putInt("shopPage",shopPage);
         out.putInt("starStagePage",starStagePage);
+        out.putInt("musicBoxPage",musicBoxPage);
+        out.putInt("musicBoxTrack",musicBoxTrack);
         out.putInt("selectedSlot",selectedSlot);
         out.putInt("outfitPreview",outfitPreview);
         out.putInt("roomPreview",roomPreview);
@@ -396,7 +401,8 @@ public class MainActivity extends Activity {
             return;
         }
         if(page==HOME) {super.onBackPressed();return;}
-        if(page==WORLD_PICKER || page==HOME_OPTIONS || page==PICTURE_PLAY) {move(HOME);return;}
+        if(page==WORLD_PICKER || page==HOME_OPTIONS || page==PICTURE_PLAY ||
+                page==MUSIC_BOX) {move(HOME);return;}
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
@@ -648,7 +654,7 @@ public class MainActivity extends Activity {
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
         boolean playfulPage=page==HOME || page==PICTURE_PLAY ||
                 page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
-                page==MINI_MENU || page==AVATAR || page==CLOSET ||
+                page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
                 page==SHOP || page==ROOM_CATS || page==ROOM_ITEMS ||
                 page==GARDEN_MENU || page==FRIEND_CARE || page==STAR_STAGE;
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),
@@ -879,7 +885,8 @@ public class MainActivity extends Activity {
                 return PlaylumiQuickNav.CUSTOMIZE;
             case GARDEN_MENU:case GARDEN_PLANT:
                 return PlaylumiQuickNav.GARDEN;
-            case MINI_MENU:case PICTURE_PLAY:case WORLD_PICKER:case WORLD_HUB:case CATEGORIES:
+            case MINI_MENU:case PICTURE_PLAY:case MUSIC_BOX:case WORLD_PICKER:
+            case WORLD_HUB:case CATEGORIES:
             case DETAIL:case LEVEL:case VARIANTS:case ADVENTURE_MAP:
             case STORY_LIBRARY:case BADGES:
                 return PlaylumiQuickNav.PLAY;
@@ -1063,7 +1070,7 @@ public class MainActivity extends Activity {
         stage.setBackground(bg);
         boolean wonderland=page==HOME || page==PICTURE_PLAY ||
                 page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
-                page==MINI_MENU || page==AVATAR || page==CLOSET ||
+                page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
                 page==SHOP || page==ROOM || page==ROOM_CATS ||
                 page==ROOM_ITEMS || page==GARDEN_MENU || page==STAR_STAGE;
         if(wonderland) {
@@ -1127,6 +1134,7 @@ public class MainActivity extends Activity {
             case SHOP: showShop();break;
             case MINI_MENU: showMiniMenu();break;
             case PICTURE_PLAY: showPicturePlay();break;
+            case MUSIC_BOX: showMusicBox();break;
             case MINI_PLAY: showMiniPlay();break;
             case WORLD_HUB: showWorldHub();break;
             case ADVENTURE_MAP: showAdventureMap();break;
@@ -1248,6 +1256,12 @@ public class MainActivity extends Activity {
         Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
         play.setOnClickListener(v->move(MINI_MENU));
         addTwo(worlds,play,107);
+
+        Button musicBox=tile("🎼 De Muziekdoos",
+                "Kies uit twaalf vrolijke deuntjes, zonder computerstem",
+                0xffffe7b5,93);
+        addTile(musicBox,5);
+        musicBox.setOnClickListener(v->move(MUSIC_BOX));
 
         Button friend=tile("🎨 Aanpassen","Kleding, kleuren, kamer en tuin",0xffffe7bb,86);
         addTile(friend,4);
@@ -2120,9 +2134,81 @@ public class MainActivity extends Activity {
         addTwo(first[0],first[1],103);
         addTwo(first[2],bubblesButton,103);
         addTile(musicButton,7);
+        Button musicBox=tile("🎼 De Muziekdoos",
+                "Twaalf korte instrumentale melodietjes om zelf te kiezen",
+                0xffffe7b5,88);
+        addTile(musicBox,7);
+        musicBox.setOnClickListener(v->move(MUSIC_BOX));
     }
 
     /** Rebuild a 300-board deck on every entry, using a fresh shuffle. */
+    /** A musical toy: instrumental WAVs only, no score changes or spoken voice. */
+    private void showMusicBox() {
+        header("🎼 De Muziekdoos","Tik op een plaatje. Alleen vrolijke muziek!");
+        addText("🎵 Kies een melodietje",18,SUB,3,7);
+        TextView status=text(musicBoxTrack<0?
+                "✨ Welke melodie kies jij?":
+                "🎼 Laatst gekozen: "+PlaylumiMusicBox.name(musicBoxTrack),
+                17,0xff5b4287);
+        status.setBackground(softCard(0xfff1e7ff,20));
+        status.setPadding(dp(11),dp(13),dp(11),dp(13));
+        status.setMinHeight(dp(56));
+        addWidget(status,2,10);
+        int first=PlaylumiMusicBox.firstOnPage(musicBoxPage);
+        int last=Math.min(first+PlaylumiMusicBox.PAGE_SIZE,PlaylumiMusicBox.COUNT);
+        for(int i=first;i<last;i+=2) {
+            final int left=i;
+            final int right=i+1;
+            Button one=tile(PlaylumiMusicBox.title(left),"",COLORS[left%COLORS.length],104);
+            Button two=tile(PlaylumiMusicBox.title(right),"",COLORS[right%COLORS.length],104);
+            one.setTextSize(17);two.setTextSize(17);
+            one.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(left));
+            two.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(right));
+            one.setOnClickListener(v->chooseMusicBox(left,status));
+            two.setOnClickListener(v->chooseMusicBox(right,status));
+            addTwo(one,two,109);
+        }
+        Button surprise=tile("🎲 Verrassingsdeuntje",
+                "Speel iets anders dan de vorige keer",0xffe4dcff,82);
+        Button stop=tile("⏹ Stop muziek",
+                "Stop het deuntje meteen",0xffdaf2e7,82);
+        addTwo(surprise,stop,87);
+        surprise.setOnClickListener(v->{
+            int available=musicBoxTrack<0?PlaylumiMusicBox.COUNT:
+                    PlaylumiMusicBox.COUNT-1;
+            int draw=new Random().nextInt(available);
+            chooseMusicBox(PlaylumiMusicBox.surprise(musicBoxTrack,draw),status);
+        });
+        stop.setOnClickListener(v->{
+            sound.stopNotes();
+            status.setText("🍃 Gestopt. Kies een nieuw deuntje!");
+        });
+        Button next=tile(musicBoxPage==0?
+                "✨ Nog zes deuntjes →":"↩ Eerste zes deuntjes",
+                (musicBoxPage+1)+" / "+PlaylumiMusicBox.PAGES,
+                0xffe5ecff,69);
+        addTile(next,9);
+        next.setOnClickListener(v->{
+            musicBoxPage=(musicBoxPage+1)%PlaylumiMusicBox.PAGES;
+            showPage();
+        });
+        if(!sound.isEnabled())
+            addText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.",
+                    15,SUB,5,8);
+    }
+
+    private void chooseMusicBox(int index,TextView status) {
+        if(sound.playMusicBox(index)) {
+            musicBoxTrack=index;
+            status.setText("🎶 Gekozen: "+PlaylumiMusicBox.title(index));
+            PlaylumiDelight.hop(status);
+        } else if(!sound.isEnabled()) {
+            status.setText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.");
+        } else {
+            status.setText("🎵 Deuntje wordt geladen. Probeer nog eens!");
+        }
+    }
+
     private void startMiniDeck() {
         miniDeck=MiniChallengeDeck.create(miniKind,Math.max(0,Math.min(2,age)),new Random());
         mini=miniDeck.next();
