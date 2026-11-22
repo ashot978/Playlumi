@@ -92,6 +92,15 @@ public final class PlaylumiMusicFavorites {
         return Math.max(1,(count+PlaylumiMusicBox.PAGE_SIZE-1)/
                 PlaylumiMusicBox.PAGE_SIZE);
     }
+    /** Move between pages in either direction, including partial last pages. */
+    public int movePage(boolean favoritesOnly,int currentPage,int direction) {
+        if(direction!=1 && direction!=-1)
+            throw new IllegalArgumentException("direction");
+        int total=pages(favoritesOnly);
+        int safe=currentPage<0 || currentPage>=total?0:currentPage;
+        return Math.floorMod(safe+direction,total);
+    }
+
     public int[] onPage(boolean favoritesOnly,int page) {
         int[] listed=new int[visibleCount(favoritesOnly)];
         int n=0;
