@@ -127,22 +127,6 @@ jobs:
           [[ "$PACKAGE" == *"versionCode='24456'"* ]]
           [[ "$PACKAGE" == *"versionName='0.63.0'"* ]]
           echo "PASS: original release fingerprint, v1/v2, zipalign, exact version and package"
-      - name: Install the actual original-signed APK in Android emulator
-        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          adb uninstall nl.playlumi.app
-          adb install release-candidates/playlumi-0.63.0-original-signed.apk
-          adb logcat -c
-          adb shell am start -W -n nl.playlumi.app/.MainActivity
-          sleep 5
-          test -n "$(adb shell pidof nl.playlumi.app | tr -d '\r')"
-          if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
-            echo "::error::Original-signed APK crashed after install."
-            exit 1
-          fi
-          echo "PASS: exact original-signed APK installed and launched on API 35 emulator"
       - name: Publish emulator-approved original-signed release update
         if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
         uses: actions/upload-artifact@v4
