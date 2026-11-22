@@ -84,7 +84,10 @@ jobs:
           path: app/build/outputs/apk/release/*-unsigned.apk
           if-no-files-found: error
           retention-days: 7
+      # Pull requests prove code quality; only explicit release runs attempt signing.
+      # A release run still fails closed if original credentials are absent.
       - name: Sign release only with the original verified Playlumi certificate
+        if: github.event_name == 'workflow_dispatch'
         id: sign_release
         shell: bash
         env:
@@ -140,7 +143,7 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "Release APK signed with the verified original certificate."
       - name: Publish verified original-signed update APK
-        if: steps.sign_release.outputs.signed == 'true'
+        if: github.event_name == 'workflow_dispatch' && steps.sign_release.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-original-signed-release-update
@@ -152,5 +155,6 @@ jobs:
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
           echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash; still requires device acceptance." >> "$GITHUB_STEP_SUMMARY"
-          echo "The workflow FAILS CLOSED unless original release signing succeeds. Only the original-signed verified APK may be shared as an update." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pull requests and pushes validate tests, lint, emulator, screenshot and unsigned release but are NOT signed releases." >> "$GITHUB_STEP_SUMMARY"
+          echo "Explicit workflow_dispatch release runs FAIL CLOSED unless original signing succeeds. Only the original-signed verified APK may be shared as an update." >> "$GITHUB_STEP_SUMMARY"
           echo "Real Samsung update and saved-data acceptance remain separate from emulator smoke testing." >> "$GITHUB_STEP_SUMMARY"
