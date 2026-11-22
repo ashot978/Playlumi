@@ -59,6 +59,7 @@ public class MainActivity extends Activity {
     private LearningGame.Round hintRound;
     private int hintHiddenMask;
     private Button hintButton;
+    private Button readAnswersButton;
     private final ArrayList<Integer> pendingBadges=new ArrayList<>();
     private int page,age,world,categoryPage,variantPage,badgePage,difficulty;
     private int closetPage,shopPage,selectedSlot;
@@ -1532,6 +1533,7 @@ public class MainActivity extends Activity {
             hintHiddenMask=0;
         }
         hintButton=null;
+        readAnswersButton=null;
         boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
 
@@ -1621,6 +1623,19 @@ public class MainActivity extends Activity {
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
         answerLocked=round.isSolved();
+        if(!answerLocked && sound!=null && sound.isEnabled()) {
+            readAnswersButton=tile("🔊 Hoor de antwoorden","Luister voordat je kiest",
+                    0xffe4efff,58);
+            readAnswersButton.setTextSize(16);
+            readAnswersButton.setContentDescription(
+                    "Lees alle zichtbare antwoordkeuzes voor zonder een antwoord te kiezen");
+            readAnswersButton.setOnClickListener(v->{
+                if(answerLocked || game.round()!=round || !sound.isEnabled())return;
+                sound.speak(PlaylumiAnswerAudio.allChoices(
+                        round.answers,hintHiddenMask));
+            });
+            addWidgetIn(answers,readAnswersButton,dp(2),dp(5));
+        }
         if(!answerLocked && PlaylumiHints.nextWrongOption(
                 round.correctIndex,round.answers.size(),hintHiddenMask)>=0) {
             hintButton=tile("💡 Help mij","Maak de vraag makkelijker",0xffffedcf,60);
@@ -1649,6 +1664,17 @@ public class MainActivity extends Activity {
                 answerRow.addView(button,cell);
                 answerButtons.add(button);
                 button.setOnClickListener(v->choose(answer,button));
+                if(sound!=null && sound.isEnabled() && !answerLocked) {
+                    button.setContentDescription(
+                            value+". Tik om te antwoorden, houd ingedrukt om te luisteren");
+                    button.setOnLongClickListener(v->{
+                        if(!answerLocked && game.round()==round &&
+                                sound.isEnabled() && (hintHiddenMask&(1<<answer))==0)
+                            sound.speak(PlaylumiAnswerAudio.oneChoice(
+                                    round.answers,answer,hintHiddenMask));
+                        return true;
+                    });
+                }
                 if((hintHiddenMask&(1<<answer))!=0)
                     markHintedAnswer(button);
             }
@@ -1713,6 +1739,7 @@ public class MainActivity extends Activity {
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             if(hintButton!=null)hintButton.setVisibility(View.GONE);
+            if(readAnswersButton!=null)readAnswersButton.setVisibility(View.GONE);
             feedback="⭐ Goed gedaan! +3 🌟";
             if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {

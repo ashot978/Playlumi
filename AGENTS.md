@@ -83,3 +83,15 @@ The controls are screen-reader compatible and cannot select faded answers.
 Keep hints associated only with the current Round, including redraws.
 Preserve every offline deck, the parent gate, original release signer,
 version continuity, and the passing Android tests/emulator/release-APK gate.
+
+## Playlumi 0.42.0 - accessible spoken answer choices
+Each live multi-choice learning question offers an optional visible "Hoor de
+antwoorden" control, only when sound is on. It uses the existing local Dutch
+Android speech system to announce only visible answer labels in screen order.
+Long-pressing an enabled choice announces that one answer without submitting
+it; tapping selects it exactly as before. Hints from 0.41 may hide wrong
+choices; neither speech path must mention the hidden choices. All audio
+previews are independent of game scoring, awards, stars, stored data and
+correct answer disclosure. Hide the audio button after successful selection,
+keep minimum accessible targets and reduced motion. Keep tests, lint,
+emulator gate and signed APK with the original private signer; no main merge.
