@@ -35,6 +35,18 @@ public final class PlaylumiTunesTest {
         }
         assertEquals(PlaylumiTunes.COUNT,signatures.size());
     }
+    @Test public void twelveAdditionalOriginalMelodiesArePlayable() {
+        assertEquals(24,PlaylumiTunes.COUNT);
+        java.util.Set<Integer> hashes=new java.util.HashSet<>();
+        for(int id=PlaylumiTunes.BONUS;id<PlaylumiTunes.COUNT;id++) {
+            byte[] wav=PlaylumiTunes.wav(id);
+            assertTrue(wav.length>8000);
+            assertTrue(wav.length<150000);
+            assertTrue(hashes.add(java.util.Arrays.hashCode(wav)));
+        }
+        assertEquals(12,hashes.size());
+        assertEquals(11,PlaylumiTunes.NOTE_PURPLE);
+    }
     @Test(expected=IllegalArgumentException.class)
     public void unknownEffectCannotBeGenerated() {PlaylumiTunes.wav(99);}
 }

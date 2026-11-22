@@ -143,3 +143,15 @@ do not accidentally replay or speak skipped prompts. Preserve 300-card
 shuffled offline decks and all profile-specific local data. Unit-test
 skip and reward invariants, lint, compile, emulator start and signed APK.
 No main-branch merge or store publication.
+
+## Playlumi 0.47.0 - joyful jingles instead of human speech
+The user explicitly wants music back and human narration removed. Do not
+initialize TextToSpeech or expose spoken choice / question / voice settings.
+Restore default on for decorative effects when no prior stored mute exists;
+respect explicit effects_on=false and global sound_off.
+Provide 12 new original musical motifs (24 total, including four fixed notes).
+Vary successful answers, taps, dancing, unlocks and bubble pops; add themed
+chimes for story, garden, pairs and session completion. The music demo in
+parent settings and picture-long-press play only instrumental audio.
+Preserve offline saves, scores, 300 question decks, Android support and
+existing release certificate. Test and privately sign APK; do not merge main.

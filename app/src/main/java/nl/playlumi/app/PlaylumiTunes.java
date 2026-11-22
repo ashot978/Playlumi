@@ -4,7 +4,10 @@ package nl.playlumi.app;
 public final class PlaylumiTunes {
     public static final int TAP=0, SUCCESS=1, TRY_AGAIN=2, UNLOCK=3,
             HELLO=4, POP=5, DANCE=6, SPARKLE=7, NOTE_GREEN=8, NOTE_BLUE=9, NOTE_YELLOW=10, NOTE_PURPLE=11;
-    public static final int COUNT=12, RATE=22050;
+    public static final int BONUS=12,GARDEN=13,STORY=14,MATCH=15,
+            DISCOVER=16,PARTY=17,WELCOME=18,BUBBLE=19,
+            STAR_SHOWER=20,CHEER=21,TAP_ALT=22,LEVEL_UP=23;
+    public static final int COUNT=24, RATE=22050;
     private static final double[][] NOTES={
         {660,0,0},                 // button tap
         {523.25,659.25,783.99},   // good answer
@@ -17,10 +20,26 @@ public final class PlaylumiTunes {
         {261.63}, // frog: C4
         {329.63}, // cat: E4
         {392.00}, // chick: G4
-        {523.25}  // butterfly: C5
+        {523.25}, // butterfly: C5
+        {523.25,659.25,783.99,1046.5,1318.5},    // bonus fanfare
+        {392,523.25,659.25,783.99,659.25},       // growing garden
+        {329.63,440,523.25,659.25,523.25},      // story choice
+        {523.25,659.25,523.25,783.99},           // matching pairs
+        {440,587.33,698.46,880},                 // discovery
+        {523.25,659.25,783.99,1046.5,1174.66,1318.5}, // party
+        {587.33,698.46,880,987.77},             // warm welcome
+        {1046.5,783.99,587.33,880},              // new bubble sound
+        {783.99,1046.5,1318.5,1567.98,1046.5}, // star shower
+        {392,587.33,783.99,987.77,783.99},      // cheer
+        {659.25,880},                            // light tap
+        {440,523.25,659.25,880,1046.5}          // level up
     };
-    private static final int[] NOTE_MS={85,130,170,150,175,38,135,155,245,245,245,245};
-    private static final int[] GAP_MS={0,13,14,10,14,0,16,11,0,0,0,0};
+    private static final int[] NOTE_MS={
+        85,130,170,150,175,38,135,155,245,245,245,245,
+        122,145,140,126,128,145,135,92,125,138,83,140};
+    private static final int[] GAP_MS={
+        0,13,14,10,14,0,16,11,0,0,0,0,
+        15,17,16,12,13,12,14,8,12,14,8,13};
     private PlaylumiTunes() {}
     public static byte[] wav(int effect) {
         if(effect<0 || effect>=COUNT)throw new IllegalArgumentException("Invalid jingle");
@@ -49,8 +68,9 @@ public final class PlaylumiTunes {
                     double pitch=effect==POP?f*(1.0-.32*(double)i/perNote):f;
                     double phase=2*Math.PI*pitch*t;
                     double primary=Math.sin(phase);
-                    double high=.10*Math.sin(2*phase);
-                    v=amp*(primary+high)*.14;
+                    double high=.12*Math.sin(2*phase);
+                    double shimmer=.035*Math.sin(3*phase);
+                    v=amp*(primary+high+shimmer)*.19;
                 }
                 short sample=(short)Math.max(-32768,Math.min(32767,Math.round(v*32767)));
                 wave[offset++]=(byte)(sample&255);

@@ -1,24 +1,31 @@
 package nl.playlumi.app;
-
 import org.junit.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.*;
 
-/** Guard against accidentally reintroducing forced spoken questions. */
 public final class PlaylumiNoAutoplayRegressionTest {
-    @Test public void noAutomaticReadLogicCanSurviveAnUpdate() throws Exception {
-        Path source=Paths.get("src/main/java/nl/playlumi/app/MainActivity.java");
-        if(!Files.exists(source))
-            source=Paths.get("app/src/main/java/nl/playlumi/app/MainActivity.java");
-        assertTrue("App source must be available for this regression gate",Files.exists(source));
-        String code=new String(Files.readAllBytes(source),java.nio.charset.StandardCharsets.UTF_8);
-        assertFalse(code.contains("readThisPage("));
-        assertFalse(code.contains("auto_read"));
-        assertTrue(code.contains("Geluidseffecten: aan"));
-        assertTrue(code.contains("effects_on\",false"));
-        assertTrue(code.contains("Test de voorleesstem"));
-        assertTrue(code.contains("Lees de vraag voor"));
+    @Test public void humanSpeechIsAbsentFromRunningApp() throws Exception {
+        Path src=Paths.get("src/main/java/nl/playlumi/app/");
+        if(!Files.exists(src))src=Paths.get("app/src/main/java/nl/playlumi/app/");
+        String m=new String(Files.readAllBytes(src.resolve("MainActivity.java")),StandardCharsets.UTF_8);
+        String a=new String(Files.readAllBytes(src.resolve("PlaylumiAudio.java")),StandardCharsets.UTF_8);
+        assertFalse(m.contains("sound.speak("));
+        assertFalse(m.contains("sound.stopSpeaking("));
+        assertFalse(m.contains("auto_read"));
+        assertFalse(m.contains("voorleesstem"));
+        assertFalse(a.contains("TextToSpeech"));
+        assertFalse(a.contains("speech.speak("));
+        assertFalse(a.contains("ToneGenerator"));
+    }
+    @Test public void jinglesComeBackByDefault() throws Exception {
+        Path src=Paths.get("src/main/java/nl/playlumi/app/MainActivity.java");
+        if(!Files.exists(src))src=Paths.get("app/src/main/java/nl/playlumi/app/MainActivity.java");
+        String m=new String(Files.readAllBytes(src),StandardCharsets.UTF_8);
+        assertTrue(m.contains("effects_on\",true"));
+        assertTrue(m.contains("Deuntjes en geluidjes: aan"));
+        assertTrue(m.contains("Speel een verrassingsdeuntje"));
     }
 }

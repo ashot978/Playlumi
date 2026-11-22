@@ -59,7 +59,6 @@ public class MainActivity extends Activity {
     private LearningGame.Round hintRound;
     private int hintHiddenMask;
     private Button hintButton;
-    private Button readAnswersButton;
     private final ArrayList<Integer> pendingBadges=new ArrayList<>();
     private int page,age,world,categoryPage,variantPage,badgePage,difficulty;
     private int closetPage,shopPage,selectedSlot;
@@ -151,9 +150,8 @@ public class MainActivity extends Activity {
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
-        sound.setEffectsEnabled(prefs.getBoolean("effects_on",false));
-        sound.setSpeechSpeed(prefs.getInt("tts_speed",PlaylumiSpeechSettings.NORMAL));
-        sound.setPreferredVoiceName(prefs.getString("tts_voice",""));
+        // Playful music is enabled by default, unless a parent stored a mute.
+        sound.setEffectsEnabled(prefs.getBoolean("effects_on",true));
         PlaylumiMotion.setReduced(prefs.getBoolean("reduced_motion",false));
         int today=dayStamp();
         if(prefs.getInt("usage_day",-1)!=today)
@@ -314,7 +312,6 @@ public class MainActivity extends Activity {
         if(page==DRAW && drawing!=null)drawing.save();
         melodyPlayback.stop();
         if(sound!=null) {
-            sound.stopSpeaking();
             sound.stopNotes();
         }
         saveUsage();
@@ -1051,7 +1048,6 @@ public class MainActivity extends Activity {
     private void showPage() {
         melodyPlayback.stop();
         if(sound!=null) {
-            sound.stopSpeaking();
             sound.stopNotes();
         }
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
@@ -1267,8 +1263,8 @@ public class MainActivity extends Activity {
      * advanced modes via the separate full-catalog button.
      */
     private void showPicturePlay() {
-        header("🧸 Kies een plaatje",sound!=null && sound.isEnabled()?
-                "Tik op een plaatje om te spelen. 🔊 om te luisteren.":"Tik op wat je wilt doen!");
+        header("🧸 Kies een plaatje",
+                "Tik om te spelen • Houd vast voor een vrolijk deuntje!");
         java.util.List<View> choices=new java.util.ArrayList<>();
         int chosenAge=Math.max(0,Math.min(2,age));
         for(int i=0;i<PlaylumiPicturePlay.COUNT;i++) {
@@ -1277,43 +1273,9 @@ public class MainActivity extends Activity {
                     PlaylumiPicturePlay.icon(chosenAge,i),
                     PlaylumiPicturePlay.label(chosenAge,i),
                     COLORS[i%COLORS.length],i);
-            bubble.setOnClickListener(v->startPictureGame(selected));
-            // Long-press is an optional spoken preview; a single tap still plays.
-            // No text is stored or sent to an online service.
-            bubble.setOnLongClickListener(v->{
-                if(sound!=null && sound.isEnabled())
-                    sound.speak(PlaylumiPicturePlay.spokenLabel(chosenAge,selected));
-                return true;
-            });
-            // A separate, visible 48dp listen target is easier for preschoolers
-            // than discovering a long-press. It never launches or awards a game.
-            // Keep the bubble and its screen-reader target fully interactive.
-            if(sound!=null && sound.isEnabled()) {
-                FrameLayout item=new FrameLayout(this);
-                item.addView(bubble,new FrameLayout.LayoutParams(-1,-1));
-                TextView listen=text("🔊",24,TEXT);
-                listen.setGravity(Gravity.CENTER);
-                listen.setPadding(0,0,0,0);
-                listen.setBackground(new RippleDrawable(
-                        ColorStateList.valueOf(0x33d5e7ff),
-                        rounded(0xfff8fbff,24),null));
-                listen.setElevation(dp(5));
-                listen.setClickable(true);
-                listen.setFocusable(true);
-                listen.setContentDescription(
-                        PlaylumiPicturePlay.listenDescription(chosenAge,selected));
-                listen.setOnClickListener(v->{
-                    if(sound!=null && sound.isEnabled())
-                        sound.speak(PlaylumiPicturePlay.spokenLabel(chosenAge,selected));
-                });
-                FrameLayout.LayoutParams listenParams=new FrameLayout.LayoutParams(
-                        dp(48),dp(48),Gravity.TOP|Gravity.END);
-                listenParams.setMargins(0,dp(5),dp(6),0);
-                item.addView(listen,listenParams);
-                choices.add(item);
-            } else {
-                choices.add(bubble);
-            }
+            bubble.setOnClickListener(v->{sound.tap();startPictureGame(selected);});
+            bubble.setOnLongClickListener(v->{sound.sample();return true;});
+            choices.add(bubble);
         }
         addBubbleChoiceGrid(choices);
         Button all=tile("🎮 Alle spellen bekijken",
@@ -1525,7 +1487,6 @@ public class MainActivity extends Activity {
             hintHiddenMask=0;
         }
         hintButton=null;
-        readAnswersButton=null;
         boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
 
@@ -1577,17 +1538,6 @@ public class MainActivity extends Activity {
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
         promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
-        if(sound.isEnabled()) {
-            Button listen=tile("🔊","",0xffe7e3ff,46);
-            listen.setTextSize(21);
-            listen.setPadding(dp(3),dp(3),dp(3),dp(3));
-            listen.setMinWidth(dp(46));
-            listen.setContentDescription("Lees de vraag voor");
-            LinearLayout.LayoutParams speakerP=new LinearLayout.LayoutParams(dp(49),dp(51));
-            speakerP.setMargins(dp(6),0,0,0);
-            promptLine.addView(listen,speakerP);
-            listen.setOnClickListener(v->sound.speak(round.prompt));
-        }
         addWidgetIn(questions,promptLine,0,dp(8));
 
         int pictureSize=round.display.length()>22?27:
@@ -1600,7 +1550,7 @@ public class MainActivity extends Activity {
         picture.setElevation(dp(2));
         picture.setContentDescription("Plaatje bij de opdracht: "+
                 round.display.replace('\n',' '));
-        // The illustration is never an implicit speech button. Only 🔊 is.
+        // This image does not trigger human speech.
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
         feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
@@ -1610,19 +1560,6 @@ public class MainActivity extends Activity {
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
         answerLocked=round.isSolved();
-        if(!answerLocked && sound!=null && sound.isEnabled()) {
-            readAnswersButton=tile("🔊 Hoor de antwoorden","Luister voordat je kiest",
-                    0xffe4efff,58);
-            readAnswersButton.setTextSize(16);
-            readAnswersButton.setContentDescription(
-                    "Lees alle zichtbare antwoordkeuzes voor zonder een antwoord te kiezen");
-            readAnswersButton.setOnClickListener(v->{
-                if(answerLocked || game.round()!=round || !sound.isEnabled())return;
-                sound.speak(PlaylumiAnswerAudio.allChoices(
-                        round.answers,hintHiddenMask));
-            });
-            addWidgetIn(answers,readAnswersButton,dp(2),dp(5));
-        }
         if(!answerLocked && PlaylumiHints.nextWrongOption(
                 round.correctIndex,round.answers.size(),hintHiddenMask)>=0) {
             hintButton=tile("💡 Help mij","Maak de vraag makkelijker",0xffffedcf,60);
@@ -1651,17 +1588,6 @@ public class MainActivity extends Activity {
                 answerRow.addView(button,cell);
                 answerButtons.add(button);
                 button.setOnClickListener(v->choose(answer,button));
-                if(sound!=null && sound.isEnabled() && !answerLocked) {
-                    button.setContentDescription(
-                            value+". Tik om te antwoorden, houd ingedrukt om te luisteren");
-                    button.setOnLongClickListener(v->{
-                        if(!answerLocked && game.round()==round &&
-                                sound.isEnabled() && (hintHiddenMask&(1<<answer))==0)
-                            sound.speak(PlaylumiAnswerAudio.oneChoice(
-                                    round.answers,answer,hintHiddenMask));
-                        return true;
-                    });
-                }
                 if((hintHiddenMask&(1<<answer))!=0)
                     markHintedAnswer(button);
             }
@@ -1748,7 +1674,6 @@ public class MainActivity extends Activity {
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             if(hintButton!=null)hintButton.setVisibility(View.GONE);
-            if(readAnswersButton!=null)readAnswersButton.setVisibility(View.GONE);
             feedback="⭐ Goed gedaan! +3 🌟";
             if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
@@ -1757,7 +1682,8 @@ public class MainActivity extends Activity {
                 }
                 saveAdaptive(mode);
             }
-            sound.good();
+            if(sessionSolved==sessionGoal())sound.party();
+            else sound.good();
             final int answerStreak = scores.get(mode).currentStreak;
             final boolean isSessionLast = sessionSolved == sessionGoal();
             final boolean highFive = HighFiveMotion.shouldPlay(answerStreak, isSessionLast);
@@ -2222,15 +2148,6 @@ public class MainActivity extends Activity {
             addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
             return;
         }
-        if(sound.isEnabled()) {
-            Button listen=tile("🔊 Luister naar de opdracht","",0xffeee4ff,42);
-            listen.setTextSize(15);
-            listen.setPadding(dp(6),dp(5),dp(6),dp(5));
-            LinearLayout.LayoutParams speakParams=new LinearLayout.LayoutParams(-1,dp(44));
-            speakParams.setMargins(dp(5),0,dp(5),dp(2));
-            root.addView(listen,speakParams);
-            listen.setOnClickListener(v->sound.speak(mini.question));
-        }
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
             @Override public void onSolved() {
                 if(miniSolved)return;
@@ -2250,7 +2167,7 @@ public class MainActivity extends Activity {
                 if(playPal!=null)playPal.react(2);
                 // Memory pairs are practice, not a penalized test.
             }
-            @Override public void onMatch() { sound.good(); }
+            @Override public void onMatch() { sound.match(); }
         });
         LinearLayout.LayoutParams boardParams=new LinearLayout.LayoutParams(-1,-2);
         boardParams.setMargins(dp(0),dp(2),dp(0),dp(4));
@@ -2581,15 +2498,6 @@ public class MainActivity extends Activity {
         situation.setMinHeight(dp(90));
         situation.setMaxLines(5);
         storyCard.addView(situation,new LinearLayout.LayoutParams(0,-2,1));
-        if(sound.isEnabled()) {
-            Button speak=tile("🔊","",0xffe6e0ff,49);
-            speak.setTextSize(22);speak.setPadding(dp(2),dp(2),dp(2),dp(2));
-            speak.setContentDescription("Lees het verhaal voor");
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(53),dp(55));
-            p.setMargins(0,0,dp(7),0);
-            storyCard.addView(speak,p);
-            speak.setOnClickListener(v->sound.speak(scene.prompt));
-        }
         addWidget(storyCard,0,8);
         addText("Wat kies jij?",16,SUB,4,4);
         String[] options={scene.first,scene.second};
@@ -2600,7 +2508,7 @@ public class MainActivity extends Activity {
             addTile(b,6);
             b.setOnClickListener(v->{
                 stories.choose(choice);saveStories();
-                sound.good();move(STORY_REACTION);
+                sound.story();move(STORY_REACTION);
             });
         }
     }
@@ -2622,11 +2530,6 @@ public class MainActivity extends Activity {
         reaction.setMinHeight(dp(106));
         reaction.setBackground(rounded(0xffffe9cf,23));
         addWidget(reaction,0,9);
-        if(sound.isEnabled()) {
-            Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,55);
-            addTile(speak,4);
-            speak.setOnClickListener(v->sound.speak(result));
-        }
         Button next=tile("🌟 Verder met het verhaal","",0xffd1f3dd,82);
         addTile(next,8);
         next.setOnClickListener(v->{
@@ -2820,54 +2723,16 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("🗣️ Alleen voorlezen als je erom vraagt",19,TEXT,8,4);
-        addText("Geen automatische stem. Gebruik zelf de 🔊-knop "+
-                "bij een vraag of antwoord.",15,SUB,2,7);
-        Button speed=tile("🐢 Spreektempo: "+
-                PlaylumiSpeechSettings.label(sound.speechSpeed()),
-                "Kies rustig, normaal of vlot",0xffe8ecff,78);
-        addTile(speed,6);
-        speed.setOnClickListener(v->{
-            int next=PlaylumiSpeechSettings.next(sound.speechSpeed());
-            sound.setSpeechSpeed(next);
-            prefs().edit().putInt("tts_speed",next).apply();
-            showPage();
-        });
-        int voiceCount=sound.offlineVoiceCount();
-        Button voiceChoice=tile(sound.offlineVoiceLabel(),
-                voiceCount>1?"Tik om een andere offline Nederlandse stem te kiezen":
-                        "Beschikbare stemmen worden door Android bepaald",
-                0xffe7f3f7,82);
-        addTile(voiceChoice,5);
-        voiceChoice.setEnabled(voiceCount>1);
-        voiceChoice.setOnClickListener(v->{
-            String chosen=sound.nextOfflineVoice();
-            prefs().edit().putString("tts_voice",chosen).apply();
-            showPage();
-        });
-        Button preview=tile("🔊 Test de voorleesstem",
-                "Alleen op deze knop hoor je een voorbeeld",0xffdcf3e6,85);
-        addTile(preview,5);
-        TextView previewMessage=text("",14,SUB);
-        previewMessage.setMinHeight(dp(28));
-        addWidget(previewMessage,0,5);
-        preview.setOnClickListener(v->{
-            String message;
-            if(!sound.isEnabled()) {
-                message="Zet eerst Geluid aan om de voorleesstem te horen.";
-            } else if(!sound.speak("Hallo! Ik ben jouw Playlumi-stem. "+
-                    "We gaan rustig en vrolijk samen leren.")) {
-                message="Voorlezen is niet beschikbaar. Controleer de "+
-                        "Nederlandse stemmen in de Android-instellingen.";
-            } else {
-                message="Je hoort nu de voorbeeldstem. Er wordt "+
-                        "verder niets automatisch voorgelezen.";
-            }
-            previewMessage.setText(message);
-        });
+        addText("🎼 Muziekplezier",21,TEXT,8,5);
+        addText("Vrolijke deuntjes en spelgeluiden, zonder computerstem.",
+                15,SUB,2,8);
+        Button sample=tile("🎶 Speel een verrassingsdeuntje",
+                "Tik opnieuw voor een ander origineel melodietje",0xffdcf3e6,81);
+        addTile(sample,6);
+        sample.setOnClickListener(v->sound.sample());
         Button effects=tile(sound.effectsEnabled()?
-                "🎵 Geluidseffecten: aan":"🤫 Geluidseffecten: uit",
-                "Tikjes en melodietjes los van voorlezen regelen",0xffe6f0ff,89);
+                "🎵 Deuntjes en geluidjes: aan":"🤫 Deuntjes en geluidjes: uit",
+                "Vrolijke muziek bij tikken, spelen en beloningen",0xffe6f0ff,89);
         addTile(effects,7);
         effects.setOnClickListener(v->{
             sound.setEffectsEnabled(!sound.effectsEnabled());
@@ -3063,11 +2928,6 @@ public class MainActivity extends Activity {
             return;
         }
         // The small star in the navigation row replaces the oversized character panel.
-        if(sound.isEnabled()) {
-            Button speak=tile("🔊 Luister naar de opdracht","",0xffe8e1ff,49);
-            addTile(speak,1);
-            speak.setOnClickListener(v->sound.speak("Prik "+bubbles.target+" zeepbellen"));
-        }
         PlaylumiBubbleBoard board=new PlaylumiBubbleBoard(this,bubbles,
                 new PlaylumiBubbleBoard.Listener() {
             @Override public void onPop() {sound.pop();}
@@ -3419,7 +3279,7 @@ public class MainActivity extends Activity {
         view.setOnClickListener(v->{
             PlaylumiDelight.wiggle(view);
             PlaylumiDelight.sprinkle(stage,view);
-            if(sound!=null)sound.sparkle();
+            if(sound!=null)sound.garden();
         });
         addText("💚 "+garden.stage(plant)+" van "+PlaylumiGarden.STAGES+
                 " groeistapjes",21,0xff2a876a,2,8);
@@ -3429,11 +3289,6 @@ public class MainActivity extends Activity {
             fact.setPadding(dp(13),dp(17),dp(13),dp(17));
             fact.setBackground(rounded(0xffe5f7ee,25));
             addWidget(fact,0,16);
-            if(sound.isEnabled()) {
-                Button listen=tile("🔊 Vertel iets over deze plant","",0xffeee2ff,61);
-                addTile(listen,6);
-                listen.setOnClickListener(v->sound.speak(PlaylumiGarden.FACTS[plant]));
-            }
             addText("🏅 Je hebt deze plant helemaal grootgebracht!",17,0xff398a72,4,8);
         } else {
             int action=garden.nextAction(plant);
