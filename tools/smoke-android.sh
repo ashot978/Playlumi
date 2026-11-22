@@ -20,5 +20,10 @@ if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
   exit 1
 fi
 
+# Save a real emulator screenshot to review first-launch visual quality.
+mkdir -p app/build/reports/playlumi-visual
+adb exec-out screencap -p > app/build/reports/playlumi-visual/first-launch.png
+test -s app/build/reports/playlumi-visual/first-launch.png
+
 echo "PASS: Playlumi launch process alive (pid=$pid), no reported process crash"
 echo "NOTE: this does not test gameplay, in-place upgrades or Samsung hardware."
