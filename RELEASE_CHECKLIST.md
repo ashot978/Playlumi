@@ -32,6 +32,14 @@ Never reveal, commit, transmit, regenerate or replace the original private signi
 - If a hard external blocker remains (for example, unavailable original signing key), report it truthfully and do not claim successful delivery or promise continuous work outside the active session.
 - The original keystore and password may only be configured through secure GitHub Actions repository secrets; never include them in PRs, logs, chats, or code.
 
+## Recovered signing archive and local emergency release path
+
+- Original v0.45 private signing backup is in the owner's **private** ChatGPT File Library: `/Playlumi-release-sleutel-BEWAAR-PRIVE.zip`. It contains the PKCS12 keystore and password in private files. Recover via File Library tools; **never** transfer them to a public GitHub branch, issue, pull request, log, chat response, or sandbox link.
+- The original keystore in this archive was verified to match the SHA-256 fingerprint above on 2026-11-22. The extra `/Playlumi/Private signing/playlumi-release-2026-11-22.p12` did **not** unlock with that password; prefer the verified archive.
+- Where GitHub release-signing Secrets cannot be administered through connected tools, do not claim the CI release gate is green. Use the latest exactly identified *already successful* CI-built unsigned APK only for a **separately verified local signing** with the original key. A direct signed APK is acceptable as an explicitly labeled locally checked update, but is not a claim of fully green current GitHub release CI or tested Samsung installation.
+- Verify original v0.45 cert, Android v1 and v2 signing, unmodified package `nl.playlumi.app`, higher versionCode and file integrity before presenting that APK. Prefer official Android build-tools `apksigner` and `aapt`; if they are unavailable, do not claim they were run.
+- No new keystore, no replacement certificate, no lost profile data, no installation/uninstallation on the user's device without authorization.
+
 ## Normal development
 
 Continue from the latest verified development branch, one focused version increment at a time. Add tests and open a draft PR against the previous development branch. Review GitHub Actions status before declaring completion. Describe clearly what is coded vs. what is CI-tested vs. what is device-approved.
