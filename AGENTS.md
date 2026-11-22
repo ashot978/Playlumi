@@ -155,3 +155,14 @@ chimes for story, garden, pairs and session completion. The music demo in
 parent settings and picture-long-press play only instrumental audio.
 Preserve offline saves, scores, 300 question decks, Android support and
 existing release certificate. Test and privately sign APK; do not merge main.
+
+## Playlumi 0.48.0 - children's Muziekdoos
+A new two-page kid-friendly music box offers all 12 original instrument-only
+themes created in 0.47. Each large tile plays one deliberately selected
+melody, without human TTS, accounts, stars or internet. Stop immediately cuts
+off the selected sound; another tile interrupts the preceding one. Surprise
+avoids immediately repeating the previously selected tune. Leaving the page,
+rotating the phone or backgrounding the app cannot start music on its own.
+Keep global sound mute authoritative; parent decorative-effects preference
+does not block an explicitly selected musical tune. Preserve existing saved
+game data and Android minSdk 23, with clean CI and signed APK.
