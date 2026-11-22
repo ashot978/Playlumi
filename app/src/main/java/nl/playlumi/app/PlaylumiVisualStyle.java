@@ -2,16 +2,23 @@ package nl.playlumi.app;
 
 /** Shared Playlumi visual palette and deterministic, platform-free color math. */
 public final class PlaylumiVisualStyle {
-    public static final int INK=0xff302651;
-    public static final int MUTED=0xff655c7a;
-    public static final int PAGE_TOP=0xfff1f9ff;
-    public static final int PAGE_MIDDLE=0xfffff5f9;
-    public static final int PAGE_BOTTOM=0xfff6f0ff;
-    public static final int PRIMARY_START=0xff107e7a;
-    public static final int PRIMARY_END=0xff3658b5;
-    public static final int SUCCESS=0xff247969;
-    public static final int SUCCESS_TINT=0xffd7f4e5;
-    public static final int ERROR_TINT=0xffffeddc;
+    // Calm, editorial colors: warm ivory surfaces and a deep forest-green action.
+    public static final int INK=0xff253647;
+    public static final int MUTED=0xff586b78;
+    public static final int PAGE_TOP=0xfffbf9f3;
+    public static final int PAGE_MIDDLE=0xfff5f6f2;
+    public static final int PAGE_BOTTOM=0xffedf3ef;
+    public static final int PRIMARY_START=0xff176457;
+    public static final int PRIMARY_END=0xff184d59;
+    public static final int SUCCESS=0xff216a53;
+    public static final int SUCCESS_TINT=0xffe0f3e9;
+    public static final int ERROR_TINT=0xffffeee9;
+    public static final int SURFACE=0xffffffff;
+    public static final int BORDER=0xffe0e9e7;
+    public static final int MINT=0xffe2f2e9;
+    public static final int PEACH=0xffffecdc;
+    public static final int LAVENDER=0xffede8f9;
+    public static final int SKY=0xffe4f1f7;
     private PlaylumiVisualStyle() {}
 
     /** Opaque weighted mix in sRGB, 0 means only a and 1000 means only b. */
