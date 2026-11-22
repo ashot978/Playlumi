@@ -2224,6 +2224,25 @@ public class MainActivity extends Activity {
             if(musicBoxTrack>=0)toggleMusicFavorite(musicBoxTrack);
         });
 
+        Button findChosen=tile("🎯 Zoek gekozen deuntje",
+                "Ga naar de pagina met jouw laatst gekozen muziek",
+                0xfff1e7ff,72);
+        addTile(findChosen,5);
+        findChosen.setEnabled(musicBoxTrack>=0);
+        findChosen.setOnClickListener(v->{
+            int target=musicBoxFavorites.pageOf(musicBoxFavoritesOnly,
+                    musicBoxTrack);
+            if(target<0 && musicBoxFavoritesOnly) {
+                // A chosen tune can be outside the favorite filter.
+                musicBoxFavoritesOnly=false;
+                target=musicBoxFavorites.pageOf(false,musicBoxTrack);
+            }
+            if(target>=0) {
+                musicBoxPage=target;
+                showMusicBoxWithoutStopping();
+            }
+        });
+
         Button surprise=tile(musicBoxFavoritesOnly?
                 "🎲 Verras me met een favoriet":"🎲 Verrassingsdeuntje",
                 musicBoxFavoritesOnly && musicBoxFavorites.count()==0?
