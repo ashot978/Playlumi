@@ -63,6 +63,12 @@ public final class PlaylumiMusicBoxTest {
             assertEquals("🎵 ⭐ "+plain,both);
         }
     }
+    @Test public void musicBoxNavigationKeepsPlayingButLeavingStopsSound(){
+        assertFalse(PlaylumiMusicBox.shouldStopForRefresh(true,true));
+        assertTrue(PlaylumiMusicBox.shouldStopForRefresh(true,false));
+        assertTrue(PlaylumiMusicBox.shouldStopForRefresh(false,true));
+        assertTrue(PlaylumiMusicBox.shouldStopForRefresh(false,false));
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidTrackRejected(){PlaylumiMusicBox.effect(18);}
     @Test(expected=IllegalArgumentException.class)

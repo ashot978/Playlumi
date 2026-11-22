@@ -1070,9 +1070,20 @@ public class MainActivity extends Activity {
     }
 
     private void showPage() {
-        melodyPlayback.stop();
-        if(sound!=null) {
-            sound.stopNotes();
+        showPage(true);
+    }
+
+    /** Rebuild music-box controls without cutting off the instrumental tune. */
+    private void showMusicBoxWithoutStopping() {
+        showPage(PlaylumiMusicBox.shouldStopForRefresh(page==MUSIC_BOX,true));
+    }
+
+    private void showPage(boolean stopAudio) {
+        if(stopAudio) {
+            melodyPlayback.stop();
+            if(sound!=null) {
+                sound.stopNotes();
+            }
         }
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
@@ -2171,7 +2182,7 @@ public class MainActivity extends Activity {
         filter.setOnClickListener(v->{
             musicBoxFavoritesOnly=!musicBoxFavoritesOnly;
             musicBoxPage=0;
-            showPage();
+            showMusicBoxWithoutStopping();
         });
         addText(musicBoxFavoritesOnly?
                 "⭐ Jouw favoriete deuntjes":"🎵 Tik op een deuntje om te luisteren",
@@ -2261,12 +2272,12 @@ public class MainActivity extends Activity {
             previousPage.setOnClickListener(v->{
                 musicBoxPage=musicBoxFavorites.movePage(musicBoxFavoritesOnly,
                         musicBoxPage,-1);
-                showPage();
+                showMusicBoxWithoutStopping();
             });
             nextPage.setOnClickListener(v->{
                 musicBoxPage=musicBoxFavorites.movePage(musicBoxFavoritesOnly,
                         musicBoxPage,1);
-                showPage();
+                showMusicBoxWithoutStopping();
             });
         }
         showMusicComposer();
@@ -2335,8 +2346,8 @@ public class MainActivity extends Activity {
         musicBoxFavorites.toggle(index);
         prefs().edit().putInt(PlaylumiMusicFavorites.PREF_KEY,
                 musicBoxFavorites.mask()).apply();
-        // A fresh page updates every star and the favorites filter safely.
-        showPage();
+        // Keep the current instrumental tune playing while updating star icons.
+        showMusicBoxWithoutStopping();
     }
 
     private void chooseMusicBox(int index,TextView status) {

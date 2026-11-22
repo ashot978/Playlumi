@@ -26,6 +26,12 @@ public final class PlaylumiMusicBox {
     public static String displayTitle(int index,boolean selected,boolean favorite){
         return (selected?"🎵 ":"")+(favorite?"⭐ ":"")+title(index);
     }
+    /** Preserve sound only for intentional, in-place music-box navigation. */
+    public static boolean shouldStopForRefresh(boolean musicBoxVisible,
+                                               boolean preserveMusic) {
+        return !musicBoxVisible || !preserveMusic;
+    }
+
     public static int safePage(int page){return page<0||page>=PAGES?0:page;}
     public static int safeSelected(int index){return index<0||index>=COUNT?-1:index;}
     public static int firstOnPage(int page){return safePage(page)*PAGE_SIZE;}
