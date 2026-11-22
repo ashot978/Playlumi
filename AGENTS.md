@@ -63,3 +63,12 @@ Android text-to-speech, only when sound is enabled. Keep the preview harmless:
 no launch, score mutation, account, internet, new permission or saved answers.
 Verify every age/choice, preserve Playlumi's stable certificate and app ID,
 and deliver a new privately signed, verified APK after passing Android CI.
+
+## Playlumi 0.40.0 - visible sound choice
+When sound is enabled, each of the six picture choices must have its own visible
+48dp speaker target, independent from the large primary play bubble. Listening
+cannot start a game, change scores, or save answers. Keep the existing one-tap
+game launch and optional long press, the exact 3-age/6-choice mappings, and
+TalkBack labels for the separate play and listen actions. Hide the separate
+speaker when sound is disabled. Preserve the original signer and local saves.
+Complete Android tests, lint, emulator startup, and a privately signed APK.

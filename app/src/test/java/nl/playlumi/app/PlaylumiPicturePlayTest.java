@@ -15,8 +15,27 @@ public final class PlaylumiPicturePlayTest {
                 assertTrue(hint.contains(name));
                 assertFalse(hint.contains("null"));
                 assertFalse(name.trim().isEmpty());
+                assertEquals("Luister naar "+name+" zonder het spel te starten",
+                        PlaylumiPicturePlay.listenDescription(age,item));
             }
         }
+    }
+    @Test public void eachAgeHasSixDistinctAccessiblePlayAndListenOptions() {
+        for(int age=0;age<3;age++) {
+            java.util.Set<String> choices=new java.util.HashSet<>();
+            for(int item=0;item<PlaylumiPicturePlay.COUNT;item++) {
+                String title=PlaylumiPicturePlay.label(age,item);
+                assertTrue(choices.add(title));
+                assertTrue(PlaylumiPicturePlay.listenDescription(age,item)
+                        .contains(title));
+            }
+            assertEquals(6,choices.size());
+        }
+    }
+
+    @Test(expected=IllegalArgumentException.class)
+    public void invalidListenSelectionIsRejected() {
+        PlaylumiPicturePlay.listenDescription(2,-1);
     }
 
     @Test public void stillUsesTwoColumnsOnPhonesThreeOnTablets() {
