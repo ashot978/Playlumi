@@ -133,6 +133,26 @@ public final class PlaylumiMusicFavoritesTest {
     public void invalidPageDirectionIsRejected() {
         new PlaylumiMusicFavorites(0).movePage(false,0,0);
     }
+    @Test public void selectedTunePageMatchesFullCollection() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        for(int track=0;track<18;track++)
+            assertEquals(track/6,f.pageOf(false,track));
+        assertEquals(-1,f.pageOf(false,-1));
+        assertEquals(-1,f.pageOf(false,18));
+    }
+    @Test public void selectedTunePageRespectsSparseFavorites() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        assertEquals(-1,f.pageOf(true,0));
+        for(int track:new int[]{0,2,4,6,8,10,12,14})f.toggle(track);
+        assertEquals(0,f.pageOf(true,10));
+        assertEquals(1,f.pageOf(true,12));
+        assertEquals(1,f.pageOf(true,14));
+        assertEquals(-1,f.pageOf(true,13));
+        assertEquals(-1,f.pageOf(true,-1));
+        assertEquals(-1,f.pageOf(true,100));
+        f.toggle(12);
+        assertEquals(1,f.pageOf(true,14));
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidIndexIsRejected(){new PlaylumiMusicFavorites(0).toggle(18);}
 }
