@@ -50,6 +50,10 @@ public final class PlaylumiPicturePlay {
     public static String spokenLabel(int age,int item) {
         return "Dit is "+label(age,item)+". Tik om te spelen.";
     }
+    /** Accessibility label for the separate play-free audio preview. */
+    public static String listenDescription(int age,int item) {
+        return "Luister naar "+label(age,item)+" zonder het spel te starten";
+    }
     public static int difficulty(int age){return checkedAge(age);}
     public static int variant(int age,int item){
         checkedAge(age);checkedIndex(item);return 0;

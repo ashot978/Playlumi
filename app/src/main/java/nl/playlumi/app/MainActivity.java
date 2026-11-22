@@ -1251,7 +1251,7 @@ public class MainActivity extends Activity {
      */
     private void showPicturePlay() {
         header("🧸 Kies een plaatje",sound!=null && sound.isEnabled()?
-                "Tik om te spelen • Houd vast om te luisteren":"Tik op wat je wilt doen!");
+                "Tik op een plaatje om te spelen. 🔊 om te luisteren.":"Tik op wat je wilt doen!");
         java.util.List<View> choices=new java.util.ArrayList<>();
         int chosenAge=Math.max(0,Math.min(2,age));
         for(int i=0;i<PlaylumiPicturePlay.COUNT;i++) {
@@ -1271,7 +1271,35 @@ public class MainActivity extends Activity {
                     sound.speak(PlaylumiPicturePlay.spokenLabel(chosenAge,selected));
                 return true;
             });
-            choices.add(bubble);
+            // A separate, visible 48dp listen target is easier for preschoolers
+            // than discovering a long-press. It never launches or awards a game.
+            // Keep the bubble and its screen-reader target fully interactive.
+            if(sound!=null && sound.isEnabled()) {
+                FrameLayout item=new FrameLayout(this);
+                item.addView(bubble,new FrameLayout.LayoutParams(-1,-1));
+                TextView listen=text("🔊",24,TEXT);
+                listen.setGravity(Gravity.CENTER);
+                listen.setPadding(0,0,0,0);
+                listen.setBackground(new RippleDrawable(
+                        ColorStateList.valueOf(0x33d5e7ff),
+                        rounded(0xfff8fbff,24),null));
+                listen.setElevation(dp(5));
+                listen.setClickable(true);
+                listen.setFocusable(true);
+                listen.setContentDescription(
+                        PlaylumiPicturePlay.listenDescription(chosenAge,selected));
+                listen.setOnClickListener(v->{
+                    if(sound!=null && sound.isEnabled())
+                        sound.speak(PlaylumiPicturePlay.spokenLabel(chosenAge,selected));
+                });
+                FrameLayout.LayoutParams listenParams=new FrameLayout.LayoutParams(
+                        dp(48),dp(48),Gravity.TOP|Gravity.END);
+                listenParams.setMargins(0,dp(5),dp(6),0);
+                item.addView(listen,listenParams);
+                choices.add(item);
+            } else {
+                choices.add(bubble);
+            }
         }
         addBubbleChoiceGrid(choices);
         Button all=tile("🎮 Alle spellen bekijken",
