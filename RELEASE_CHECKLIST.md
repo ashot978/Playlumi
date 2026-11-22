@@ -20,6 +20,26 @@ If any check is pending or missing, report the version as *in development* or *a
 
 Never reveal, commit, transmit, regenerate or replace the original private signing key. Keep existing installation data safe. Do not change `main` or Play Store unless explicitly requested.
 
+## Mandatory preflight and failure recovery for all agents
+
+- Before editing any feature, inspect the latest GitHub branch, PR, exact HEAD commit, workflow, signing configuration and the most recent run. Never assume that a prior successful run certifies a newer commit.
+- Do not add another feature on top of a broken release pipeline: repair and verify the previous blocking failure first.
+- GitHub CI **must fail**, not return green, when the original-signing secrets are absent/incomplete, the fingerprint mismatches or the signed release APK cannot be published.
+- On deterministic failures, inspect logs, fix code and tests and push a new commit before rerunning. Retry transient infrastructure failures only after identifying their nature. Never endlessly rerun missing secrets or a wrong signature.
+- Keep inspecting GitHub jobs and artifacts until the **entire exact-SHA workflow** is completed and successful. Require an original-certificate-signed APK with the package, fingerprint and update versionCode verified before offering any download.
+- Download the real, nonexpired signed APK from that exact run and offer it directly in the conversation only after verification; do not substitute debug/unsigned builds.
+- Real-device acceptance with preservation of local profile data is a separate requirement; a CI success does not prove real-device update success.
+- If a hard external blocker remains (for example, unavailable original signing key), report it truthfully and do not claim successful delivery or promise continuous work outside the active session.
+- The original keystore and password may only be configured through secure GitHub Actions repository secrets; never include them in PRs, logs, chats, or code.
+
+## Recovered signing archive and local emergency release path
+
+- Original v0.45 private signing backup is in the owner's **private** ChatGPT File Library: `/Playlumi-release-sleutel-BEWAAR-PRIVE.zip`. It contains the PKCS12 keystore and password in private files. Recover via File Library tools; **never** transfer them to a public GitHub branch, issue, pull request, log, chat response, or sandbox link.
+- The original keystore in this archive was verified to match the SHA-256 fingerprint above on 2026-11-22. The extra `/Playlumi/Private signing/playlumi-release-2026-11-22.p12` did **not** unlock with that password; prefer the verified archive.
+- Where GitHub release-signing Secrets cannot be administered through connected tools, do not claim the CI release gate is green. Use the latest exactly identified *already successful* CI-built unsigned APK only for a **separately verified local signing** with the original key. A direct signed APK is acceptable as an explicitly labeled locally checked update, but is not a claim of fully green current GitHub release CI or tested Samsung installation.
+- Verify original v0.45 cert, Android v1 and v2 signing, unmodified package `nl.playlumi.app`, higher versionCode and file integrity before presenting that APK. Prefer official Android build-tools `apksigner` and `aapt`; if they are unavailable, do not claim they were run.
+- No new keystore, no replacement certificate, no lost profile data, no installation/uninstallation on the user's device without authorization.
+
 ## Normal development
 
 Continue from the latest verified development branch, one focused version increment at a time. Add tests and open a draft PR against the previous development branch. Review GitHub Actions status before declaring completion. Describe clearly what is coded vs. what is CI-tested vs. what is device-approved.

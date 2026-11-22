@@ -9,6 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Preflight original release signing credentials
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
+            echo "::error::Cannot approve a Playlumi update: original signing keystore/password missing."
+            echo "Restore the original v0.45 keystore via private GitHub Actions secrets before continuing."
+            exit 1
+          fi
+          echo "Original signing credentials are configured; exact certificate verification follows after building."
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
@@ -76,9 +88,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ]; then
-            echo "Original release signing unavailable: unsigned build only."
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::Release BLOCKED: original v0.45 signing secrets are missing. No installable update can be approved."
+            echo "Configure PLAYLUMI_RELEASE_KEYSTORE_BASE64 and PLAYLUMI_SIGNING_PASSWORD privately; do not create a new signing key."
+            exit 1
           fi
           if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
             echo "::error::Release signing secrets incomplete. No APK will be published."
@@ -131,4 +143,5 @@ jobs:
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
           echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash; still requires device acceptance." >> "$GITHUB_STEP_SUMMARY"
-          echo "Only the original-certificate signed APK is suitable for updating an existing installation. Without original keystore secrets no installable update is published. Full gameplay and Samsung device tests are outstanding." >> "$GITHUB_STEP_SUMMARY"
+          echo "The workflow FAILS CLOSED unless original release signing succeeds. Only the original-signed verified APK may be shared as an update." >> "$GITHUB_STEP_SUMMARY"
+          echo "Real Samsung update and saved-data acceptance remain separate from emulator smoke testing." >> "$GITHUB_STEP_SUMMARY"
