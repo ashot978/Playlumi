@@ -36,8 +36,8 @@ import xml.etree.ElementTree as ET
 
 tree=ET.parse("app/build/reports/playlumi-visual/layout.xml")
 for node in tree.iter("node"):
-    text=node.get("text","")
-    if "3" not in text or "jaar" not in text:
+    label=(node.get("text","")+" "+node.get("content-desc","")).lower()
+    if "3" not in label or "jaar" not in label:
         continue
     match=re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",node.get("bounds",""))
     if not match:
@@ -48,7 +48,9 @@ for node in tree.iter("node"):
     time.sleep(3)
     break
 else:
-    raise RuntimeError("Age selection missing from real emulator accessibility tree")
+    for node in tree.iter("node"):
+        print("UI NODE:",node.get("text",""),node.get("content-desc",""),node.get("bounds",""))
+    raise RuntimeError("Age selection missing from text AND content description")
 PY
 adb exec-out screencap -p > app/build/reports/playlumi-visual/home.png
 test -s app/build/reports/playlumi-visual/home.png
