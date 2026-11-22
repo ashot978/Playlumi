@@ -153,6 +153,25 @@ public final class PlaylumiMusicFavoritesTest {
         f.toggle(12);
         assertEquals(1,f.pageOf(true,14));
     }
+    @Test public void navigationAcrossPagesFindsNewSelectedTune() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        int next=f.adjacent(false,5,1);
+        assertEquals(6,next);
+        assertEquals(1,f.pageOf(false,next));
+        int previous=f.adjacent(false,12,-1);
+        assertEquals(11,previous);
+        assertEquals(1,f.pageOf(false,previous));
+        assertEquals(0,f.pageOf(false,f.adjacent(false,17,1)));
+        assertEquals(2,f.pageOf(false,f.adjacent(false,0,-1)));
+        assertEquals(2,f.pageOf(false,f.surprise(false,0,16)));
+    }
+    @Test public void selectedFavoriteFollowsCompressedPageBoundaries() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        for(int track:new int[]{0,2,4,6,8,10,12})f.toggle(track);
+        assertEquals(1,f.pageOf(true,f.adjacent(true,10,1)));
+        assertEquals(0,f.pageOf(true,f.adjacent(true,12,1)));
+        assertEquals(1,f.pageOf(true,f.adjacent(true,0,-1)));
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidIndexIsRejected(){new PlaylumiMusicFavorites(0).toggle(18);}
 }
