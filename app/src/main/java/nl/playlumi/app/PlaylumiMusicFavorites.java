@@ -30,6 +30,30 @@ public final class PlaylumiMusicFavorites {
         favorites^=1<<index;
         return isFavorite(index);
     }
+    /**
+     * Pick a track from the visible collection without replaying the previous
+     * tune when another choice exists. Return -1 for empty favorites.
+     * The caller supplies a draw so selection is easy to test.
+     */
+    public int surprise(boolean favoritesOnly,int previous,int draw) {
+        int count=visibleCount(favoritesOnly);
+        if(count==0)return -1;
+        int available=count-(count>1 && contains(favoritesOnly,previous)?1:0);
+        int choice=Math.floorMod(draw,available);
+        for(int track=0;track<PlaylumiMusicBox.COUNT;track++) {
+            if(!favoritesOnly || isFavorite(track)) {
+                if(count>1 && track==previous)continue;
+                if(choice--==0)return track;
+            }
+        }
+        throw new IllegalStateException("No music box track found");
+    }
+
+    private boolean contains(boolean favoritesOnly,int track) {
+        return track>=0 && track<PlaylumiMusicBox.COUNT &&
+                (!favoritesOnly || isFavorite(track));
+    }
+
     public int mask() {return favorites;}
     public int count() {return Integer.bitCount(favorites);}
     public int visibleCount(boolean favoritesOnly) {

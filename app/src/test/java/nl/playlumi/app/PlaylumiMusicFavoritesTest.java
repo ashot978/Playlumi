@@ -55,6 +55,30 @@ public final class PlaylumiMusicFavoritesTest {
         assertEquals(0,new PlaylumiMusicFavorites(1<<22).count());
         assertEquals(1,new PlaylumiMusicFavorites((1<<22)|(1<<17)).count());
     }
+    @Test public void surpriseNeverLeavesFavoritesAndAvoidsPreviousWhenPossible() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        assertEquals(-1,f.surprise(true,-1,0));
+        f.toggle(3);
+        assertEquals(3,f.surprise(true,3,500));
+        f.toggle(9);
+        f.toggle(17);
+        for(int draw=-20;draw<20;draw++) {
+            int pick=f.surprise(true,9,draw);
+            assertTrue(pick==3 || pick==17);
+            assertTrue(f.isFavorite(pick));
+        }
+        assertEquals(3,f.surprise(true,-1,0));
+        assertEquals(9,f.surprise(true,-1,1));
+        assertEquals(17,f.surprise(true,-1,2));
+    }
+    @Test public void allTunesSurpriseAvoidsLastTrackAndStillWorks() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        for(int draw=-35;draw<35;draw++) {
+            int pick=f.surprise(false,8,draw);
+            assertTrue(pick>=0 && pick<18);
+            assertNotEquals(8,pick);
+        }
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidIndexIsRejected(){new PlaylumiMusicFavorites(0).toggle(18);}
 }
