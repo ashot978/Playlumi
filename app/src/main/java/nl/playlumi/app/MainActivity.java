@@ -113,6 +113,7 @@ public class MainActivity extends Activity {
     private int melodyRound;
     private boolean melodySolved;
     private int musicBoxPage,musicBoxTrack=-1;
+    private PlaylumiMusicComposer musicComposer=new PlaylumiMusicComposer();
     private TextView melodyStatus;
     private int bubbleRound;
     private boolean bubbleSolved;
@@ -150,6 +151,9 @@ public class MainActivity extends Activity {
         if(state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile)
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
+        // The child's saved original composition is local to this profile.
+        musicComposer=PlaylumiMusicComposer.restore(
+                prefs.getString("music_box_composer",""));
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
         // Playful music is enabled by default, unless a parent stored a mute.
         sound.setEffectsEnabled(prefs.getBoolean("effects_on",true));
@@ -2180,6 +2184,7 @@ public class MainActivity extends Activity {
             chooseMusicBox(PlaylumiMusicBox.surprise(musicBoxTrack,draw),status);
         });
         stop.setOnClickListener(v->{
+            melodyPlayback.stop();
             sound.stopNotes();
             status.setText("🍃 Gestopt. Kies een nieuw deuntje!");
         });
@@ -2192,12 +2197,14 @@ public class MainActivity extends Activity {
             musicBoxPage=(musicBoxPage+1)%PlaylumiMusicBox.PAGES;
             showPage();
         });
+        showMusicComposer();
         if(!sound.isEnabled())
             addText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.",
                     15,SUB,5,8);
     }
 
     private void chooseMusicBox(int index,TextView status) {
+        melodyPlayback.stop(); // Stop any queued notes from a custom composition.
         if(sound.playMusicBox(index)) {
             musicBoxTrack=index;
             status.setText("🎶 Gekozen: "+PlaylumiMusicBox.title(index));
@@ -2207,6 +2214,105 @@ public class MainActivity extends Activity {
         } else {
             status.setText("🎵 Deuntje wordt geladen. Probeer nog eens!");
         }
+    }
+
+
+    /** Four playful animal notes, locally saved per child, without rewards. */
+    private void showMusicComposer() {
+        addText("🎹 Maak je eigen deuntje",21,TEXT,13,6);
+        addText("Tik op de dieren om maximaal twaalf tonen te combineren.",
+                15,SUB,3,6);
+        TextView composition=text(musicComposer.description(),17,0xff65418f);
+        composition.setBackground(softCard(0xffe9f3ff,20));
+        composition.setPadding(dp(12),dp(14),dp(12),dp(14));
+        composition.setMinHeight(dp(72));
+        addWidget(composition,5,9);
+        Button[] instruments=new Button[PlaylumiMelody.NOTES];
+        for(int i=0;i<PlaylumiMelody.NOTES;i++) {
+            final int note=i;
+            instruments[i]=tile(PlaylumiMelody.ANIMALS[i]+" "+
+                    PlaylumiMelody.NAMES[i],"",COLORS[i],108);
+            instruments[i].setTextSize(18);
+            instruments[i].setContentDescription(
+                    "Voeg de toon "+PlaylumiMelody.NAMES[i]+" toe aan jouw deuntje");
+            instruments[i].setOnClickListener(v->recordMusicNote(note,composition));
+        }
+        addTwo(instruments[0],instruments[1],110);
+        addTwo(instruments[2],instruments[3],110);
+        Button replay=tile("▶ Speel mijn deuntje",
+                "Luister naar je zelfgemaakte melodie",0xffd5f0df,82);
+        addTile(replay,6);
+        replay.setOnClickListener(v->playMyMelody(composition));
+        Button undo=tile("↩ Laatste noot weg","",0xffe4eaff,72);
+        Button erase=tile("🗑 Begin opnieuw","",0xffffe3db,72);
+        addTwo(undo,erase,77);
+        undo.setOnClickListener(v->{
+            melodyPlayback.stop();
+            sound.stopNotes();
+            if(musicComposer.undo()) {
+                saveMyMelody();
+                composition.setText(musicComposer.description());
+            } else composition.setText("🎶 Kies eerst een dier om muziek te maken.");
+        });
+        erase.setOnClickListener(v->{
+            melodyPlayback.stop();
+            sound.stopNotes();
+            musicComposer.clear();
+            saveMyMelody();
+            composition.setText(musicComposer.description());
+        });
+        addText("💾 Je deuntje wordt automatisch bewaard voor dit kind.",
+                13,SUB,4,10);
+    }
+
+    private void saveMyMelody() {
+        prefs().edit().putString("music_box_composer",musicComposer.encode()).apply();
+    }
+
+    private void recordMusicNote(int note,TextView status) {
+        melodyPlayback.stop();
+        sound.stopNotes();
+        if(!musicComposer.add(note)) {
+            status.setText("🎶 Je hebt twaalf tonen! Speel ze af of haal er een weg.");
+            return;
+        }
+        saveMyMelody();
+        status.setText(musicComposer.description());
+        if(sound.isEnabled())sound.note(note);
+    }
+
+    /** The child explicitly starts playback; old queued notes are token-guarded. */
+    private void playMyMelody(TextView status) {
+        if(musicComposer.size()==0) {
+            status.setText("🎵 Tik eerst op een paar dieren om een deuntje te maken!");
+            return;
+        }
+        if(!sound.isEnabled()) {
+            status.setText("🔇 Zet het geluid aan om jouw deuntje te horen.");
+            return;
+        }
+        final FrameLayout screen=stage;
+        final int[] notes=musicComposer.snapshot();
+        final long token=melodyPlayback.begin();
+        sound.stopNotes();
+        status.setText("🎶 Daar komt jouw eigen deuntje!");
+        for(int i=0;i<notes.length;i++) {
+            final int index=i;
+            screen.postDelayed(()->{
+                if(stage!=screen || page!=MUSIC_BOX ||
+                        !melodyPlayback.isActive(token) || !sound.isEnabled())return;
+                sound.note(notes[index]);
+                status.setText("🎵 "+PlaylumiMelody.ANIMALS[notes[index]]+
+                        " ("+(index+1)+" / "+notes.length+")");
+            },i*420L);
+        }
+        screen.postDelayed(()->{
+            if(stage==screen && page==MUSIC_BOX &&
+                    melodyPlayback.isActive(token)) {
+                melodyPlayback.stop();
+                status.setText("🌟 Goed gedaan! "+musicComposer.description());
+            }
+        },notes.length*420L+160L);
     }
 
     private void startMiniDeck() {
