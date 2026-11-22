@@ -72,3 +72,14 @@ game launch and optional long press, the exact 3-age/6-choice mappings, and
 TalkBack labels for the separate play and listen actions. Hide the separate
 speaker when sound is disabled. Preserve the original signer and local saves.
 Complete Android tests, lint, emulator startup, and a privately signed APK.
+
+## Playlumi 0.41.0 - gentle optional learning hints
+When a multiple-choice learning round has at least three available answers,
+show a voluntary "Help mij" button. Each tap safely removes exactly one
+incorrect visible answer with a quiet cloud, never the correct answer.
+Never reduce below two remaining choices. Hints must not answer questions,
+change scores, earn or spend stars, or modify persistent child data.
+The controls are screen-reader compatible and cannot select faded answers.
+Keep hints associated only with the current Round, including redraws.
+Preserve every offline deck, the parent gate, original release signer,
+version continuity, and the passing Android tests/emulator/release-APK gate.
