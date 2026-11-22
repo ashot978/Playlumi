@@ -2211,16 +2211,22 @@ public class MainActivity extends Activity {
             if(musicBoxTrack>=0)toggleMusicFavorite(musicBoxTrack);
         });
 
-        Button surprise=tile("🎲 Verrassingsdeuntje",
-                "Speel iets anders dan de vorige keer",0xffe4dcff,82);
+        Button surprise=tile(musicBoxFavoritesOnly?
+                "🎲 Verras me met een favoriet":"🎲 Verrassingsdeuntje",
+                musicBoxFavoritesOnly && musicBoxFavorites.count()==0?
+                        "Bewaar eerst een deuntje met een ster":
+                        "Speel iets anders dan de vorige keer",0xffe4dcff,82);
         Button stop=tile("⏹ Stop muziek",
                 "Stop het deuntje meteen",0xffdaf2e7,82);
         addTwo(surprise,stop,87);
         surprise.setOnClickListener(v->{
-            int available=musicBoxTrack<0?PlaylumiMusicBox.COUNT:
-                    PlaylumiMusicBox.COUNT-1;
-            int draw=new Random().nextInt(available);
-            chooseMusicBox(PlaylumiMusicBox.surprise(musicBoxTrack,draw),status);
+            int chosen=musicBoxFavorites.surprise(musicBoxFavoritesOnly,
+                    musicBoxTrack,new Random().nextInt());
+            if(chosen<0) {
+                status.setText("⭐ Bewaar eerst een deuntje bij alle melodieën!");
+                return;
+            }
+            chooseMusicBox(chosen,status);
             refreshFavoriteAction(favoriteAction);
         });
         stop.setOnClickListener(v->{
