@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Preflight original release signing credentials
+      - name: Preflight release signing credentials
         shell: bash
         env:
           RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
@@ -20,7 +20,7 @@ jobs:
             echo "Restore the original v0.45 keystore via private GitHub Actions secrets before continuing."
             exit 1
           fi
-          echo "Original signing credentials are configured; exact certificate verification follows after building."
+          echo "New signing credentials are configured; exact certificate verification follows after building."
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
@@ -78,18 +78,18 @@ jobs:
           path: app/build/outputs/apk/release/*-unsigned.apk
           if-no-files-found: error
           retention-days: 7
-      - name: Sign release only with the original verified Playlumi certificate
+      - name: Sign release with permanently backed-up new Playlumi certificate
         id: sign_release
         shell: bash
         env:
           RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
           RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
-          EXPECTED_CERT_SHA256: D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF
+          EXPECTED_CERT_SHA256: 09:99:D6:3A:1A:A1:D8:04:18:E0:B4:FA:1E:A0:15:13:3A:DD:F7:3B:50:75:76:61:71:A9:A6:73:3D:14:AA:85
         run: |
           set -euo pipefail
           if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ]; then
-            echo "::error::Release BLOCKED: original v0.45 signing secrets are missing. No installable update can be approved."
-            echo "Configure PLAYLUMI_RELEASE_KEYSTORE_BASE64 and PLAYLUMI_SIGNING_PASSWORD privately; do not create a new signing key."
+            echo "::error::Release BLOCKED: new release signing secrets are missing. No installable update can be approved."
+            echo "Configure PLAYLUMI_RELEASE_KEYSTORE_BASE64 and PLAYLUMI_SIGNING_PASSWORD privately; use the backed-up new keystore."
             exit 1
           fi
           if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
@@ -124,17 +124,17 @@ jobs:
           fi
           EXPECTED="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
           if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "::error::APK signature does not match the original verified certificate."
+            echo "::error::APK signature does not match the new verified release certificate."
             rm -f "$APK"
             exit 1
           fi
           echo "signed=true" >> "$GITHUB_OUTPUT"
-          echo "Release APK signed with the verified original certificate."
-      - name: Publish verified original-signed update APK
+          echo "Release APK signed with the verified new certificate."
+      - name: Publish verified new-key signed APK
         if: steps.sign_release.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-original-signed-release-update
+          name: playlumi-newkey-signed-release
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
