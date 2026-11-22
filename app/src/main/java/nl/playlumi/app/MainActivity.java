@@ -863,7 +863,7 @@ public class MainActivity extends Activity {
             shortcut.setMargins(dp(5),0,0,0);
             row.addView(homeShortcut,shortcut);
             homeShortcut.setOnClickListener(v->move(HOME));
-        } else {
+        } else if(page!=HOME) {
             View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
             LinearLayout.LayoutParams iconParams=
                     new LinearLayout.LayoutParams(dp(39),dp(39));
