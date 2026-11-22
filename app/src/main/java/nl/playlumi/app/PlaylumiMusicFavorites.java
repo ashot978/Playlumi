@@ -92,6 +92,20 @@ public final class PlaylumiMusicFavorites {
         return Math.max(1,(count+PlaylumiMusicBox.PAGE_SIZE-1)/
                 PlaylumiMusicBox.PAGE_SIZE);
     }
+    /**
+     * Page containing a selected track in the current filter, or -1 when
+     * the tune is not visible (including no selection or no favorites).
+     */
+    public int pageOf(boolean favoritesOnly,int track) {
+        if(track<0 || track>=PlaylumiMusicBox.COUNT)return -1;
+        if(favoritesOnly && !isFavorite(track))return -1;
+        int position=0;
+        for(int i=0;i<track;i++) {
+            if(!favoritesOnly || isFavorite(i))position++;
+        }
+        return position/PlaylumiMusicBox.PAGE_SIZE;
+    }
+
     /** Move between pages in either direction, including partial last pages. */
     public int movePage(boolean favoritesOnly,int currentPage,int direction) {
         if(direction!=1 && direction!=-1)
