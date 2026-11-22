@@ -79,15 +79,15 @@ jobs:
         env:
           RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
           RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
-          EXPECTED_CERT_SHA256: ${{ secrets.PLAYLUMI_RELEASE_CERT_SHA256 }}
+          EXPECTED_CERT_SHA256: D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF
         run: |
           set -euo pipefail
-          if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ] && [ -z "$EXPECTED_CERT_SHA256" ]; then
+          if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ]; then
             echo "Original release signing unavailable: unsigned build only."
             echo "signed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ] || [ -z "$EXPECTED_CERT_SHA256" ]; then
+          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
             echo "::error::Release signing secrets incomplete. No APK will be published."
             exit 1
           fi
