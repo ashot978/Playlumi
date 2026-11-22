@@ -2,6 +2,18 @@
 
 These rules apply to **every** future Playlumi agent task, including one-line requests such as "ga door" or "volgende versie". Treat them as release gates, not optional advice. Never claim this file can force an external ChatGPT agent to keep running indefinitely.
 
+## Original signing key recovered (2026-11-22)
+
+The original release key was recovered and **cryptographically matched** to the v0.45 certificate (SHA-256 `D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF`).
+
+Its durable **private** backup is stored in the owner's ChatGPT File Library at `/Playlumi-release-sleutel-BEWAAR-PRIVE.zip`. The archive contains the original `playlumi-release.p12`, a private password text file, and a base64 keystore secret text file. A separate PKCS12 file in `/Playlumi/Private signing/` was **not** unlocked with the backup password; use the verified archive instead. This is NOT a license to upload any of these materials to public GitHub or include them in generated artifacts, tool output, chat, logs or commits.
+
+For future agent sessions, first find the backup through the available `files__list` or `files__search` Library connector, then `files__materialize` it only when performing authorized local signing. Extract to a private temporary directory (mode 0700; key and password files mode 0600); read the password programmatically without printing it. Verify original keystore alias `playlumi-release` and original certificate fingerprint with `keytool` before every signing operation. Remove temporary private files when possible, keeping the original private Library archive intact.
+
+When GitHub Actions cannot access original signing secrets, treat GitHub's release gate as **blocked**, not successful. An authorized, separately validated local release update may still be made from an **exact-SHA CI-tested unsigned release artifact**, signed locally with this recovered original key and verified with official Android `apksigner verify --verbose --print-certs` (v1 and v2), correct package `nl.playlumi.app`, higher versionCode and intact ZIP before download. If official verifier or real-device update checks are not available, state those limitations clearly rather than implying full device approval. The user explicitly wants a direct APK file, not an Actions ZIP.
+
+Do not confuse the keystore password with the certificate fingerprint and never attempt to guess or brute-force the key. GitHub Secrets still need secure provisioning to automate original-signature releases in CI; connector access to source code does not automatically grant GitHub Secrets administration.
+
 ## Before changing code
 1. Fetch the latest intended development branch, its HEAD SHA, relevant open PR and GitHub Actions run. Do not assume previous chat status is still current.
 2. Read this AGENTS.md, RELEASE_CHECKLIST.md, ORIGINAL_SIGNING.md and the current .github/workflows/android.yml.
