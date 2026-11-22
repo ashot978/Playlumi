@@ -6,9 +6,9 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 public final class PlaylumiMusicBoxTest {
-    @Test public void twelveDistinctNamedJinglesUseTheExistingSoundBank(){
-        assertEquals(12,PlaylumiMusicBox.COUNT);
-        assertEquals(2,PlaylumiMusicBox.PAGES);
+    @Test public void eighteenDistinctNamedJinglesUseTheExistingSoundBank(){
+        assertEquals(18,PlaylumiMusicBox.COUNT);
+        assertEquals(3,PlaylumiMusicBox.PAGES);
         Set<Integer> sounds=new HashSet<>();
         Set<String> names=new HashSet<>();
         for(int i=0;i<PlaylumiMusicBox.COUNT;i++){
@@ -19,8 +19,8 @@ public final class PlaylumiMusicBoxTest {
             assertTrue(effect<PlaylumiTunes.COUNT);
             assertTrue(sounds.add(java.util.Arrays.hashCode(PlaylumiTunes.wav(effect))));
         }
-        assertEquals(12,sounds.size());
-        assertEquals(12,names.size());
+        assertEquals(18,sounds.size());
+        assertEquals(18,names.size());
     }
     @Test public void sixChoicesPerPageAndSafeRotation(){
         for(int p=0;p<PlaylumiMusicBox.PAGES;p++){
@@ -31,6 +31,8 @@ public final class PlaylumiMusicBoxTest {
         }
         assertEquals(0,PlaylumiMusicBox.safePage(-1));
         assertEquals(0,PlaylumiMusicBox.safePage(30));
+        assertEquals(2,PlaylumiMusicBox.safePage(2));
+        assertEquals(12,PlaylumiMusicBox.firstOnPage(2));
         assertEquals(-1,PlaylumiMusicBox.safeSelected(99));
     }
     @Test public void surprisesNeverRepeatTheirLastTrack(){
@@ -42,15 +44,15 @@ public final class PlaylumiMusicBoxTest {
                 assertTrue(next>=0 && next<PlaylumiMusicBox.COUNT);
                 assertTrue(results.add(next));
             }
-            assertEquals(11,results.size());
+            assertEquals(17,results.size());
         }
         Set<Integer> initial=new HashSet<>();
         for(int d=0;d<PlaylumiMusicBox.COUNT;d++)
             assertTrue(initial.add(PlaylumiMusicBox.surprise(-1,d)));
-        assertEquals(12,initial.size());
+        assertEquals(18,initial.size());
     }
     @Test(expected=IllegalArgumentException.class)
-    public void invalidTrackRejected(){PlaylumiMusicBox.effect(12);}
+    public void invalidTrackRejected(){PlaylumiMusicBox.effect(18);}
     @Test(expected=IllegalArgumentException.class)
-    public void badRandomDrawRejected(){PlaylumiMusicBox.surprise(3,11);}
+    public void badRandomDrawRejected(){PlaylumiMusicBox.surprise(3,17);}
 }

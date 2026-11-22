@@ -35,8 +35,8 @@ public final class PlaylumiTunesTest {
         }
         assertEquals(PlaylumiTunes.COUNT,signatures.size());
     }
-    @Test public void twelveAdditionalOriginalMelodiesArePlayable() {
-        assertEquals(24,PlaylumiTunes.COUNT);
+    @Test public void eighteenAdditionalOriginalMelodiesArePlayable() {
+        assertEquals(30,PlaylumiTunes.COUNT);
         java.util.Set<Integer> hashes=new java.util.HashSet<>();
         for(int id=PlaylumiTunes.BONUS;id<PlaylumiTunes.COUNT;id++) {
             byte[] wav=PlaylumiTunes.wav(id);
@@ -44,7 +44,7 @@ public final class PlaylumiTunesTest {
             assertTrue(wav.length<150000);
             assertTrue(hashes.add(java.util.Arrays.hashCode(wav)));
         }
-        assertEquals(12,hashes.size());
+        assertEquals(18,hashes.size());
         assertEquals(11,PlaylumiTunes.NOTE_PURPLE);
     }
     @Test(expected=IllegalArgumentException.class)

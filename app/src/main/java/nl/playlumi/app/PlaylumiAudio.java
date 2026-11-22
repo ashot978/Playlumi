@@ -129,7 +129,10 @@ public final class PlaylumiAudio {
                 PlaylumiTunes.STORY,PlaylumiTunes.MATCH,PlaylumiTunes.DISCOVER,
                 PlaylumiTunes.PARTY,PlaylumiTunes.WELCOME,
                 PlaylumiTunes.STAR_SHOWER,PlaylumiTunes.CHEER,
-                PlaylumiTunes.LEVEL_UP),true);
+                PlaylumiTunes.LEVEL_UP,PlaylumiTunes.SUNSHINE,
+                PlaylumiTunes.RAINBOW,PlaylumiTunes.FOREST,
+                PlaylumiTunes.MOONLIGHT,PlaylumiTunes.CONFETTI,
+                PlaylumiTunes.TRAIN),true);
     }
     public void note(int index){
         if(index<0 || index>=PlaylumiMelody.NOTES)

@@ -6,8 +6,10 @@ public final class PlaylumiTunes {
             HELLO=4, POP=5, DANCE=6, SPARKLE=7, NOTE_GREEN=8, NOTE_BLUE=9, NOTE_YELLOW=10, NOTE_PURPLE=11;
     public static final int BONUS=12,GARDEN=13,STORY=14,MATCH=15,
             DISCOVER=16,PARTY=17,WELCOME=18,BUBBLE=19,
-            STAR_SHOWER=20,CHEER=21,TAP_ALT=22,LEVEL_UP=23;
-    public static final int COUNT=24, RATE=22050;
+            STAR_SHOWER=20,CHEER=21,TAP_ALT=22,LEVEL_UP=23,
+            SUNSHINE=24,RAINBOW=25,FOREST=26,MOONLIGHT=27,
+            CONFETTI=28,TRAIN=29;
+    public static final int COUNT=30, RATE=22050;
     private static final double[][] NOTES={
         {660,0,0},                 // button tap
         {523.25,659.25,783.99},   // good answer
@@ -32,14 +34,22 @@ public final class PlaylumiTunes {
         {783.99,1046.5,1318.5,1567.98,1046.5}, // star shower
         {392,587.33,783.99,987.77,783.99},      // cheer
         {659.25,880},                            // light tap
-        {440,523.25,659.25,880,1046.5}          // level up
+        {440,523.25,659.25,880,1046.5},         // level up
+        {523.25,659.25,783.99,987.77,1046.5},  // sunshine
+        {392,493.88,587.33,739.99,880},         // rainbow
+        {329.63,392,440,523.25,392,329.63},    // forest adventure
+        {440,523.25,493.88,392,329.63},         // moonlight
+        {659.25,783.99,1046.5,783.99,1174.66,1318.51}, // confetti
+        {392,392,493.88,587.33,493.88,659.25}  // party train
     };
     private static final int[] NOTE_MS={
         85,130,170,150,175,38,135,155,245,245,245,245,
-        122,145,140,126,128,145,135,92,125,138,83,140};
+        122,145,140,126,128,145,135,92,125,138,83,140,
+        155,160,185,210,125,140};
     private static final int[] GAP_MS={
         0,13,14,10,14,0,16,11,0,0,0,0,
-        15,17,16,12,13,12,14,8,12,14,8,13};
+        15,17,16,12,13,12,14,8,12,14,8,13,
+        14,16,23,22,12,16};
     private PlaylumiTunes() {}
     public static byte[] wav(int effect) {
         if(effect<0 || effect>=COUNT)throw new IllegalArgumentException("Invalid jingle");

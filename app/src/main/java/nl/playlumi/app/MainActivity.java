@@ -1269,7 +1269,7 @@ public class MainActivity extends Activity {
         addTwo(worlds,play,107);
 
         Button musicBox=tile("🎼 De Muziekdoos",
-                "Kies uit twaalf vrolijke deuntjes, zonder computerstem",
+                "Kies uit achttien vrolijke deuntjes, zonder computerstem",
                 0xffffe7b5,93);
         addTile(musicBox,5);
         musicBox.setOnClickListener(v->move(MUSIC_BOX));
@@ -2146,7 +2146,7 @@ public class MainActivity extends Activity {
         addTwo(first[2],bubblesButton,103);
         addTile(musicButton,7);
         Button musicBox=tile("🎼 De Muziekdoos",
-                "Twaalf korte instrumentale melodietjes om zelf te kiezen",
+                "Achttien instrumentale melodietjes om zelf te kiezen",
                 0xffffe7b5,88);
         addTile(musicBox,7);
         musicBox.setOnClickListener(v->move(MUSIC_BOX));
@@ -2195,8 +2195,8 @@ public class MainActivity extends Activity {
             sound.stopNotes();
             status.setText("🍃 Gestopt. Kies een nieuw deuntje!");
         });
-        Button next=tile(musicBoxPage==0?
-                "✨ Nog zes deuntjes →":"↩ Eerste zes deuntjes",
+        Button next=tile(musicBoxPage==PlaylumiMusicBox.PAGES-1?
+                "↩ Eerste zes deuntjes":"✨ Volgende zes deuntjes →",
                 (musicBoxPage+1)+" / "+PlaylumiMusicBox.PAGES,
                 0xffe5ecff,69);
         addTile(next,9);

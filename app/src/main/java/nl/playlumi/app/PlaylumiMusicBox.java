@@ -1,15 +1,18 @@
 package nl.playlumi.app;
 
-/** Twelve original offline instrument-only tunes, no speech or user data. */
+/** Eighteen original offline instrument-only tunes, no speech or user data. */
 public final class PlaylumiMusicBox {
-    public static final int COUNT=12, PAGE_SIZE=6, PAGES=2;
+    public static final int COUNT=18, PAGE_SIZE=6, PAGES=3;
     private static final String[] NAMES={
         "Sterrenfeest","Tuingeluk","Verhaalmuziek","Kaartenpaar",
         "Ontdekpret","Groot feest","Welkom thuis","Bubbeldans",
-        "Sterrenregen","Hiep hiep","Vrolijke tik","Level omhoog"
+        "Sterrenregen","Hiep hiep","Vrolijke tik","Level omhoog",
+        "Zonnestraal","Regenboog","Bosavontuur","Maanlicht",
+        "Konfettidans","Feesttrein"
     };
     private static final String[] ICONS={
-        "🎉","🌱","📖","🧩","🦋","🎈","🌈","🫧","✨","👏","🥁","🚀"
+        "🎉","🌱","📖","🧩","🦋","🎈","🌈","🫧","✨","👏","🥁","🚀",
+        "☀️","🌈","🌳","🌙","🎊","🚂"
     };
     private PlaylumiMusicBox(){}
 
