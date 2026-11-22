@@ -24,7 +24,7 @@ Never reveal, commit, transmit, regenerate or replace the original private signi
 
 - Before editing any feature, inspect the latest GitHub branch, PR, exact HEAD commit, workflow, signing configuration and the most recent run. Never assume that a prior successful run certifies a newer commit.
 - Do not add another feature on top of a broken release pipeline: repair and verify the previous blocking failure first.
-- GitHub CI **must fail**, not return green, when the original-signing secrets are absent/incomplete, the fingerprint mismatches or the signed release APK cannot be published.
+- **Explicit release CI (`workflow_dispatch`) must fail**, not return green, when the original-signing secrets are absent/incomplete, the fingerprint mismatches or the signed release APK cannot be published. Ordinary PR/push CI validates tests, lint, emulator, screenshots and unsigned packaging independently; its green status does **not** authorize an APK download.
 - On deterministic failures, inspect logs, fix code and tests and push a new commit before rerunning. Retry transient infrastructure failures only after identifying their nature. Never endlessly rerun missing secrets or a wrong signature.
 - Keep inspecting GitHub jobs and artifacts until the **entire exact-SHA workflow** is completed and successful. Require an original-certificate-signed APK with the package, fingerprint and update versionCode verified before offering any download.
 - Download the real, nonexpired signed APK from that exact run and offer it directly in the conversation only after verification; do not substitute debug/unsigned builds.
