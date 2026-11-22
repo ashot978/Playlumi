@@ -16,7 +16,7 @@ jobs:
           RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
         run: |
           if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
-            echo "::error::Cannot approve a Playlumi update: original signing keystore/password missing."
+            echo "::error::Cannot approve a Playlumi update: new signing keystore/password missing."
             echo "Restore the original v0.45 keystore via private GitHub Actions secrets before continuing."
             exit 1
           fi
@@ -143,5 +143,5 @@ jobs:
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
           echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash; still requires device acceptance." >> "$GITHUB_STEP_SUMMARY"
-          echo "The workflow FAILS CLOSED unless original release signing succeeds. Only the original-signed verified APK may be shared as an update." >> "$GITHUB_STEP_SUMMARY"
+          echo "The workflow FAILS CLOSED unless new release signing succeeds. Only the newkey-signed verified APK may be shared as an update." >> "$GITHUB_STEP_SUMMARY"
           echo "Real Samsung update and saved-data acceptance remain separate from emulator smoke testing." >> "$GITHUB_STEP_SUMMARY"
