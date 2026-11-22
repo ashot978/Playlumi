@@ -93,8 +93,23 @@ jobs:
           test -s "$APK"
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           test -n "$APK_SIGNER"
-          "$APK_SIGNER" verify --print-certs "$APK"
-          ACTUAL="$("$APK_SIGNER" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          VERIFY_OUTPUT="$("$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$APK")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v1 scheme (JAR signing): true'
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          ACTUAL="$(printf '%s\n' "$VERIFY_OUTPUT" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          PACKAGE_LINE="$("$AAPT" dump badging "$APK" | head -n 1)"
+          if [[ "$PACKAGE_LINE" != *"name='nl.playlumi.app'"* ]]; then
+            echo "::error::Unexpected Android package name."
+            exit 1
+          fi
+          VERSION_CODE="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p")"
+          if [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" -le 24302 ]; then
+            echo "::error::Release update versionCode must exceed original v0.45 (24302)."
+            exit 1
+          fi
           EXPECTED="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
           if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "::error::APK signature does not match the original verified certificate."
