@@ -2300,9 +2300,8 @@ public class MainActivity extends Activity {
     }
 
     private String musicBoxTrackLabel(int index) {
-        return (musicBoxTrack==index?"🎵 ":"")+
-                (musicBoxFavorites.isFavorite(index)?"⭐ ":"")+
-                PlaylumiMusicBox.title(index);
+        return PlaylumiMusicBox.displayTitle(index,musicBoxTrack==index,
+                musicBoxFavorites.isFavorite(index));
     }
 
     private void refreshMusicBoxSelection(Button[] visibleTrackTiles) {
