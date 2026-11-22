@@ -55,6 +55,10 @@ public class MainActivity extends Activity {
     private static final String[] LEVELS={"Makkelijk","Gemiddeld","Uitdagend"};
 
     private final ArrayList<Button> answerButtons=new ArrayList<>();
+    // Gentle hints belong only to the visible question, never to a saved profile.
+    private LearningGame.Round hintRound;
+    private int hintHiddenMask;
+    private Button hintButton;
     private final ArrayList<Integer> pendingBadges=new ArrayList<>();
     private int page,age,world,categoryPage,variantPage,badgePage,difficulty;
     private int closetPage,shopPage,selectedSlot;
@@ -1523,6 +1527,11 @@ public class MainActivity extends Activity {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
+        if(hintRound!=round) {
+            hintRound=round;
+            hintHiddenMask=0;
+        }
+        hintButton=null;
         boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
 
@@ -1612,6 +1621,14 @@ public class MainActivity extends Activity {
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
         answerLocked=round.isSolved();
+        if(!answerLocked && PlaylumiHints.nextWrongOption(
+                round.correctIndex,round.answers.size(),hintHiddenMask)>=0) {
+            hintButton=tile("💡 Help mij","Maak de vraag makkelijker",0xffffedcf,60);
+            hintButton.setTextSize(16);
+            hintButton.setContentDescription("Help mij: haal een fout antwoord weg");
+            hintButton.setOnClickListener(v->showGentleHint(round));
+            addWidgetIn(answers,hintButton,dp(2),dp(5));
+        }
         for(int i=0;i<round.answers.size();i+=2) {
             LinearLayout answerRow=new LinearLayout(this);
             answerRow.setGravity(Gravity.CENTER);
@@ -1632,6 +1649,8 @@ public class MainActivity extends Activity {
                 answerRow.addView(button,cell);
                 answerButtons.add(button);
                 button.setOnClickListener(v->choose(answer,button));
+                if((hintHiddenMask&(1<<answer))!=0)
+                    markHintedAnswer(button);
             }
             answers.addView(answerRow,new LinearLayout.LayoutParams(-1,-2));
         }
@@ -1656,6 +1675,34 @@ public class MainActivity extends Activity {
         p.setMargins(dp(4),dp(top),dp(4),dp(bottom));
         root.addView(widget,p);
     }
+    /** Show a friendly cloud without touching the round's scoring or answers. */
+    private void markHintedAnswer(Button button) {
+        button.setEnabled(false);
+        button.setFocusable(false);
+        button.setText("☁️");
+        button.setTextSize(26);
+        button.setContentDescription("Deze keuze is weg");
+        button.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        button.setAlpha(.44f);
+    }
+    private void showGentleHint(LearningGame.Round round) {
+        if(answerLocked || game.round()!=round || round.isSolved())return;
+        int choice=PlaylumiHints.nextWrongOption(
+                round.correctIndex,round.answers.size(),hintHiddenMask);
+        if(choice<0)return;
+        hintHiddenMask|=1<<choice;
+        markHintedAnswer(answerButtons.get(choice));
+        String message="💛 Kijk eens! Nog "+
+                (round.answers.size()-Integer.bitCount(hintHiddenMask))+
+                " antwoorden om uit te kiezen.";
+        feedbackText.setText(message);
+        feedbackText.setTextColor(PlaylumiVisualStyle.SUCCESS);
+        feedbackText.setBackground(softCard(PlaylumiVisualStyle.SUCCESS_TINT,17));
+        feedbackText.announceForAccessibility(message);
+        if(hintButton!=null && PlaylumiHints.nextWrongOption(
+                round.correctIndex,round.answers.size(),hintHiddenMask)<0)
+            hintButton.setVisibility(View.GONE);
+    }
     private void choose(int index,Button touched) {
         if(answerLocked || game.round().isSolved())return;
         int mode=game.mode();
@@ -1665,6 +1712,7 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
+            if(hintButton!=null)hintButton.setVisibility(View.GONE);
             feedback="⭐ Goed gedaan! +3 🌟";
             if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
