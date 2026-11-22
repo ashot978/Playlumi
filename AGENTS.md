@@ -26,6 +26,10 @@ The previously handed-off locally signed Playlumi 0.61.0 APK failed to install o
 - Android emulator launch and green unit tests alone **do not** prove the locally reconstructed release APK is installable. Do not claim real-device installation until tested; when the user reports failure, prioritize an installable release fix over further feature work.
 - The correction must be tested on the **actual final signed APK**, not just the unsigned predecessor.
 
+## Two distinct CI gates: development vs. release
+
+The standard push/pull-request GitHub Actions run verifies unit tests, Android lint, debug build, emulator installation/start, real screenshots and aligned unsigned release. Its success means **code/visual QA only**, never a distributable update. Release signing is reserved for **explicit `workflow_dispatch` runs** and must fail closed when either original signing secret, signer fingerprint, APK alignment, correct package or versionCode check fails. Never mark the release delivered based on a green pull-request CI. Do not weaken the original-signature requirement to change a red release run to green.
+
 ## Before changing code
 1. Fetch the latest intended development branch, its HEAD SHA, relevant open PR and GitHub Actions run. Do not assume previous chat status is still current.
 2. Read this AGENTS.md, RELEASE_CHECKLIST.md, ORIGINAL_SIGNING.md and the current .github/workflows/android.yml.

@@ -20,5 +20,29 @@ if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
   exit 1
 fi
 
+# Save a real emulator screenshot to review first-launch visual quality.
+mkdir -p app/build/reports/playlumi-visual
+adb exec-out screencap -p > app/build/reports/playlumi-visual/first-launch.png
+test -s app/build/reports/playlumi-visual/first-launch.png
+
+# Install the EXACT original-signed release while the CI emulator is still alive.
+SIGNED="release-candidates/playlumi-0.63.0-original-signed.apk"
+if [ -s "$SIGNED" ]; then
+  adb uninstall nl.playlumi.app
+  adb install "$SIGNED"
+  adb logcat -c
+  adb shell am start -W -n nl.playlumi.app/.MainActivity
+  sleep 5
+  test -n "$(adb shell pidof nl.playlumi.app | tr -d '\r')"
+  if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
+    echo "FAIL: original-signed Playlumi crashed after actual emulator install"
+    exit 1
+  fi
+  echo "PASS: original-signed Playlumi installed and launched on API 35 emulator"
+fi
+
+# Screenshot is best effort; Android Pixel Launcher can show an unrelated
+# first-boot ANR dialog before Playlumi's own UI becomes interactive.
+# Navigation and signed-APK installation have separate explicit gates.
 echo "PASS: Playlumi launch process alive (pid=$pid), no reported process crash"
 echo "NOTE: this does not test gameplay, in-place upgrades or Samsung hardware."

@@ -631,7 +631,7 @@ public class MainActivity extends Activity {
                 new int[]{PlaylumiVisualStyle.lightened(color,100),
                         PlaylumiVisualStyle.lightened(color,470)});
         shape.setCornerRadius(dp(radius));
-        shape.setStroke(dp(1),0xcaffffff);
+        shape.setStroke(dp(1),PlaylumiVisualStyle.BORDER);
         return shape;
     }
     private RippleDrawable primaryAction() {
@@ -646,7 +646,8 @@ public class MainActivity extends Activity {
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
-        t.setTypeface(Typeface.create("sans-serif-rounded",size>=19?Typeface.BOLD:Typeface.NORMAL));
+        t.setTypeface(Typeface.create(size>=19?"sans-serif-medium":"sans-serif",
+                size>=19?Typeface.BOLD:Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);t.setIncludeFontPadding(true);
         t.setLineSpacing(dp(2),1.06f);return t;
     }
@@ -661,23 +662,22 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
         b.setTextColor(TEXT);
-        b.setTextSize(description.isEmpty()?18:17);
-        b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        b.setTextSize(description.isEmpty()?18:16);
+        b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         b.setLineSpacing(dp(2),1.07f);
         b.setGravity(description.isEmpty()?Gravity.CENTER:(Gravity.CENTER_VERTICAL|Gravity.START));
         b.setMaxLines(4);
-        b.setPadding(dp(description.isEmpty()?13:18),dp(10),
-                dp(description.isEmpty()?13:16),dp(10));
+        b.setPadding(dp(description.isEmpty()?17:20),dp(13),
+                dp(description.isEmpty()?17:19),dp(13));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
-        boolean playfulPage=page==HOME || page==PICTURE_PLAY ||
-                page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
-                page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
-                page==SHOP || page==ROOM_CATS || page==ROOM_ITEMS ||
-                page==GARDEN_MENU || page==FRIEND_CARE || page==STAR_STAGE;
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),
-                playfulPage?new PlaylumiCloudDrawable(color):softCard(color,24),
-                null));
-        b.setElevation(dp(3));
+        // Consistent elevated cards instead of the former wobbly cloud buttons.
+        GradientDrawable card=new GradientDrawable();
+        card.setColor(PlaylumiVisualStyle.lightened(color,270));
+        card.setCornerRadius(dp(22));
+        card.setStroke(dp(1),PlaylumiVisualStyle.BORDER);
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x1a176457),
+                card,null));
+        b.setElevation(dp(1));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -685,7 +685,7 @@ public class MainActivity extends Activity {
     private void addTile(Button button,int margin) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
         int gap=PlaylumiLayout.margin(margin);
-        p.setMargins(dp(3),dp(gap),dp(3),dp(gap));
+        p.setMargins(dp(2),dp(gap+2),dp(2),dp(gap+2));
         root.addView(button,p);
     }
     private void addTwo(Button one,Button two,int height) {
@@ -702,7 +702,7 @@ public class MainActivity extends Activity {
     }
     private ImageView mascot(int size) {
         ImageView m=new ImageView(this);
-        m.setImageResource(R.drawable.playlumi_icon);
+        m.setImageResource(R.drawable.playlumi_brand_icon);
         m.setScaleType(ImageView.ScaleType.FIT_CENTER);
         m.setContentDescription("Playlumi, het vrolijke sterretje");
         m.setLayoutParams(new LinearLayout.LayoutParams(dp(size),dp(size)));
@@ -725,9 +725,9 @@ public class MainActivity extends Activity {
         boolean welcomeCard=page==HOME;
         holder.setGravity(welcomeCard?Gravity.CENTER_VERTICAL:Gravity.CENTER);
         if(welcomeCard) {
-            holder.setPadding(dp(11),dp(6),dp(13),dp(6));
-            holder.setBackground(softCard(0xffbdece5,29));
-            holder.setElevation(dp(4));
+            holder.setPadding(dp(14),dp(10),dp(14),dp(10));
+            holder.setBackground(softCard(PlaylumiVisualStyle.MINT,26));
+            holder.setElevation(dp(1));
         }
         PlaylumiWardrobe display=page==SHOP && outfitPreview>=0 ?
                 PlaylumiTryOn.previewWardrobe(wardrobe,selectedSlot,outfitPreview) : wardrobe;
@@ -754,11 +754,11 @@ public class MainActivity extends Activity {
             welcome.setOrientation(LinearLayout.VERTICAL);
             welcome.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
             welcome.setPadding(dp(12),0,0,0);
-            TextView greet=text("Welkom, avonturier!",19,TEXT);
+            TextView greet=text("Hoi, avonturier!",21,TEXT);
             greet.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
             greet.setMaxLines(2);
             welcome.addView(greet,new LinearLayout.LayoutParams(-1,-2));
-            TextView subtitle=text("Ontdek iets nieuws vandaag",13,SUB);
+            TextView subtitle=text("Jouw eigen speelwereld",14,SUB);
             subtitle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
             subtitle.setMaxLines(2);
             welcome.addView(subtitle,new LinearLayout.LayoutParams(-1,-2));
@@ -863,7 +863,7 @@ public class MainActivity extends Activity {
             shortcut.setMargins(dp(5),0,0,0);
             row.addView(homeShortcut,shortcut);
             homeShortcut.setOnClickListener(v->move(HOME));
-        } else {
+        } else if(page!=HOME) {
             View star=wardrobe==null?mascot(37):new PlaylumiCharacterView(this,wardrobe);
             LinearLayout.LayoutParams iconParams=
                     new LinearLayout.LayoutParams(dp(39),dp(39));
@@ -1096,7 +1096,7 @@ public class MainActivity extends Activity {
                         PlaylumiVisualStyle.PAGE_MIDDLE,
                         PlaylumiVisualStyle.PAGE_BOTTOM});
         stage.setBackground(bg);
-        boolean wonderland=page==HOME || page==PICTURE_PLAY ||
+        boolean wonderland=page==PICTURE_PLAY ||
                 page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
                 page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
                 page==SHOP || page==ROOM || page==ROOM_CATS ||
@@ -1224,14 +1224,37 @@ public class MainActivity extends Activity {
                     page=destination;moving=false;showPage();
                 }).start();
     }
+    /** Calm onboarding with no oversized sticker art or emoji-heavy controls. */
     private void showAge() {
-        header("🎈 Hoe oud ben jij?","Kies jouw leeftijd. We onthouden dit!");
-        hero(105);
-        String[] descriptions={"Ontdek vormen en kleuren","Leer woorden en tellen","Meer uitdaging en puzzels"};
-        String[] emoji={"🐣","🦋","🚀"};
-        for(int i=0;i<3;i++){
+        root.setGravity(Gravity.CENTER_VERTICAL);
+        TextView eyebrow=text("P L A Y L U M I",14,
+                PlaylumiVisualStyle.PRIMARY_START);
+        eyebrow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams eyebrowParams=new LinearLayout.LayoutParams(-1,-2);
+        eyebrowParams.setMargins(0,dp(8),0,dp(17));
+        root.addView(eyebrow,eyebrowParams);
+
+        TextView heading=text("Klaar om te ontdekken?",29,TEXT);
+        heading.setGravity(Gravity.CENTER);
+        heading.setMaxLines(2);
+        root.addView(heading,new LinearLayout.LayoutParams(-1,-2));
+
+        TextView intro=text("Kies de leeftijd die bij jou past.",16,SUB);
+        LinearLayout.LayoutParams introParams=new LinearLayout.LayoutParams(-1,-2);
+        introParams.setMargins(dp(12),dp(9),dp(12),dp(22));
+        root.addView(intro,introParams);
+
+        String[] descriptions={
+                "Kleuren, vormen en eerste cijfers",
+                "Woorden, tellen en puzzels",
+                "Uitdagende spelletjes en raadsels"
+        };
+        int[] colors={PlaylumiVisualStyle.MINT,
+                PlaylumiVisualStyle.SKY,PlaylumiVisualStyle.LAVENDER};
+        for(int i=0;i<AGES.length;i++) {
             final int selected=i;
-            Button b=tile(emoji[i]+"  "+AGES[i],descriptions[i],COLORS[i],97);
+            Button b=tile(AGES[i]+"   →",descriptions[i],colors[i],97);
+            b.setTextSize(18);
             addTile(b,6);
             b.setOnClickListener(v->{
                 age=selected;difficulty=selected;
@@ -1239,6 +1262,7 @@ public class MainActivity extends Activity {
                 move(HOME);
             });
         }
+        addText("Je kunt dit later altijd veranderen.",13,SUB,17,8);
     }
     private void startEasyPlay() {
         int selected=PlaylumiEasyPlay.category(
@@ -1255,49 +1279,66 @@ public class MainActivity extends Activity {
         rememberPlay();
         move(PLAY);
     }
+    /** A focused, calm home screen: primary play first, three clear destinations. */
     private void showHome() {
-        header("🌟 Playlumi","Jouw vrolijke speelwereld");
-        characterHero(118);
+        header("Playlumi","Spelen, ontdekken en groeien");
+        characterHero(106);
 
-        Button quick=tile("▶  Speel meteen","",0xffccf2db,112);
+        TextView section=text("Klaar voor een avontuur?",21,TEXT);
+        section.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headingParams=new LinearLayout.LayoutParams(-1,-2);
+        headingParams.setMargins(dp(6),dp(17),dp(6),dp(5));
+        root.addView(section,headingParams);
+
+        Button quick=tile("Speel meteen  →",
+                "",PlaylumiVisualStyle.MINT,98);
         quick.setBackground(primaryAction());
         quick.setTextColor(Color.WHITE);
-        quick.setTextSize(22);
-        quick.setElevation(dp(5));
+        quick.setTextSize(19);
+        quick.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
         quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
         addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
-        PlaylumiDelight.invite(quick);
+
+        Button games=tile("Ontdek spelletjes",
+                "Kies samen een nieuwe uitdaging",PlaylumiVisualStyle.SKY,100);
+        games.setOnClickListener(v->move(PICTURE_PLAY));
+        addTile(games,5);
+
+        Button music=tile("De Muziekdoos",
+                "Luister, speel en bewaar melodieën",PlaylumiVisualStyle.PEACH,100);
+        music.setOnClickListener(v->move(MUSIC_BOX));
+        addTile(music,5);
+
+        TextView explore=text("Nog meer ontdekken",18,TEXT);
+        explore.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams moreParams=new LinearLayout.LayoutParams(-1,-2);
+        moreParams.setMargins(dp(6),dp(20),dp(6),dp(4));
+        root.addView(explore,moreParams);
+
+        Button worlds=tile("Leerwerelden",
+                "Kleuren, letters en natuur",PlaylumiVisualStyle.LAVENDER,88);
+        worlds.setOnClickListener(v->move(WORLD_PICKER));
+        Button mini=tile("Beweeg & speel",
+                "Kleine interactieve spelletjes",PlaylumiVisualStyle.MINT,88);
+        mini.setOnClickListener(v->move(MINI_MENU));
+        addTwo(worlds,mini,88);
+
+        Button friend=tile("Mijn speelwereld",
+                "Kleed je vriendje aan en versier je kamer",
+                PlaylumiVisualStyle.LAVENDER,87);
+        friend.setOnClickListener(v->move(AVATAR));
+        addTile(friend,4);
+
+        // Keep shortcuts and the child's history, but put them after the core flow.
         showFavoriteGames();
         showRecentGames(true);
 
-        Button bigPlay=tile("🧸 Kies een plaatje","Zes grote spelletjes voor jouw leeftijd",
-                0xffffe4bd,115);
-        bigPlay.setTextSize(21);
-        bigPlay.setContentDescription("Kies een plaatje om direct te spelen");
-        addTile(bigPlay,5);
-        bigPlay.setOnClickListener(v->move(PICTURE_PLAY));
-
-        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
-        worlds.setOnClickListener(v->move(WORLD_PICKER));
-
-        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
-        play.setOnClickListener(v->move(MINI_MENU));
-        addTwo(worlds,play,107);
-
-        Button musicBox=tile("🎼 De Muziekdoos",
-                "Kies uit achttien vrolijke deuntjes, zonder computerstem",
-                0xffffe7b5,93);
-        addTile(musicBox,5);
-        musicBox.setOnClickListener(v->move(MUSIC_BOX));
-
-        Button friend=tile("🎨 Aanpassen","Kleding, kleuren, kamer en tuin",0xffffe7bb,86);
-        addTile(friend,4);
-        friend.setOnClickListener(v->move(AVATAR));
-
-        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
-        addTile(options,8);
+        Button options=tile("Leeftijd en instellingen",
+                "Voor ouders en de keuze van je leeftijd",
+                PlaylumiVisualStyle.SURFACE,70);
         options.setOnClickListener(v->move(HOME_OPTIONS));
+        addTile(options,8);
     }
     /**
      * The picture-first path uses just one tap after choosing a simple icon.

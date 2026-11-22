@@ -23,6 +23,23 @@ public final class PlaylumiVisualStyleTest {
         assertTrue(PlaylumiVisualStyle.contrastRatio(
                 PlaylumiVisualStyle.MUTED,PlaylumiVisualStyle.PAGE_BOTTOM)>=4.5);
     }
+    @Test public void premiumPaletteKeepsPrimaryAndCardLabelsAccessible() {
+        assertTrue(PlaylumiVisualStyle.contrastRatio(
+                0xffffffff,PlaylumiVisualStyle.PRIMARY_START)>=4.5);
+        assertTrue(PlaylumiVisualStyle.contrastRatio(
+                0xffffffff,PlaylumiVisualStyle.PRIMARY_END)>=4.5);
+        int[] tiles={PlaylumiVisualStyle.MINT,PlaylumiVisualStyle.PEACH,
+                PlaylumiVisualStyle.LAVENDER,PlaylumiVisualStyle.SKY,
+                PlaylumiVisualStyle.SURFACE};
+        for(int color:tiles) {
+            assertTrue(PlaylumiVisualStyle.contrastRatio(
+                    PlaylumiVisualStyle.INK,color)>=7);
+            assertTrue(PlaylumiVisualStyle.contrastRatio(
+                    PlaylumiVisualStyle.INK,PlaylumiVisualStyle.lightened(color,270))>=7);
+        }
+        assertTrue(PlaylumiVisualStyle.contrastRatio(
+                PlaylumiVisualStyle.MUTED,PlaylumiVisualStyle.PAGE_BOTTOM)>=4.5);
+    }
     @Test public void softlyGradedCardsRetainLegibleText() {
         int[] cards={0xffdceeff,0xffd7f3e4,0xffffe7bb,0xffece5ff,0xffd9f3ff,
                 0xffffe4bd,0xffe8d9ff,0xffd5f5df,0xffffdded,0xfffff1b6};
