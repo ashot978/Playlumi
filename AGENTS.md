@@ -14,6 +14,18 @@ When GitHub Actions cannot access original signing secrets, treat GitHub's relea
 
 Do not confuse the keystore password with the certificate fingerprint and never attempt to guess or brute-force the key. GitHub Secrets still need secure provisioning to automate original-signature releases in CI; connector access to source code does not automatically grant GitHub Secrets administration.
 
+## INSTALLATION REGRESSION: APK ZIP alignment (2026-11-22)
+
+The previously handed-off locally signed Playlumi 0.61.0 APK failed to install on a real Android phone **even after the old app was removed**. The signed APK's uncompressed `resources.arsc` and `res/J7.webp` payload offsets were 1 mod 4, violating Android's required 4-byte ZIP alignment for uncompressed resources. The original Gradle-produced unsigned release had correctly aligned `resources.arsc` at offset divisible by 4. The error arose when rebuilding the APK ZIP manually during private signing.
+
+**Mandatory before any download:**
+- NEVER reconstruct a release APK through a generic ZIP rewriter or by hand-editing an APK signing block. Use the original Gradle-produced aligned APK, or Android SDK `zipalign -p -f 4` BEFORE official `apksigner sign` with the exact original v0.45 key.
+- Run official `zipalign -c -v 4 final.apk`, then official `apksigner verify --min-sdk-version 23 --verbose --print-certs final.apk` and inspect the v1/v2 results. Require original v0.45 fingerprint and expected package/version.
+- In particular verify that uncompressed `resources.arsc` and other stored ZIP members start at 4-byte-aligned offsets. Ensure the signed final APK passes ZIP CRC validation and remains intact.
+- Keep app package `nl.playlumi.app`, the original signing certificate, installed profile data and monotonically increasing version codes.
+- Android emulator launch and green unit tests alone **do not** prove the locally reconstructed release APK is installable. Do not claim real-device installation until tested; when the user reports failure, prioritize an installable release fix over further feature work.
+- The correction must be tested on the **actual final signed APK**, not just the unsigned predecessor.
+
 ## Before changing code
 1. Fetch the latest intended development branch, its HEAD SHA, relevant open PR and GitHub Actions run. Do not assume previous chat status is still current.
 2. Read this AGENTS.md, RELEASE_CHECKLIST.md, ORIGINAL_SIGNING.md and the current .github/workflows/android.yml.

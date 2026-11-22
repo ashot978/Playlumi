@@ -2272,8 +2272,7 @@ public class MainActivity extends Activity {
                 return;
             }
             chooseMusicBox(chosen,status);
-            refreshFavoriteAction(favoriteAction);
-            refreshMusicBoxSelection(visibleTrackTiles);
+            refreshMusicBoxAfterSelection(favoriteAction,visibleTrackTiles);
         });
         stop.setOnClickListener(v->{
             melodyPlayback.stop();
@@ -2314,8 +2313,7 @@ public class MainActivity extends Activity {
             return;
         }
         chooseMusicBox(chosen,status);
-        refreshFavoriteAction(starAction);
-        refreshMusicBoxSelection(visibleTrackTiles);
+        refreshMusicBoxAfterSelection(starAction,visibleTrackTiles);
     }
 
     private Button musicBoxTile(int index,TextView status,Button starAction,
@@ -2327,8 +2325,7 @@ public class MainActivity extends Activity {
                 ". Houd ingedrukt om favoriet te maken of te verwijderen.");
         tile.setOnClickListener(v->{
             chooseMusicBox(index,status);
-            refreshFavoriteAction(starAction);
-            refreshMusicBoxSelection(visibleTrackTiles);
+            refreshMusicBoxAfterSelection(starAction,visibleTrackTiles);
         });
         visibleTrackTiles[index]=tile;
         tile.setOnLongClickListener(v->{
@@ -2348,6 +2345,20 @@ public class MainActivity extends Activity {
             if(visibleTrackTiles[track]!=null)
                 visibleTrackTiles[track].setText(musicBoxTrackLabel(track));
         }
+    }
+
+    /** Keep the chosen tune visible without interrupting its playback. */
+    private void refreshMusicBoxAfterSelection(Button starAction,
+                                              Button[] visibleTrackTiles) {
+        int pageOfTrack=musicBoxFavorites.pageOf(musicBoxFavoritesOnly,
+                musicBoxTrack);
+        if(pageOfTrack>=0 && pageOfTrack!=musicBoxPage) {
+            musicBoxPage=pageOfTrack;
+            showMusicBoxWithoutStopping();
+            return;
+        }
+        refreshFavoriteAction(starAction);
+        refreshMusicBoxSelection(visibleTrackTiles);
     }
 
     private void refreshFavoriteAction(Button starAction) {

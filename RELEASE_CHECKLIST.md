@@ -40,6 +40,15 @@ Never reveal, commit, transmit, regenerate or replace the original private signi
 - Verify original v0.45 cert, Android v1 and v2 signing, unmodified package `nl.playlumi.app`, higher versionCode and file integrity before presenting that APK. Prefer official Android build-tools `apksigner` and `aapt`; if they are unavailable, do not claim they were run.
 - No new keystore, no replacement certificate, no lost profile data, no installation/uninstallation on the user's device without authorization.
 
+## Real device installation gate: ZIP alignment
+
+An actual clean installation failed for a locally signed 0.61.0 APK. Diagnosis found improperly aligned uncompressed resources in the final APK: both `resources.arsc` and `res/J7.webp` started at byte offset 1 modulo 4. The CI-produced unsigned APK had correctly aligned `resources.arsc`. This is a packaging/signing-time defect, not a missing certificate after uninstall.
+
+- Follow official Android SDK process: `zipalign` first, original-v0.45-key `apksigner sign` second, `zipalign -c -v 4` and `apksigner verify --min-sdk-version 23 --verbose --print-certs` on the **final signed APK**.
+- Never rely on generic ZIP rewriting or homemade APK v2 signing for install-ready releases.
+- Validate every stored ZIP member's data offset, particularly `resources.arsc`; CRC and cryptographic checks are additional but not sufficient for Android install acceptance.
+- Confirm on an actual Android device before asserting a fixed install. If impossible, label release as locally checked and awaiting device acceptance.
+
 ## Normal development
 
 Continue from the latest verified development branch, one focused version increment at a time. Add tests and open a draft PR against the previous development branch. Review GitHub Actions status before declaring completion. Describe clearly what is coded vs. what is CI-tested vs. what is device-approved.
