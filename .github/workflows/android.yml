@@ -58,9 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-first-launch-visual-review
-          path: |
-            app/build/reports/playlumi-visual/first-launch.png
-            app/build/reports/playlumi-visual/home.png
+          path: app/build/reports/playlumi-visual/first-launch.png
           if-no-files-found: error
           retention-days: 7
       - name: Use increasing Android version code
