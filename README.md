@@ -10,10 +10,10 @@ Open het project in Android Studio met Android SDK 35 en JDK 17. Gebruik Gradle 
 
 De app gebruikt geen accounts, advertenties, trackers, netwerkaanroepen of extra toestemmingen. Een echte toesteltest blijft nodig, waaronder verschillende schermformaten, schermrotatie en toegankelijkheid.
 
-## Release-update installeren (v0.61+)
+## Installatie en updates vanaf v0.62.0
 
-**Gebruik geen debug-APK als update over de bestaande Playlumi-installatie.** De v0.45-app is ondertekend met het originele Playlumi-certificaat. Een debug-APK heeft een andere handtekening en wordt door Android geweigerd.
+De gebruiker heeft bewust een **nieuwe vaste PKCS12-releasekeystore** gekozen. De eerste APK die met deze nieuwe sleutel is ondertekend, kan niet rechtstreeks over de oorspronkelijke v0.45-installatie worden geïnstalleerd. Een schone herinstallatie kan lokale kindprofielen, scores en voortgang wissen. Maak waar mogelijk eerst een back-up; verwijder bestaande apps nooit automatisch.
 
-De GitHub Actions-workflow publiceert een installatie-update uitsluitend als de oorspronkelijke keystore via privé repository secrets beschikbaar is en het ondertekeningscertificaat exact overeenkomt met v0.45. Het artifact heet dan `playlumi-original-signed-release-update`. Als die controle niet kan worden uitgevoerd, verschijnt **geen installeerbare release-update**. De unsigned release-APK mag nooit direct worden geïnstalleerd.
+Na de eerste schone installatie worden alle volgende releases met exact dezelfde nieuwe sleutel ondertekend. De openbare certificaatvingerafdruk en veilige GitHub Actions-configuratie staan in [ORIGINAL_SIGNING.md](ORIGINAL_SIGNING.md). De geheime keystore en het wachtwoord staan **niet in de publieke repository**.
 
-Meer informatie en de exacte configuratie staan in [ORIGINAL_SIGNING.md](ORIGINAL_SIGNING.md). Verwijder de bestaande app niet: lokaal opgeslagen profielen en spelvoortgang kunnen verloren gaan. De emulatorcontrole is geen vervanging voor een test op het echte toestel.
+De GitHub Actions-run moet volledig slagen en het artifact `playlumi-newkey-signed-release` publiceren. Als de vereiste repository secrets ontbreken, faalt de release-controle bewust. Een debug-APK of een niet-ondertekende release is geen geschikte installatie-update.

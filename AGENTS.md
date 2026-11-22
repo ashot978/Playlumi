@@ -1,3 +1,13 @@
+# CURRENT SIGNING BASELINE — OVERRIDES HISTORICAL RULES BELOW
+
+The user explicitly authorized a NEW release signing key and a clean reinstall. Since v0.62.0, **all future updates MUST use the same NEW RSA-4096 PKCS12 release key**, alias `playlumi-release`, certificate SHA-256 `09:99:D6:3A:1A:A1:D8:04:18:E0:B4:FA:1E:A0:15:13:3A:DD:F7:3B:50:75:76:61:71:A9:A6:73:3D:14:AA:85`. The old v0.45 certificate is historical only and cannot update the new installation. This header supersedes any old statement below requiring the original v0.45 signing key.
+
+The new keystore and password were delivered to the user as separate recoverable downloads, but **are not stored in GitHub or agent memory**. The user must securely back them up and set GitHub Actions secrets `PLAYLUMI_RELEASE_KEYSTORE_BASE64` and `PLAYLUMI_SIGNING_PASSWORD`. No agent may regenerate a signing key on each release, store private keys in public repository or memory, or promise it can retrieve transient conversation files later. Do not claim the release is ready until an exact-SHA CI run is green and includes `playlumi-newkey-signed-release` signed by this fingerprint.
+
+A clean reinstall of the old app will be required once; warn that uninstall can erase child progress and profiles. From then on all upgrades use this new single permanent identity. See ORIGINAL_SIGNING.md for the complete procedure.
+
+---
+
 # MANDATORY PLAYLUMI DEVELOPMENT / RELEASE CONTRACT (highest priority)
 
 These rules apply to **every** future Playlumi agent task, including one-line requests such as "ga door" or "volgende versie". Treat them as release gates, not optional advice. Never claim this file can force an external ChatGPT agent to keep running indefinitely.
