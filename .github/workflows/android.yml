@@ -22,7 +22,7 @@ jobs:
           gradle-version: '8.9'
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=24456" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
   emulator-launch:
@@ -65,7 +65,7 @@ jobs:
           retention-days: 7
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=24456" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
       - name: Check release APK ZIP alignment before any signing
@@ -86,8 +86,71 @@ jobs:
           retention-days: 7
       # Pull requests prove code quality; only explicit release runs attempt signing.
       # A release run still fails closed if original credentials are absent.
+      - name: Verify original-signed APK against the actual CI-built release
+        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNED="release-candidates/playlumi-0.63.0-original-signed.apk"
+          UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$SIGNED"
+          test -s "$UNSIGNED"
+          export SIGNED UNSIGNED
+          python3 - <<'PY'
+          import os,zipfile
+          with zipfile.ZipFile(os.environ['SIGNED']) as signed, zipfile.ZipFile(os.environ['UNSIGNED']) as unsigned:
+              assert signed.testzip() is None, 'Signed APK ZIP CRC failed'
+              assert unsigned.testzip() is None, 'Unsigned APK ZIP CRC failed'
+              original={i.filename:unsigned.read(i) for i in unsigned.infolist()}
+              candidate={i.filename:signed.read(i) for i in signed.infolist()}
+              for name,body in original.items():
+                  assert candidate.get(name)==body, 'Signed APK differs from CI-built sources at '+name
+              assert any(k.startswith('META-INF/') for k in candidate), 'Missing original signer manifest'
+              print('PASS: every unsigned app payload matches the independently original-signed APK')
+          PY
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)"
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)"
+          test -x "$ZIPALIGN" && test -x "$APK_SIGNER" && test -x "$AAPT"
+          "$ZIPALIGN" -c -v 4 "$SIGNED"
+          VERIFY_OUTPUT="$("$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$SIGNED")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v1 scheme (JAR signing): true'
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          ACTUAL="$(printf '%s\n' "$VERIFY_OUTPUT" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED="d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef"
+          test "$ACTUAL" = "$EXPECTED"
+          PACKAGE="$("$AAPT" dump badging "$SIGNED" | head -n 1)"
+          [[ "$PACKAGE" == *"name='nl.playlumi.app'"* ]]
+          [[ "$PACKAGE" == *"versionCode='24456'"* ]]
+          [[ "$PACKAGE" == *"versionName='0.63.0'"* ]]
+          echo "PASS: original release fingerprint, v1/v2, zipalign, exact version and package"
+      - name: Install the actual original-signed APK in Android emulator
+        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          adb uninstall nl.playlumi.app
+          adb install release-candidates/playlumi-0.63.0-original-signed.apk
+          adb logcat -c
+          adb shell am start -W -n nl.playlumi.app/.MainActivity
+          sleep 5
+          test -n "$(adb shell pidof nl.playlumi.app | tr -d '\r')"
+          if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
+            echo "::error::Original-signed APK crashed after install."
+            exit 1
+          fi
+          echo "PASS: exact original-signed APK installed and launched on API 35 emulator"
+      - name: Publish emulator-approved original-signed release update
+        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-original-signed-release-update
+          path: release-candidates/playlumi-0.63.0-original-signed.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Sign release only with the original verified Playlumi certificate
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') == ''
         id: sign_release
         shell: bash
         env:
@@ -143,7 +206,7 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "Release APK signed with the verified original certificate."
       - name: Publish verified original-signed update APK
-        if: github.event_name == 'workflow_dispatch' && steps.sign_release.outputs.signed == 'true'
+        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') == '' && steps.sign_release.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-original-signed-release-update
