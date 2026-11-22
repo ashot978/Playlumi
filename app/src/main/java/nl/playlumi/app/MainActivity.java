@@ -631,7 +631,7 @@ public class MainActivity extends Activity {
                 new int[]{PlaylumiVisualStyle.lightened(color,100),
                         PlaylumiVisualStyle.lightened(color,470)});
         shape.setCornerRadius(dp(radius));
-        shape.setStroke(dp(1),0xcaffffff);
+        shape.setStroke(dp(1),PlaylumiVisualStyle.BORDER);
         return shape;
     }
     private RippleDrawable primaryAction() {
@@ -646,7 +646,8 @@ public class MainActivity extends Activity {
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
-        t.setTypeface(Typeface.create("sans-serif-rounded",size>=19?Typeface.BOLD:Typeface.NORMAL));
+        t.setTypeface(Typeface.create(size>=19?"sans-serif-medium":"sans-serif",
+                size>=19?Typeface.BOLD:Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);t.setIncludeFontPadding(true);
         t.setLineSpacing(dp(2),1.06f);return t;
     }
@@ -661,23 +662,22 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
         b.setTextColor(TEXT);
-        b.setTextSize(description.isEmpty()?18:17);
-        b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        b.setTextSize(description.isEmpty()?18:16);
+        b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         b.setLineSpacing(dp(2),1.07f);
         b.setGravity(description.isEmpty()?Gravity.CENTER:(Gravity.CENTER_VERTICAL|Gravity.START));
         b.setMaxLines(4);
-        b.setPadding(dp(description.isEmpty()?13:18),dp(10),
-                dp(description.isEmpty()?13:16),dp(10));
+        b.setPadding(dp(description.isEmpty()?17:20),dp(13),
+                dp(description.isEmpty()?17:19),dp(13));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
-        boolean playfulPage=page==HOME || page==PICTURE_PLAY ||
-                page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
-                page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
-                page==SHOP || page==ROOM_CATS || page==ROOM_ITEMS ||
-                page==GARDEN_MENU || page==FRIEND_CARE || page==STAR_STAGE;
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),
-                playfulPage?new PlaylumiCloudDrawable(color):softCard(color,24),
-                null));
-        b.setElevation(dp(3));
+        // Consistent elevated cards instead of the former wobbly cloud buttons.
+        GradientDrawable card=new GradientDrawable();
+        card.setColor(PlaylumiVisualStyle.lightened(color,270));
+        card.setCornerRadius(dp(22));
+        card.setStroke(dp(1),PlaylumiVisualStyle.BORDER);
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x1a176457),
+                card,null));
+        b.setElevation(dp(1));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -685,7 +685,7 @@ public class MainActivity extends Activity {
     private void addTile(Button button,int margin) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
         int gap=PlaylumiLayout.margin(margin);
-        p.setMargins(dp(3),dp(gap),dp(3),dp(gap));
+        p.setMargins(dp(2),dp(gap+2),dp(2),dp(gap+2));
         root.addView(button,p);
     }
     private void addTwo(Button one,Button two,int height) {
