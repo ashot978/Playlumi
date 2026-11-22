@@ -25,5 +25,33 @@ mkdir -p app/build/reports/playlumi-visual
 adb exec-out screencap -p > app/build/reports/playlumi-visual/first-launch.png
 test -s app/build/reports/playlumi-visual/first-launch.png
 
+# Navigate through the real first-run age picker for a home-screen visual audit.
+adb shell uiautomator dump /sdcard/playlumi-layout.xml >/dev/null
+adb pull /sdcard/playlumi-layout.xml app/build/reports/playlumi-visual/layout.xml >/dev/null
+python3 - <<'PY'
+import re
+import subprocess
+import time
+import xml.etree.ElementTree as ET
+
+tree=ET.parse("app/build/reports/playlumi-visual/layout.xml")
+for node in tree.iter("node"):
+    text=node.get("text","")
+    if "3" not in text or "jaar" not in text:
+        continue
+    match=re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",node.get("bounds",""))
+    if not match:
+        continue
+    left,top,right,bottom=map(int,match.groups())
+    subprocess.check_call(["adb","shell","input","tap",
+                           str((left+right)//2),str((top+bottom)//2)])
+    time.sleep(3)
+    break
+else:
+    raise RuntimeError("Age selection missing from real emulator accessibility tree")
+PY
+adb exec-out screencap -p > app/build/reports/playlumi-visual/home.png
+test -s app/build/reports/playlumi-visual/home.png
+
 echo "PASS: Playlumi launch process alive (pid=$pid), no reported process crash"
 echo "NOTE: this does not test gameplay, in-place upgrades or Samsung hardware."
