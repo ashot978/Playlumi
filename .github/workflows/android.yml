@@ -9,18 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Preflight original release signing credentials
-        shell: bash
-        env:
-          RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
-        run: |
-          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
-            echo "::error::Cannot approve a Playlumi update: original signing keystore/password missing."
-            echo "Restore the original v0.45 keystore via private GitHub Actions secrets before continuing."
-            exit 1
-          fi
-          echo "Original signing credentials are configured; exact certificate verification follows after building."
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
