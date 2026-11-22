@@ -10,10 +10,10 @@ Open het project in Android Studio met Android SDK 35 en JDK 17. Gebruik Gradle 
 
 De app gebruikt geen accounts, advertenties, trackers, netwerkaanroepen of extra toestemmingen. Een echte toesteltest blijft nodig, waaronder verschillende schermformaten, schermrotatie en toegankelijkheid.
 
-## Test-APK downloaden (v0.55+)
+## Release-update installeren (v0.61+)
 
-Open de nieuwste geslaagde run van **Android tests and launch smoke** onder GitHub Actions. Download onder **Artifacts** het ZIP-bestand `playlumi-debug-apk-installable`, pak het uit en installeer de `app-debug.apk` op een testtoestel. Je moet voor het downloaden van GitHub Actions-artifacts meestal aangemeld zijn bij GitHub.
+**Gebruik geen debug-APK als update over de bestaande Playlumi-installatie.** De v0.45-app is ondertekend met het originele Playlumi-certificaat. Een debug-APK heeft een andere handtekening en wordt door Android geweigerd.
 
-**Let op:** de debug-APK is met een debugcertificaat ondertekend. Hij kan niet als update over een eerder met het oorspronkelijke releasecertificaat geïnstalleerde Playlumi-versie worden gezet. Verwijder de bestaande release niet zomaar: daardoor kun je lokaal opgeslagen kindprofielen en spelvoortgang verliezen. Gebruik bij voorkeur een apart testtoestel of Android-emulator. De workflow bewaart daarnaast een `playlumi-unsigned-release-apk`; deze is pas na privé ondertekenen met de oorspronkelijke sleutel geschikt voor release-updates.
+De GitHub Actions-workflow publiceert een installatie-update uitsluitend als de oorspronkelijke keystore via privé repository secrets beschikbaar is en het ondertekeningscertificaat exact overeenkomt met v0.45. Het artifact heet dan `playlumi-original-signed-release-update`. Als die controle niet kan worden uitgevoerd, verschijnt **geen installeerbare release-update**. De unsigned release-APK mag nooit direct worden geïnstalleerd.
 
-De automatische smoke-test bevestigt alleen dat de app in een emulator opstart. Alle spelletjes en installatie op een echte Samsung moeten nog handmatig worden getest.
+Meer informatie en de exacte configuratie staan in [ORIGINAL_SIGNING.md](ORIGINAL_SIGNING.md). Verwijder de bestaande app niet: lokaal opgeslagen profielen en spelvoortgang kunnen verloren gaan. De emulatorcontrole is geen vervanging voor een test op het echte toestel.
