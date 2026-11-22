@@ -2193,20 +2193,22 @@ public class MainActivity extends Activity {
         int numberOfPages=musicBoxFavorites.pages(musicBoxFavoritesOnly);
         if(musicBoxPage>=numberOfPages)musicBoxPage=0;
         int[] visible=musicBoxFavorites.onPage(musicBoxFavoritesOnly,musicBoxPage);
+        Button[] visibleTrackTiles=new Button[PlaylumiMusicBox.COUNT];
         if(visible.length==0)
             addText("⭐ Nog geen favorieten. Bekijk alle deuntjes en geef er een ster!",
                     16,SUB,7,9);
         for(int i=0;i<visible.length;i+=2) {
             final int left=visible[i];
-            Button one=musicBoxTile(left,status,favoriteAction);
+            Button one=musicBoxTile(left,status,favoriteAction,visibleTrackTiles);
             if(i+1<visible.length) {
                 final int right=visible[i+1];
-                Button two=musicBoxTile(right,status,favoriteAction);
+                Button two=musicBoxTile(right,status,favoriteAction,visibleTrackTiles);
                 addTwo(one,two,109);
             } else addTile(one,6);
         }
         addTile(favoriteAction,6);
         refreshFavoriteAction(favoriteAction);
+        refreshMusicBoxSelection(visibleTrackTiles);
         favoriteAction.setOnClickListener(v->{
             if(musicBoxTrack>=0)toggleMusicFavorite(musicBoxTrack);
         });
@@ -2229,9 +2231,9 @@ public class MainActivity extends Activity {
             nextTune.setEnabled(false);
         }
         previousTune.setOnClickListener(v->
-                playAdjacentMusicBox(-1,status,favoriteAction));
+                playAdjacentMusicBox(-1,status,favoriteAction,visibleTrackTiles));
         nextTune.setOnClickListener(v->
-                playAdjacentMusicBox(1,status,favoriteAction));
+                playAdjacentMusicBox(1,status,favoriteAction,visibleTrackTiles));
         surprise.setOnClickListener(v->{
             int chosen=musicBoxFavorites.surprise(musicBoxFavoritesOnly,
                     musicBoxTrack,new Random().nextInt());
@@ -2241,6 +2243,7 @@ public class MainActivity extends Activity {
             }
             chooseMusicBox(chosen,status);
             refreshFavoriteAction(favoriteAction);
+            refreshMusicBoxSelection(visibleTrackTiles);
         });
         stop.setOnClickListener(v->{
             melodyPlayback.stop();
@@ -2264,7 +2267,7 @@ public class MainActivity extends Activity {
     }
 
     private void playAdjacentMusicBox(int direction,TextView status,
-                                      Button starAction) {
+                                      Button starAction,Button[] visibleTrackTiles) {
         int chosen=musicBoxFavorites.adjacent(musicBoxFavoritesOnly,
                 musicBoxTrack,direction);
         if(chosen<0) {
@@ -2273,11 +2276,12 @@ public class MainActivity extends Activity {
         }
         chooseMusicBox(chosen,status);
         refreshFavoriteAction(starAction);
+        refreshMusicBoxSelection(visibleTrackTiles);
     }
 
-    private Button musicBoxTile(int index,TextView status,Button starAction) {
-        Button tile=tile((musicBoxFavorites.isFavorite(index)?"⭐ ":"")+
-                        PlaylumiMusicBox.title(index),"",
+    private Button musicBoxTile(int index,TextView status,Button starAction,
+                                Button[] visibleTrackTiles) {
+        Button tile=tile(musicBoxTrackLabel(index),"",
                 COLORS[index%COLORS.length],104);
         tile.setTextSize(17);
         tile.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(index)+
@@ -2285,12 +2289,27 @@ public class MainActivity extends Activity {
         tile.setOnClickListener(v->{
             chooseMusicBox(index,status);
             refreshFavoriteAction(starAction);
+            refreshMusicBoxSelection(visibleTrackTiles);
         });
+        visibleTrackTiles[index]=tile;
         tile.setOnLongClickListener(v->{
             toggleMusicFavorite(index);
             return true;
         });
         return tile;
+    }
+
+    private String musicBoxTrackLabel(int index) {
+        return (musicBoxTrack==index?"🎵 ":"")+
+                (musicBoxFavorites.isFavorite(index)?"⭐ ":"")+
+                PlaylumiMusicBox.title(index);
+    }
+
+    private void refreshMusicBoxSelection(Button[] visibleTrackTiles) {
+        for(int track=0;track<visibleTrackTiles.length;track++) {
+            if(visibleTrackTiles[track]!=null)
+                visibleTrackTiles[track].setText(musicBoxTrackLabel(track));
+        }
     }
 
     private void refreshFavoriteAction(Button starAction) {
