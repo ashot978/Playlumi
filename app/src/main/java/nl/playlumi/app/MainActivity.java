@@ -1224,14 +1224,37 @@ public class MainActivity extends Activity {
                     page=destination;moving=false;showPage();
                 }).start();
     }
+    /** Calm onboarding with no oversized sticker art or emoji-heavy controls. */
     private void showAge() {
-        header("🎈 Hoe oud ben jij?","Kies jouw leeftijd. We onthouden dit!");
-        hero(105);
-        String[] descriptions={"Ontdek vormen en kleuren","Leer woorden en tellen","Meer uitdaging en puzzels"};
-        String[] emoji={"🐣","🦋","🚀"};
-        for(int i=0;i<3;i++){
+        root.setGravity(Gravity.CENTER_VERTICAL);
+        TextView eyebrow=text("P L A Y L U M I",14,
+                PlaylumiVisualStyle.PRIMARY_START);
+        eyebrow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams eyebrowParams=new LinearLayout.LayoutParams(-1,-2);
+        eyebrowParams.setMargins(0,dp(8),0,dp(17));
+        root.addView(eyebrow,eyebrowParams);
+
+        TextView heading=text("Klaar om te ontdekken?",29,TEXT);
+        heading.setGravity(Gravity.CENTER);
+        heading.setMaxLines(2);
+        root.addView(heading,new LinearLayout.LayoutParams(-1,-2));
+
+        TextView intro=text("Kies de leeftijd die bij jou past.",16,SUB);
+        LinearLayout.LayoutParams introParams=new LinearLayout.LayoutParams(-1,-2);
+        introParams.setMargins(dp(12),dp(9),dp(12),dp(22));
+        root.addView(intro,introParams);
+
+        String[] descriptions={
+                "Kleuren, vormen en eerste cijfers",
+                "Woorden, tellen en puzzels",
+                "Uitdagende spelletjes en raadsels"
+        };
+        int[] colors={PlaylumiVisualStyle.MINT,
+                PlaylumiVisualStyle.SKY,PlaylumiVisualStyle.LAVENDER};
+        for(int i=0;i<AGES.length;i++) {
             final int selected=i;
-            Button b=tile(emoji[i]+"  "+AGES[i],descriptions[i],COLORS[i],97);
+            Button b=tile(AGES[i]+"   →",descriptions[i],colors[i],97);
+            b.setTextSize(18);
             addTile(b,6);
             b.setOnClickListener(v->{
                 age=selected;difficulty=selected;
@@ -1239,6 +1262,7 @@ public class MainActivity extends Activity {
                 move(HOME);
             });
         }
+        addText("Je kunt dit later altijd veranderen.",13,SUB,17,8);
     }
     private void startEasyPlay() {
         int selected=PlaylumiEasyPlay.category(
