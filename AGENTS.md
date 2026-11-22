@@ -177,3 +177,15 @@ without any automatic playback. A sequence uses the existing original
 instrument sound bank and can be stopped, canceled by another musical choice,
 or canceled by leaving the screen/backgrounding. No human TTS, network,
 microphone, rewards or scoring. Keep original Android package and signing.
+
+## Playlumi 0.50.0 - three separate original songs
+Upgrade the 0.49 personal tune into an album of three independent locally saved
+songs per child. The original song MUST retain its storage key
+"music_box_composer" in slot 0; do not overwrite or migrate it destructively.
+The two new slots use "music_box_composer_2" and "_3" within the existing
+per-profile preference namespace. Switching slots cancels playing sounds but
+never plays music automatically or gives rewards. Offer a child-controlled
+three-step tempo for the currently played composition, persisted locally,
+and a nearby explicit stop button. No human TTS, uploads, account,
+microphone, new permission or third-party sound source. Keep Android minSdk 23,
+original signer, app-ID, scores and parental controls unchanged.
