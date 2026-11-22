@@ -20,6 +20,18 @@ If any check is pending or missing, report the version as *in development* or *a
 
 Never reveal, commit, transmit, regenerate or replace the original private signing key. Keep existing installation data safe. Do not change `main` or Play Store unless explicitly requested.
 
+## Mandatory preflight and failure recovery for all agents
+
+- Before editing any feature, inspect the latest GitHub branch, PR, exact HEAD commit, workflow, signing configuration and the most recent run. Never assume that a prior successful run certifies a newer commit.
+- Do not add another feature on top of a broken release pipeline: repair and verify the previous blocking failure first.
+- GitHub CI **must fail**, not return green, when the original-signing secrets are absent/incomplete, the fingerprint mismatches or the signed release APK cannot be published.
+- On deterministic failures, inspect logs, fix code and tests and push a new commit before rerunning. Retry transient infrastructure failures only after identifying their nature. Never endlessly rerun missing secrets or a wrong signature.
+- Keep inspecting GitHub jobs and artifacts until the **entire exact-SHA workflow** is completed and successful. Require an original-certificate-signed APK with the package, fingerprint and update versionCode verified before offering any download.
+- Download the real, nonexpired signed APK from that exact run and offer it directly in the conversation only after verification; do not substitute debug/unsigned builds.
+- Real-device acceptance with preservation of local profile data is a separate requirement; a CI success does not prove real-device update success.
+- If a hard external blocker remains (for example, unavailable original signing key), report it truthfully and do not claim successful delivery or promise continuous work outside the active session.
+- The original keystore and password may only be configured through secure GitHub Actions repository secrets; never include them in PRs, logs, chats, or code.
+
 ## Normal development
 
 Continue from the latest verified development branch, one focused version increment at a time. Add tests and open a draft PR against the previous development branch. Review GitHub Actions status before declaring completion. Describe clearly what is coded vs. what is CI-tested vs. what is device-approved.
