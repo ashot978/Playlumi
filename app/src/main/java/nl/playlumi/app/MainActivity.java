@@ -115,6 +115,7 @@ public class MainActivity extends Activity {
     private int musicBoxPage,musicBoxTrack=-1;
     private PlaylumiMelodyAlbum melodyAlbum=new PlaylumiMelodyAlbum();
     private int composerTempo=PlaylumiComposerTempo.NORMAL;
+    private int rhythmIdeaTurn;
     private TextView melodyStatus;
     private int bubbleRound;
     private boolean bubbleSolved;
@@ -2260,6 +2261,28 @@ public class MainActivity extends Activity {
         }
         addTwo(instruments[0],instruments[1],110);
         addTwo(instruments[2],instruments[3],110);
+        Button pause=tile("🤫 Rust",
+                "Voeg een korte stille tel toe aan jouw melodie",0xfff0e9fa,75);
+        addTile(pause,5);
+        pause.setContentDescription("Voeg een rustmoment zonder geluid toe");
+        pause.setOnClickListener(v->recordMusicNote(PlaylumiMusicComposer.REST,
+                composition));
+        Button idea=tile("🎲 Probeer een ritme-idee",
+                "Voeg vier vrolijke tonen met een pauze toe",0xffdff4ec,76);
+        addTile(idea,5);
+        idea.setOnClickListener(v->{
+            melodyPlayback.stop();
+            sound.stopNotes();
+            int ideaIndex=(rhythmIdeaTurn++ & Integer.MAX_VALUE)%
+                    PlaylumiRhythmIdea.COUNT;
+            if(!PlaylumiRhythmIdea.append(melodyAlbum.current(),ideaIndex)) {
+                composition.setText("🎶 Geen plek voor vier tonen. Haal een noot weg!");
+            } else {
+                saveMyMelody();
+                composition.setText("✨ Nieuw ritme! "+
+                        melodyAlbum.current().description());
+            }
+        });
         Button tempo=tile("🥁 Tempo: "+PlaylumiComposerTempo.label(composerTempo),
                 "Tik voor rustig, normaal of snel",0xffe5eeff,70);
         addTile(tempo,5);
@@ -2327,7 +2350,8 @@ public class MainActivity extends Activity {
         }
         saveMyMelody();
         status.setText(melodyAlbum.current().description());
-        if(sound.isEnabled())sound.note(note);
+        if(sound.isEnabled() && note!=PlaylumiMusicComposer.REST)
+            sound.note(note);
     }
 
     /** The child explicitly starts playback; old queued notes are token-guarded. */
@@ -2351,8 +2375,10 @@ public class MainActivity extends Activity {
             screen.postDelayed(()->{
                 if(stage!=screen || page!=MUSIC_BOX ||
                         !melodyPlayback.isActive(token) || !sound.isEnabled())return;
-                sound.note(notes[index]);
-                status.setText("🎵 "+PlaylumiMelody.ANIMALS[notes[index]]+
+                if(notes[index]==PlaylumiMusicComposer.REST)
+                    sound.stopNotes(); // A real silent beat.
+                else sound.note(notes[index]);
+                status.setText("🎵 "+PlaylumiMusicComposer.symbolFor(notes[index])+
                         " ("+(index+1)+" / "+notes.length+")");
             },i*(long)beatMillis);
         }

@@ -189,3 +189,15 @@ three-step tempo for the currently played composition, persisted locally,
 and a nearby explicit stop button. No human TTS, uploads, account,
 microphone, new permission or third-party sound source. Keep Android minSdk 23,
 original signer, app-ID, scores and parental controls unchanged.
+
+## Playlumi 0.51.0 — musical pauses and rhythm ideas
+Keep the three existing saved melodies and playback tempi intact. Extend the
+per-profile composer note encoding with digit 4 for a silent beat ("🤫 Rust"),
+while digits 0-3 retain their exact previous meaning and storage keys.
+Recording or playing a rest must NOT play a note or a human speech sound.
+Add four small, original four-step rhythm ideas with a silent beat; tapping
+the button adds the next idea only when there is room for ALL four steps.
+Never overwrite existing steps, clear another slot, or automatically replay
+the pattern. Keep original WAV jingles and the global sound mute, and stop
+queued sound on page changes and backgrounding. Continue verifying Android
+unit tests, lint, emulator and original release-signing cert.
