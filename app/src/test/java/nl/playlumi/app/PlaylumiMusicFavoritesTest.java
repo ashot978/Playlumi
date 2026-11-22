@@ -79,6 +79,37 @@ public final class PlaylumiMusicFavoritesTest {
             assertNotEquals(8,pick);
         }
     }
+    @Test public void adjacentAllTracksWrapsWithoutLosingSelection() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        assertEquals(0,f.adjacent(false,-1,1));
+        assertEquals(17,f.adjacent(false,-1,-1));
+        assertEquals(0,f.adjacent(false,17,1));
+        assertEquals(17,f.adjacent(false,0,-1));
+        assertEquals(9,f.adjacent(false,8,1));
+        assertEquals(7,f.adjacent(false,8,-1));
+    }
+    @Test public void adjacentFavoritesSkipsOtherTunesAndHandlesEmptySingle() {
+        PlaylumiMusicFavorites f=new PlaylumiMusicFavorites(0);
+        assertEquals(-1,f.adjacent(true,-1,1));
+        assertEquals(-1,f.adjacent(true,3,-1));
+        f.toggle(4);
+        assertEquals(4,f.adjacent(true,4,1));
+        assertEquals(4,f.adjacent(true,4,-1));
+        f.toggle(11);
+        f.toggle(17);
+        assertEquals(11,f.adjacent(true,4,1));
+        assertEquals(17,f.adjacent(true,4,-1));
+        assertEquals(4,f.adjacent(true,17,1));
+        assertEquals(17,f.adjacent(true,4, -1));
+        assertEquals(4,f.adjacent(true,5,1));
+        assertEquals(17,f.adjacent(true,5,-1));
+        assertEquals(4,f.adjacent(true,-1,1));
+        assertEquals(17,f.adjacent(true,-1,-1));
+    }
+    @Test(expected=IllegalArgumentException.class)
+    public void adjacentRejectsUnsupportedDirection() {
+        new PlaylumiMusicFavorites(0).adjacent(false,0,0);
+    }
     @Test(expected=IllegalArgumentException.class)
     public void invalidIndexIsRejected(){new PlaylumiMusicFavorites(0).toggle(18);}
 }

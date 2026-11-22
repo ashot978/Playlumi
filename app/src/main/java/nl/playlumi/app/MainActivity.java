@@ -2219,6 +2219,19 @@ public class MainActivity extends Activity {
         Button stop=tile("⏹ Stop muziek",
                 "Stop het deuntje meteen",0xffdaf2e7,82);
         addTwo(surprise,stop,87);
+        Button previousTune=tile("⬅ Vorig deuntje",
+                "Luister naar het vorige deuntje",0xffe5ecff,78);
+        Button nextTune=tile("Volgend deuntje ➡",
+                "Luister naar het volgende deuntje",0xffdff4ec,78);
+        addTwo(previousTune,nextTune,84);
+        if(musicBoxFavoritesOnly && musicBoxFavorites.count()==0) {
+            previousTune.setEnabled(false);
+            nextTune.setEnabled(false);
+        }
+        previousTune.setOnClickListener(v->
+                playAdjacentMusicBox(-1,status,favoriteAction));
+        nextTune.setOnClickListener(v->
+                playAdjacentMusicBox(1,status,favoriteAction));
         surprise.setOnClickListener(v->{
             int chosen=musicBoxFavorites.surprise(musicBoxFavoritesOnly,
                     musicBoxTrack,new Random().nextInt());
@@ -2248,6 +2261,18 @@ public class MainActivity extends Activity {
         if(!sound.isEnabled())
             addText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.",
                     15,SUB,5,8);
+    }
+
+    private void playAdjacentMusicBox(int direction,TextView status,
+                                      Button starAction) {
+        int chosen=musicBoxFavorites.adjacent(musicBoxFavoritesOnly,
+                musicBoxTrack,direction);
+        if(chosen<0) {
+            status.setText("⭐ Bewaar eerst een favoriet om te bladeren!");
+            return;
+        }
+        chooseMusicBox(chosen,status);
+        refreshFavoriteAction(starAction);
     }
 
     private Button musicBoxTile(int index,TextView status,Button starAction) {
