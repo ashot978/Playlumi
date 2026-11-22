@@ -150,6 +150,7 @@ public class MainActivity extends Activity {
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
+        sound.setEffectsEnabled(prefs.getBoolean("effects_on",true));
         PlaylumiMotion.setReduced(prefs.getBoolean("reduced_motion",false));
         int today=dayStamp();
         if(prefs.getInt("usage_day",-1)!=today)
@@ -750,7 +751,7 @@ public class MainActivity extends Activity {
             holder.postDelayed(()->{
                 if(stage==helloStage && character==helloFriend) {
                     helloFriend.wave();
-                    if(sound!=null)sound.hello();
+                    // A visual greeting, without an unsolicited sound.
                     PlaylumiDelight.sprinkle(stage,helloFriend);
                 }
             },550L);
@@ -1265,10 +1266,7 @@ public class MainActivity extends Activity {
                     PlaylumiPicturePlay.icon(chosenAge,i),
                     PlaylumiPicturePlay.label(chosenAge,i),
                     COLORS[i%COLORS.length],i);
-            bubble.setOnClickListener(v->{
-                sound.tap();
-                startPictureGame(selected);
-            });
+            bubble.setOnClickListener(v->startPictureGame(selected));
             // Long-press is an optional spoken preview; a single tap still plays.
             // No text is stored or sent to an online service.
             bubble.setOnLongClickListener(v->{
@@ -1311,7 +1309,6 @@ public class MainActivity extends Activity {
                 "Meer spelletjes en moeilijkheidsgraden",0xffe5e3ff,79);
         addTile(all,7);
         all.setOnClickListener(v->move(MINI_MENU));
-        readThisPage("Kies een plaatje en speel!");
     }
 
     private void startPictureGame(int selection) {
@@ -1507,23 +1504,7 @@ public class MainActivity extends Activity {
      * question and answers into two columns. All answers remain tappable and the
      * ScrollView can still scroll when the user chooses large system fonts.
      */
-    private boolean autoReadEnabled() {
-        return sound!=null && sound.isEnabled() &&
-                prefs().getBoolean("auto_read",PlaylumiEasyPlay.autoReadDefault(age));
-    }
-    /** Speak only while the originating page is still visible; TTS may initialize late. */
-    private void readThisPage(String message) {
-        if(!autoReadEnabled() || message==null || message.isEmpty())return;
-        final FrameLayout originating=stage;
-        final int screen=page;
-        originating.postDelayed(()->{
-            if(stage!=originating || page!=screen || !autoReadEnabled())return;
-            if(!sound.speak(message))originating.postDelayed(()->{
-                if(stage==originating && page==screen && autoReadEnabled())
-                    sound.speak(message);
-            },1100L);
-        },500L);
-    }
+    // Questions are only spoken by explicit actions on the speaker buttons.
     private void showPlay() {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
@@ -1606,14 +1587,9 @@ public class MainActivity extends Activity {
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
-        picture.setContentDescription("Tik op het plaatje om de vraag te horen");
-        picture.setClickable(true);
-        picture.setFocusable(true);
-        picture.setOnClickListener(v->{
-            if(sound!=null)sound.speak(round.prompt);
-            PlaylumiDelight.hop(picture);
-            PlaylumiDelight.sprinkle(stage,picture);
-        });
+        picture.setContentDescription("Plaatje bij de opdracht: "+
+                round.display.replace('\n',' '));
+        // The illustration is never an implicit speech button. Only 🔊 is.
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
         feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
@@ -1689,7 +1665,6 @@ public class MainActivity extends Activity {
         answers.addView(nextButton,nextParams);
         nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->continueAfterAnswer());
-        if(!answerLocked)readThisPage(round.prompt);
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
@@ -1931,10 +1906,9 @@ public class MainActivity extends Activity {
         addTile(continueButton,7);
         continueButton.setOnClickListener(v->continueAfterBadge());
         FrameLayout active=stage;
-        active.post(()->{if(stage==active){
-            PlaylumiMotion.celebrate(active,10);
-            sound.unlock();
-        }});
+        active.post(()->{
+            if(stage==active)PlaylumiMotion.celebrate(active,10);
+        });
     }
     private void continueAfterBadge() {
         if(rewardReturn==MUSIC_PLAY) {
@@ -2251,7 +2225,6 @@ public class MainActivity extends Activity {
         addTile(nextButton,4);
         nextButton.setVisibility(miniSolved?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->afterMiniSolve());
-        if(!miniSolved)readThisPage(mini.question);
     }
     private void recordMiniAnswer() {
         int category=miniCategory();
@@ -2585,7 +2558,6 @@ public class MainActivity extends Activity {
         }
         addWidget(storyCard,0,8);
         addText("Wat kies jij?",16,SUB,4,4);
-        readThisPage(scene.prompt);
         String[] options={scene.first,scene.second};
         String[] emojis={"🌼","✨"};
         for(int i=0;i<2;i++) {
@@ -2616,7 +2588,6 @@ public class MainActivity extends Activity {
         reaction.setMinHeight(dp(106));
         reaction.setBackground(rounded(0xffffe9cf,23));
         addWidget(reaction,0,9);
-        readThisPage(result);
         if(sound.isEnabled()) {
             Button speak=tile("🔊 Vertel wat er gebeurt","",0xffe6e0ff,55);
             addTile(speak,4);
@@ -2815,16 +2786,16 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        boolean narrationPref=prefs().getBoolean("auto_read",
-                PlaylumiEasyPlay.autoReadDefault(age));
-        Button narration=tile(narrationPref?
-                "🗣️ Automatisch voorlezen: aan":"🗣️ Automatisch voorlezen: uit",
-                "Werkt wanneer geluid aanstaat",0xffdef2e5,89);
-        addTile(narration,7);
-        narration.setOnClickListener(v->{
-            boolean enabled=prefs().getBoolean("auto_read",
-                    PlaylumiEasyPlay.autoReadDefault(age));
-            prefs().edit().putBoolean("auto_read",!enabled).apply();
+        addText("🗣️ Alleen voorlezen als je erom vraagt",19,TEXT,8,4);
+        addText("Geen automatische stem. Gebruik zelf de 🔊-knop "+
+                "bij een vraag of antwoord.",15,SUB,2,7);
+        Button effects=tile(sound.effectsEnabled()?
+                "🎵 Geluidseffecten: aan":"🤫 Geluidseffecten: uit",
+                "Tikjes en melodietjes los van voorlezen regelen",0xffe6f0ff,89);
+        addTile(effects,7);
+        effects.setOnClickListener(v->{
+            sound.setEffectsEnabled(!sound.effectsEnabled());
+            prefs().edit().putBoolean("effects_on",sound.effectsEnabled()).apply();
             showPage();
         });
         Button motion=tile(PlaylumiMotion.isReduced()?

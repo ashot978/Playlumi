@@ -95,3 +95,16 @@ previews are independent of game scoring, awards, stars, stored data and
 correct answer disclosure. Hide the audio button after successful selection,
 keep minimum accessible targets and reduced motion. Keep tests, lint,
 emulator gate and signed APK with the original private signer; no main merge.
+
+## Playlumi 0.43.0 — calm, manual-only narration
+Automatic TTS is forbidden. Questions, picture selection, minigames and stories
+may speak only from an explicit speaker-button tap or deliberate long press.
+Ignore legacy auto_read preferences even if previously set to true; never
+silently re-enable or recreate the old automatic voice setting.
+Use neutral Dutch speech pitch and near-natural rate, prefer an offline
+Netherlands Dutch voice already supplied by the device. Do not download
+voices or add Internet permission. No unsolicited welcome/badge audio.
+Provide independent locally saved on/off control for gentle game sounds
+without disabling the requested voice. Remove harsh ToneGenerator fallbacks.
+Preserve all local saves, original signing identity, privacy and Android
+CI emulator gates; a completed change needs a signed, verified APK.
