@@ -54,6 +54,13 @@ jobs:
           profile: pixel_5
           disable-animations: true
           script: bash tools/smoke-android.sh
+      - name: Publish first-launch emulator screenshot for visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-first-launch-visual-review
+          path: app/build/reports/playlumi-visual/first-launch.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Use increasing Android version code
         shell: bash
         run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
