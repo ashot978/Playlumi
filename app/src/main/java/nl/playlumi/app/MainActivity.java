@@ -1075,8 +1075,7 @@ public class MainActivity extends Activity {
 
     /** Rebuild music-box controls without cutting off the instrumental tune. */
     private void showMusicBoxWithoutStopping() {
-        if(page==MUSIC_BOX)showPage(false);
-        else showPage(true);
+        showPage(PlaylumiMusicBox.shouldStopForRefresh(page==MUSIC_BOX,true));
     }
 
     private void showPage(boolean stopAudio) {
