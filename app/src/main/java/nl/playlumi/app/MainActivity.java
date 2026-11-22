@@ -725,9 +725,9 @@ public class MainActivity extends Activity {
         boolean welcomeCard=page==HOME;
         holder.setGravity(welcomeCard?Gravity.CENTER_VERTICAL:Gravity.CENTER);
         if(welcomeCard) {
-            holder.setPadding(dp(11),dp(6),dp(13),dp(6));
-            holder.setBackground(softCard(0xffbdece5,29));
-            holder.setElevation(dp(4));
+            holder.setPadding(dp(14),dp(10),dp(14),dp(10));
+            holder.setBackground(softCard(PlaylumiVisualStyle.MINT,26));
+            holder.setElevation(dp(1));
         }
         PlaylumiWardrobe display=page==SHOP && outfitPreview>=0 ?
                 PlaylumiTryOn.previewWardrobe(wardrobe,selectedSlot,outfitPreview) : wardrobe;
@@ -754,11 +754,11 @@ public class MainActivity extends Activity {
             welcome.setOrientation(LinearLayout.VERTICAL);
             welcome.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
             welcome.setPadding(dp(12),0,0,0);
-            TextView greet=text("Welkom, avonturier!",19,TEXT);
+            TextView greet=text("Hoi, avonturier!",21,TEXT);
             greet.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
             greet.setMaxLines(2);
             welcome.addView(greet,new LinearLayout.LayoutParams(-1,-2));
-            TextView subtitle=text("Ontdek iets nieuws vandaag",13,SUB);
+            TextView subtitle=text("Jouw eigen speelwereld",14,SUB);
             subtitle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
             subtitle.setMaxLines(2);
             welcome.addView(subtitle,new LinearLayout.LayoutParams(-1,-2));
@@ -1096,7 +1096,7 @@ public class MainActivity extends Activity {
                         PlaylumiVisualStyle.PAGE_MIDDLE,
                         PlaylumiVisualStyle.PAGE_BOTTOM});
         stage.setBackground(bg);
-        boolean wonderland=page==HOME || page==PICTURE_PLAY ||
+        boolean wonderland=page==PICTURE_PLAY ||
                 page==WORLD_PICKER || page==WORLD_HUB || page==CATEGORIES ||
                 page==MINI_MENU || page==MUSIC_BOX || page==AVATAR || page==CLOSET ||
                 page==SHOP || page==ROOM || page==ROOM_CATS ||
@@ -1255,49 +1255,66 @@ public class MainActivity extends Activity {
         rememberPlay();
         move(PLAY);
     }
+    /** A focused, calm home screen: primary play first, three clear destinations. */
     private void showHome() {
-        header("🌟 Playlumi","Jouw vrolijke speelwereld");
-        characterHero(118);
+        header("Playlumi","Spelen, ontdekken en groeien");
+        characterHero(106);
 
-        Button quick=tile("▶  Speel meteen","",0xffccf2db,112);
+        TextView section=text("Klaar voor een avontuur?",21,TEXT);
+        section.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headingParams=new LinearLayout.LayoutParams(-1,-2);
+        headingParams.setMargins(dp(6),dp(17),dp(6),dp(5));
+        root.addView(section,headingParams);
+
+        Button quick=tile("Speel meteen  →",
+                "Een korte, vrolijke speelronde",PlaylumiVisualStyle.MINT,98);
         quick.setBackground(primaryAction());
         quick.setTextColor(Color.WHITE);
-        quick.setTextSize(22);
-        quick.setElevation(dp(5));
+        quick.setTextSize(19);
+        quick.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
         quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
         addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
-        PlaylumiDelight.invite(quick);
+
+        Button games=tile("Ontdek spelletjes",
+                "Kies samen een nieuwe uitdaging",PlaylumiVisualStyle.SKY,100);
+        games.setOnClickListener(v->move(PICTURE_PLAY));
+        addTile(games,5);
+
+        Button music=tile("De Muziekdoos",
+                "Luister, speel en bewaar melodieën",PlaylumiVisualStyle.PEACH,100);
+        music.setOnClickListener(v->move(MUSIC_BOX));
+        addTile(music,5);
+
+        TextView explore=text("Nog meer ontdekken",18,TEXT);
+        explore.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams moreParams=new LinearLayout.LayoutParams(-1,-2);
+        moreParams.setMargins(dp(6),dp(20),dp(6),dp(4));
+        root.addView(explore,moreParams);
+
+        Button worlds=tile("Leerwerelden",
+                "Kleuren, letters en natuur",PlaylumiVisualStyle.LAVENDER,88);
+        worlds.setOnClickListener(v->move(WORLD_PICKER));
+        Button mini=tile("Beweeg & speel",
+                "Kleine interactieve spelletjes",PlaylumiVisualStyle.MINT,88);
+        mini.setOnClickListener(v->move(MINI_MENU));
+        addTwo(worlds,mini,88);
+
+        Button friend=tile("Mijn speelwereld",
+                "Kleed je vriendje aan en versier je kamer",
+                PlaylumiVisualStyle.LAVENDER,87);
+        friend.setOnClickListener(v->move(AVATAR));
+        addTile(friend,4);
+
+        // Keep shortcuts and the child's history, but put them after the core flow.
         showFavoriteGames();
         showRecentGames(true);
 
-        Button bigPlay=tile("🧸 Kies een plaatje","Zes grote spelletjes voor jouw leeftijd",
-                0xffffe4bd,115);
-        bigPlay.setTextSize(21);
-        bigPlay.setContentDescription("Kies een plaatje om direct te spelen");
-        addTile(bigPlay,5);
-        bigPlay.setOnClickListener(v->move(PICTURE_PLAY));
-
-        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
-        worlds.setOnClickListener(v->move(WORLD_PICKER));
-
-        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
-        play.setOnClickListener(v->move(MINI_MENU));
-        addTwo(worlds,play,107);
-
-        Button musicBox=tile("🎼 De Muziekdoos",
-                "Kies uit achttien vrolijke deuntjes, zonder computerstem",
-                0xffffe7b5,93);
-        addTile(musicBox,5);
-        musicBox.setOnClickListener(v->move(MUSIC_BOX));
-
-        Button friend=tile("🎨 Aanpassen","Kleding, kleuren, kamer en tuin",0xffffe7bb,86);
-        addTile(friend,4);
-        friend.setOnClickListener(v->move(AVATAR));
-
-        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
-        addTile(options,8);
+        Button options=tile("Leeftijd en instellingen",
+                "Voor ouders en de keuze van je leeftijd",
+                PlaylumiVisualStyle.SURFACE,70);
         options.setOnClickListener(v->move(HOME_OPTIONS));
+        addTile(options,8);
     }
     /**
      * The picture-first path uses just one tap after choosing a simple icon.
