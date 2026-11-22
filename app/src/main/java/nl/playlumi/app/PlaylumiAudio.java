@@ -31,6 +31,7 @@ public final class PlaylumiAudio {
     private volatile String preferredVoiceName="";
     private volatile String selectedVoiceName="";
     private volatile List<Voice> offlineVoices=Collections.emptyList();
+    private volatile int activeNoteStream;
     private Thread preloader;
 
     public PlaylumiAudio(Context context,boolean enabled) {
@@ -186,7 +187,10 @@ public final class PlaylumiAudio {
     public boolean isEnabled() {return enabled;}
     public void setEnabled(boolean value) {
         enabled=value;
-        if(!value && speech!=null)speech.stop();
+        if(!value) {
+            stopNotes();
+            if(speech!=null)speech.stop();
+        }
     }
     /** Effects and explicit speech can be controlled separately. */
     public boolean effectsEnabled() {return effectsEnabled;}
@@ -194,17 +198,22 @@ public final class PlaylumiAudio {
         effectsEnabled=value;
         if(!value && pool!=null)pool.autoPause();
     }
-    private void cue(int effect) {
-        if(released || !enabled || !effectsEnabled)return;
+    private void cue(int effect,boolean intentionalMusic) {
+        if(released || !PlaylumiAudioRules.shouldPlay(
+                enabled,effectsEnabled,intentionalMusic))return;
         SoundPool current=pool;
         int id=soundIds.get(effect);
         if(current!=null && id>0 && loaded.get(effect)==1) {
             try {
-                // No harsh emergency beep while the original chime loads.
-                current.play(id,.25f,.25f,1,0,1f);
+                // Musical learning notes are deliberate input, not decoration.
+                if(intentionalMusic)stopNotes();
+                float volume=intentionalMusic?.31f:.25f;
+                int stream=current.play(id,volume,volume,1,0,1f);
+                if(intentionalMusic)activeNoteStream=stream;
             } catch(RuntimeException ignored){}
         }
     }
+    private void cue(int effect){cue(effect,false);}
     public void tap(){cue(PlaylumiTunes.TAP);}
     public void good(){cue(PlaylumiTunes.SUCCESS);}
     public void mistake(){cue(PlaylumiTunes.TRY_AGAIN);}
@@ -215,7 +224,16 @@ public final class PlaylumiAudio {
     public void sparkle(){cue(PlaylumiTunes.SPARKLE);}
     public void note(int index){
         if(index<0 || index>=PlaylumiMelody.NOTES)throw new IllegalArgumentException("note");
-        cue(PlaylumiTunes.NOTE_GREEN+index);
+        cue(PlaylumiTunes.NOTE_GREEN+index,true);
+    }
+    /** Cut off a lingering note without silencing spoken narration. */
+    public void stopNotes(){
+        SoundPool current=pool;
+        int playing=activeNoteStream;
+        activeNoteStream=0;
+        if(current!=null && playing>0) {
+            try {current.stop(playing);} catch(RuntimeException ignored){}
+        }
     }
     public boolean speak(String text) {
         if(!enabled || !ttsReady || speech==null || released || text==null || text.trim().isEmpty())return false;
@@ -232,6 +250,7 @@ public final class PlaylumiAudio {
     }
     public void close() {
         released=true;
+        stopNotes();
         if(speech!=null) {speech.stop();speech.shutdown();speech=null;}
         if(pool!=null) {pool.release();pool=null;}
         // The private app cache may keep tiny synthesized WAVs for next launch.
