@@ -42,7 +42,7 @@ public final class PlaylumiMusicComposerTest {
     }
 
     @Test public void badOrCorruptedSettingsAreIgnoredSafely() {
-        for(String bad:Arrays.asList("0124","-1","abc"," 12","0123012301230")) {
+        for(String bad:Arrays.asList("0125","-1","abc"," 12","0123012301230")) {
             assertEquals(0,PlaylumiMusicComposer.restore(bad).size());
         }
         assertEquals(0,PlaylumiMusicComposer.restore(null).size());
@@ -56,8 +56,20 @@ public final class PlaylumiMusicComposerTest {
         assertEquals("0012",composer.encode());
     }
 
+    @Test public void silentRestCanBeRecordedPersistedUndoneAndShown() {
+        PlaylumiMusicComposer song=PlaylumiMusicComposer.restore("0123");
+        assertTrue(song.add(PlaylumiMusicComposer.REST));
+        assertEquals("01234",song.encode());
+        assertEquals("🤫",PlaylumiMusicComposer.symbolFor(PlaylumiMusicComposer.REST));
+        assertTrue(song.description().contains("🤫"));
+        assertArrayEquals(new int[]{0,1,2,3,4},
+                PlaylumiMusicComposer.restore(song.encode()).snapshot());
+        assertTrue(song.undo());
+        assertEquals("0123",song.encode());
+    }
+
     @Test(expected=IllegalArgumentException.class)
-    public void notesMustBeValidAnimals() {
-        new PlaylumiMusicComposer().add(4);
+    public void notesMustBeValidAnimalsOrRest() {
+        new PlaylumiMusicComposer().add(5);
     }
 }
