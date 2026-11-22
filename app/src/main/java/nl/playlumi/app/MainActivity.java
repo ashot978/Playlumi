@@ -113,6 +113,8 @@ public class MainActivity extends Activity {
     private int melodyRound;
     private boolean melodySolved;
     private int musicBoxPage,musicBoxTrack=-1;
+    private boolean musicBoxFavoritesOnly;
+    private PlaylumiMusicFavorites musicBoxFavorites=new PlaylumiMusicFavorites(0);
     private PlaylumiMelodyAlbum melodyAlbum=new PlaylumiMelodyAlbum();
     private int composerTempo=PlaylumiComposerTempo.NORMAL;
     private int rhythmIdeaTurn;
@@ -153,6 +155,8 @@ public class MainActivity extends Activity {
         if(state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile)
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
+        musicBoxFavorites=new PlaylumiMusicFavorites(
+                prefs.getInt(PlaylumiMusicFavorites.PREF_KEY,0));
         // Reuse the 0.49 key as album slot 1; older melodies are never lost.
         melodyAlbum=PlaylumiMelodyAlbum.restore(
                 prefs.getString(PlaylumiMelodyAlbum.key(0),""),
@@ -195,6 +199,7 @@ public class MainActivity extends Activity {
             starStagePage=state.getInt("starStagePage",0);
             musicBoxPage=PlaylumiMusicBox.safePage(state.getInt("musicBoxPage",0));
             musicBoxTrack=PlaylumiMusicBox.safeSelected(state.getInt("musicBoxTrack",-1));
+            musicBoxFavoritesOnly=state.getBoolean("musicBoxFavoritesOnly",false);
             selectedSlot=state.getInt("selectedSlot",0);
             outfitPreview=state.getInt("outfitPreview",-1);
             roomPreview=state.getInt("roomPreview",-1);
@@ -346,6 +351,7 @@ public class MainActivity extends Activity {
         out.putInt("starStagePage",starStagePage);
         out.putInt("musicBoxPage",musicBoxPage);
         out.putInt("musicBoxTrack",musicBoxTrack);
+        out.putBoolean("musicBoxFavoritesOnly",musicBoxFavoritesOnly);
         out.putInt("selectedSlot",selectedSlot);
         out.putInt("outfitPreview",outfitPreview);
         out.putInt("roomPreview",roomPreview);
@@ -2153,10 +2159,23 @@ public class MainActivity extends Activity {
     }
 
     /** Rebuild a 300-board deck on every entry, using a fresh shuffle. */
-    /** A musical toy: instrumental WAVs only, no score changes or spoken voice. */
+    /** Child-controlled instrumental music and profile-local favorites. */
     private void showMusicBox() {
-        header("🎼 De Muziekdoos","Tik op een plaatje. Alleen vrolijke muziek!");
-        addText("🎵 Kies een melodietje",18,SUB,3,7);
+        header("🎼 De Muziekdoos","Kies muziek of bewaar een deuntje met een ster!");
+        Button filter=tile(musicBoxFavoritesOnly?
+                "🎼 Bekijk alle 18 deuntjes":
+                "⭐ Mijn favorieten ("+musicBoxFavorites.count()+")",
+                musicBoxFavoritesOnly?"Terug naar alle melodietjes":
+                        "Bekijk alleen jouw favoriete muziek",0xffffe7b5,78);
+        addTile(filter,5);
+        filter.setOnClickListener(v->{
+            musicBoxFavoritesOnly=!musicBoxFavoritesOnly;
+            musicBoxPage=0;
+            showPage();
+        });
+        addText(musicBoxFavoritesOnly?
+                "⭐ Jouw favoriete deuntjes":"🎵 Tik op een deuntje om te luisteren",
+                18,SUB,4,7);
         TextView status=text(musicBoxTrack<0?
                 "✨ Welke melodie kies jij?":
                 "🎼 Laatst gekozen: "+PlaylumiMusicBox.name(musicBoxTrack),
@@ -2165,20 +2184,33 @@ public class MainActivity extends Activity {
         status.setPadding(dp(11),dp(13),dp(11),dp(13));
         status.setMinHeight(dp(56));
         addWidget(status,2,10);
-        int first=PlaylumiMusicBox.firstOnPage(musicBoxPage);
-        int last=Math.min(first+PlaylumiMusicBox.PAGE_SIZE,PlaylumiMusicBox.COUNT);
-        for(int i=first;i<last;i+=2) {
-            final int left=i;
-            final int right=i+1;
-            Button one=tile(PlaylumiMusicBox.title(left),"",COLORS[left%COLORS.length],104);
-            Button two=tile(PlaylumiMusicBox.title(right),"",COLORS[right%COLORS.length],104);
-            one.setTextSize(17);two.setTextSize(17);
-            one.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(left));
-            two.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(right));
-            one.setOnClickListener(v->chooseMusicBox(left,status));
-            two.setOnClickListener(v->chooseMusicBox(right,status));
-            addTwo(one,two,109);
+
+        // The star button is explicit; a long press on a tune offers the
+        // same shortcut without playing sound or changing rewards.
+        Button favoriteAction=tile("⭐ Kies eerst een deuntje",
+                "Tik op een melodie en bewaar hem als favoriet",
+                0xffffeed6,69);
+        int numberOfPages=musicBoxFavorites.pages(musicBoxFavoritesOnly);
+        if(musicBoxPage>=numberOfPages)musicBoxPage=0;
+        int[] visible=musicBoxFavorites.onPage(musicBoxFavoritesOnly,musicBoxPage);
+        if(visible.length==0)
+            addText("⭐ Nog geen favorieten. Bekijk alle deuntjes en geef er een ster!",
+                    16,SUB,7,9);
+        for(int i=0;i<visible.length;i+=2) {
+            final int left=visible[i];
+            Button one=musicBoxTile(left,status,favoriteAction);
+            if(i+1<visible.length) {
+                final int right=visible[i+1];
+                Button two=musicBoxTile(right,status,favoriteAction);
+                addTwo(one,two,109);
+            } else addTile(one,6);
         }
+        addTile(favoriteAction,6);
+        refreshFavoriteAction(favoriteAction);
+        favoriteAction.setOnClickListener(v->{
+            if(musicBoxTrack>=0)toggleMusicFavorite(musicBoxTrack);
+        });
+
         Button surprise=tile("🎲 Verrassingsdeuntje",
                 "Speel iets anders dan de vorige keer",0xffe4dcff,82);
         Button stop=tile("⏹ Stop muziek",
@@ -2189,25 +2221,64 @@ public class MainActivity extends Activity {
                     PlaylumiMusicBox.COUNT-1;
             int draw=new Random().nextInt(available);
             chooseMusicBox(PlaylumiMusicBox.surprise(musicBoxTrack,draw),status);
+            refreshFavoriteAction(favoriteAction);
         });
         stop.setOnClickListener(v->{
             melodyPlayback.stop();
             sound.stopNotes();
             status.setText("🍃 Gestopt. Kies een nieuw deuntje!");
         });
-        Button next=tile(musicBoxPage==PlaylumiMusicBox.PAGES-1?
-                "↩ Eerste zes deuntjes":"✨ Volgende zes deuntjes →",
-                (musicBoxPage+1)+" / "+PlaylumiMusicBox.PAGES,
-                0xffe5ecff,69);
-        addTile(next,9);
-        next.setOnClickListener(v->{
-            musicBoxPage=(musicBoxPage+1)%PlaylumiMusicBox.PAGES;
-            showPage();
-        });
+        if(numberOfPages>1) {
+            Button next=tile(musicBoxPage==numberOfPages-1?
+                    "↩ Terug naar de eerste pagina":"✨ Volgende deuntjes →",
+                    (musicBoxPage+1)+" / "+numberOfPages,0xffe5ecff,69);
+            addTile(next,9);
+            next.setOnClickListener(v->{
+                musicBoxPage=(musicBoxPage+1)%numberOfPages;
+                showPage();
+            });
+        }
         showMusicComposer();
         if(!sound.isEnabled())
             addText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.",
                     15,SUB,5,8);
+    }
+
+    private Button musicBoxTile(int index,TextView status,Button starAction) {
+        Button tile=tile((musicBoxFavorites.isFavorite(index)?"⭐ ":"")+
+                        PlaylumiMusicBox.title(index),"",
+                COLORS[index%COLORS.length],104);
+        tile.setTextSize(17);
+        tile.setContentDescription("Speel de melodie "+PlaylumiMusicBox.name(index)+
+                ". Houd ingedrukt om favoriet te maken of te verwijderen.");
+        tile.setOnClickListener(v->{
+            chooseMusicBox(index,status);
+            refreshFavoriteAction(starAction);
+        });
+        tile.setOnLongClickListener(v->{
+            toggleMusicFavorite(index);
+            return true;
+        });
+        return tile;
+    }
+
+    private void refreshFavoriteAction(Button starAction) {
+        if(musicBoxTrack<0) {
+            starAction.setText("⭐ Kies eerst een deuntje");
+            starAction.setEnabled(false);
+        } else {
+            starAction.setEnabled(true);
+            starAction.setText(musicBoxFavorites.isFavorite(musicBoxTrack)?
+                    "💛 Verwijder gekozen favoriet":"⭐ Bewaar gekozen deuntje");
+        }
+    }
+
+    private void toggleMusicFavorite(int index) {
+        musicBoxFavorites.toggle(index);
+        prefs().edit().putInt(PlaylumiMusicFavorites.PREF_KEY,
+                musicBoxFavorites.mask()).apply();
+        // A fresh page updates every star and the favorites filter safely.
+        showPage();
     }
 
     private void chooseMusicBox(int index,TextView status) {
@@ -2217,7 +2288,9 @@ public class MainActivity extends Activity {
             status.setText("🎶 Gekozen: "+PlaylumiMusicBox.title(index));
             PlaylumiDelight.hop(status);
         } else if(!sound.isEnabled()) {
-            status.setText("🔇 Geluid staat uit. Zet geluid aan bij Instellingen.");
+            // A child can still select and bookmark a song when muted.
+            musicBoxTrack=index;
+            status.setText("🔇 Deuntje gekozen. Zet geluid aan om te luisteren.");
         } else {
             status.setText("🎵 Deuntje wordt geladen. Probeer nog eens!");
         }
