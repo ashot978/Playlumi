@@ -1667,6 +1667,17 @@ public class MainActivity extends Activity {
             }
             answers.addView(answerRow,new LinearLayout.LayoutParams(-1,-2));
         }
+        // An optional way out of a hard question. Skipping cannot grant rewards.
+        if(!answerLocked) {
+            Button skip=tile("🍃 Andere vraag",
+                    "Deze is lastig? Zonder straf verder spelen",
+                    0xffe8f5eb,61);
+            skip.setTextSize(16);
+            skip.setContentDescription(
+                    "Sla deze vraag over, zonder punten of straf. Probeer een andere vraag.");
+            skip.setOnClickListener(v->skipDifficultQuestion(round));
+            addWidgetIn(answers,skip,dp(5),dp(5));
+        }
         nextButton=tile("🌟 Volgende!","",0xffcff4dd,66);
         nextButton.setBackground(primaryAction());
         nextButton.setTextColor(Color.WHITE);
@@ -1714,6 +1725,18 @@ public class MainActivity extends Activity {
         if(hintButton!=null && PlaylumiHints.nextWrongOption(
                 round.correctIndex,round.answers.size(),hintHiddenMask)<0)
             hintButton.setVisibility(View.GONE);
+    }
+    /** A skipped question neither spends nor awards anything; it simply moves on. */
+    private void skipDifficultQuestion(LearningGame.Round displayedRound) {
+        if(answerLocked || game==null || game.round()!=displayedRound)return;
+        if(!PlaylumiQuestionSkip.skip(game))return;
+        hintRound=null;
+        hintHiddenMask=0;
+        feedback="";
+        roundHadMistake=false;
+        // Deliberately do not touch sessionSolved, scores, progress or badges.
+        saveRecent();
+        move(PLAY);
     }
     private void choose(int index,Button touched) {
         if(answerLocked || game.round().isSolved())return;

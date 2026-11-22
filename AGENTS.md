@@ -131,3 +131,15 @@ playing an instrument, leaving the page or backgrounding the app cancels
 queued preview notes and stops the currently playing note. Never overlap
 multiple notes from earlier replays. Preserve saved state, rewards, privacy,
 Android compatibility, and original signed APK release requirements.
+
+## Playlumi 0.46.0 - no-pressure next question
+On unsolved standard learning rounds, show a quiet, child-friendly
+"🍃 Andere vraag" button. It skips the displayed card without penalty,
+reward, star, badge, score, success, failure or completed-session progress.
+The existing 8-correct-answer session remains eight correct answers,
+regardless of skipped questions. Never allow skipping a solved round.
+After skipping, the newly drawn card has its own fresh hints and audio;
+do not accidentally replay or speak skipped prompts. Preserve 300-card
+shuffled offline decks and all profile-specific local data. Unit-test
+skip and reward invariants, lint, compile, emulator start and signed APK.
+No main-branch merge or store publication.
