@@ -6,7 +6,7 @@ Er zijn ook twee zoekspelletjes: kleuren en vormen vergelijken en hoofdletters k
 
 ## Bouwen en testen
 
-Open het project in Android Studio met Android SDK 35 en JDK 17. Gebruik Gradle 8.9: `gradle testDebugUnitTest lintDebug assembleDebug`. De GitHub Actions-workflow voert deze controles uit en bewaart bij succes de debug-APK als artifact. De debug-APK is niet bedoeld als Play Store-release.
+Open het project in Android Studio met Android SDK 35 en JDK 17. Gebruik Gradle 8.9: `gradle testDebugUnitTest lintDebug assembleDebug`. De GitHub Actions-workflow voert deze controles uit en maakt een niet-ondertekende release voor privéondertekening. Alleen een APK die met het oorspronkelijke Playlumi-certificaat is ondertekend en gecontroleerd, wordt als installeerbare update gepubliceerd.
 
 De app gebruikt geen accounts, advertenties, trackers, netwerkaanroepen of extra toestemmingen. Een echte toesteltest blijft nodig, waaronder verschillende schermformaten, schermrotatie en toegankelijkheid.
 
