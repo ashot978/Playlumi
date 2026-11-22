@@ -59,6 +59,15 @@ jobs:
         run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
+      - name: Check release APK ZIP alignment before any signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)"
+          test -x "$ZIPALIGN"
+          APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$APK"
+          "$ZIPALIGN" -c -v 4 "$APK"
       - name: Save verified unsigned APK for private signing
         uses: actions/upload-artifact@v4
         with:
@@ -93,6 +102,9 @@ jobs:
           test -s "$APK"
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           test -n "$APK_SIGNER"
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -name zipalign -type f | sort -V | tail -n 1)"
+          test -x "$ZIPALIGN"
+          "$ZIPALIGN" -c -v 4 "$APK"
           VERIFY_OUTPUT="$("$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$APK")"
           printf '%s\n' "$VERIFY_OUTPUT"
           printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v1 scheme (JAR signing): true'
