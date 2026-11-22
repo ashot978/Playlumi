@@ -4,6 +4,8 @@ This checklist is a standing project rule for **every future version**.
 
 ## Never advertise a download before approval
 
+For updates over the existing v0.45 release-signed installation, offer **only** `playlumi-original-signed-release-update` signed with the verified original certificate (SHA-256 D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF). Never offer a debug-signed APK as an update.
+
 Only show an APK download to the user after **all** applicable checks have completed successfully and the exact artifact has been verified:
 
 1. Unit tests pass.

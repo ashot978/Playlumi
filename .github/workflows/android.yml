@@ -25,13 +25,6 @@ jobs:
         run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
-      - name: Publish installable debug APK for testers
-        uses: actions/upload-artifact@v4
-        with:
-          name: playlumi-debug-apk-installable
-          path: app/build/outputs/apk/debug/*-debug.apk
-          if-no-files-found: error
-          retention-days: 14
   emulator-launch:
     needs: build
     runs-on: ubuntu-latest
@@ -73,9 +66,69 @@ jobs:
           path: app/build/outputs/apk/release/*-unsigned.apk
           if-no-files-found: error
           retention-days: 7
+      - name: Sign release only with the original verified Playlumi certificate
+        id: sign_release
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.PLAYLUMI_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+          EXPECTED_CERT_SHA256: D2:B7:4F:01:8B:F6:11:13:82:F9:01:C2:AC:DC:03:E7:87:81:1C:E2:07:D6:C4:43:5F:CC:A9:55:9A:E9:B0:EF
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_KEYSTORE_B64" ] && [ -z "$RELEASE_PASSWORD" ]; then
+            echo "Original release signing unavailable: unsigned build only."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_PASSWORD" ]; then
+            echo "::error::Release signing secrets incomplete. No APK will be published."
+            exit 1
+          fi
+          STORE_PATH="$RUNNER_TEMP/playlumi-original-release.p12"
+          trap 'rm -f "$STORE_PATH"' EXIT
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 --decode > "$STORE_PATH"
+          chmod 600 "$STORE_PATH"
+          PLAYLUMI_STORE_FILE="$STORE_PATH" PLAYLUMI_SIGNING_PASSWORD="$RELEASE_PASSWORD" gradle --no-daemon assembleRelease --rerun-tasks
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -n "$APK_SIGNER"
+          VERIFY_OUTPUT="$("$APK_SIGNER" verify --min-sdk-version 23 --verbose --print-certs "$APK")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v1 scheme (JAR signing): true'
+          printf '%s\n' "$VERIFY_OUTPUT" | grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true'
+          ACTUAL="$(printf '%s\n' "$VERIFY_OUTPUT" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1 | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          PACKAGE_LINE="$("$AAPT" dump badging "$APK" | head -n 1)"
+          if [[ "$PACKAGE_LINE" != *"name='nl.playlumi.app'"* ]]; then
+            echo "::error::Unexpected Android package name."
+            exit 1
+          fi
+          VERSION_CODE="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p")"
+          if [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" -le 24302 ]; then
+            echo "::error::Release update versionCode must exceed original v0.45 (24302)."
+            exit 1
+          fi
+          EXPECTED="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ' :\r\n' | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::APK signature does not match the original verified certificate."
+            rm -f "$APK"
+            exit 1
+          fi
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "Release APK signed with the verified original certificate."
+      - name: Publish verified original-signed update APK
+        if: steps.sign_release.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-original-signed-release-update
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Clarify what was NOT tested
         if: always()
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
           echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash; still requires device acceptance." >> "$GITHUB_STEP_SUMMARY"
-          echo "Debug APK is installable for testing but cannot replace a release-signed installation. Unsigned release APK still needs original private signing. Full gameplay and Samsung device tests are outstanding." >> "$GITHUB_STEP_SUMMARY"
+          echo "Only the original-certificate signed APK is suitable for updating an existing installation. Without original keystore secrets no installable update is published. Full gameplay and Samsung device tests are outstanding." >> "$GITHUB_STEP_SUMMARY"
