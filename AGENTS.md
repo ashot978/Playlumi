@@ -201,3 +201,15 @@ Never overwrite existing steps, clear another slot, or automatically replay
 the pattern. Keep original WAV jingles and the global sound mute, and stop
 queued sound on page changes and backgrounding. Continue verifying Android
 unit tests, lint, emulator and original release-signing cert.
+
+## Playlumi 0.52.0 — six extra original jingles
+The child-controlled Muziekdoos grows from 12 to 18 short offline instrumental
+melodies (three pages of six). The six newly added original WAV motifs are
+Zonnestraal, Regenboog, Bosavontuur, Maanlicht, Konfettidans and Feesttrein.
+Preserve tracks 0-11 in the same order and mapping, as well as existing 0-3
+instrument notes and silent rest. Ensure next-page wording works on all three
+pages, with a return to the first page on the last. Surprise must never repeat
+the previous melody and must offer all 18 alternatives. Add all new jingles
+to the deliberate parental sound sample, without automatically starting music
+or reintroducing human narration. No scoring, ads, internet or new permissions.
+Keep child profiles and original release signing identity.
