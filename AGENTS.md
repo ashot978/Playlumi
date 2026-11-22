@@ -213,3 +213,16 @@ the previous melody and must offer all 18 alternatives. Add all new jingles
 to the deliberate parental sound sample, without automatically starting music
 or reintroducing human narration. No scoring, ads, internet or new permissions.
 Keep child profiles and original release signing identity.
+
+## Playlumi 0.53.0 - per-child music-box favorites
+Children can explicitly save/remove favorites from any of the 18 original
+instrumental Muziekdoos tracks, by tapping a visible star action for the
+chosen track or long-pressing the track tile. A separate favorites-only view
+shows saved tracks with six maximum per page, including safe 0/1/odd counts.
+Favorites are stored only in each profile's existing SharedPreferences using
+the new "music_box_favorites" integer bitset; never modify scores or the
+three personally composed songs. Clicking stars or opening a filter must
+NOT play sounds or start TTS; a chosen track can be bookmarked while global
+sound is muted. Keep all existing original tunes, saved melodies, audio
+settings, Android support, privacy and original release signature.
+CI must pass unit tests, lint, emulator, unsigned release before signing.
