@@ -2,14 +2,14 @@ package nl.playlumi.app;
 
 import android.content.Context;
 import android.media.AudioAttributes;
-import android.media.AudioManager;
 import android.media.SoundPool;
-import android.media.ToneGenerator;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
@@ -22,9 +22,8 @@ public final class PlaylumiAudio {
     private final AtomicIntegerArray soundIds=new AtomicIntegerArray(PlaylumiTunes.COUNT);
     private final Context app;
     private SoundPool pool;
-    private ToneGenerator fallback;
     private TextToSpeech speech;
-    private volatile boolean ttsReady,enabled,released;
+    private volatile boolean ttsReady,enabled,effectsEnabled=true,released;
     private Thread preloader;
 
     public PlaylumiAudio(Context context,boolean enabled) {
@@ -35,7 +34,7 @@ public final class PlaylumiAudio {
                     .setUsage(AudioAttributes.USAGE_GAME)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build();
-            pool=new SoundPool.Builder().setMaxStreams(3).setAudioAttributes(attributes).build();
+            pool=new SoundPool.Builder().setMaxStreams(2).setAudioAttributes(attributes).build();
             pool.setOnLoadCompleteListener((soundPool,id,status)->{
                 if(released || status!=0)return;
                 for(int i=0;i<PlaylumiTunes.COUNT;i++)
@@ -48,24 +47,50 @@ public final class PlaylumiAudio {
             if(pool!=null)pool.release();
             pool=null;
         }
-        try {fallback=new ToneGenerator(AudioManager.STREAM_MUSIC,32);} catch(RuntimeException ignored){}
         try {
             speech=new TextToSpeech(app,status->{
                 if(released || speech==null)return;
-                if(status==TextToSpeech.SUCCESS) {
-                    int result=speech.setLanguage(Locale.forLanguageTag("nl-NL"));
-                    ttsReady=result!=TextToSpeech.LANG_MISSING_DATA &&
-                            result!=TextToSpeech.LANG_NOT_SUPPORTED;
-                    speech.setSpeechRate(.89f);
-                    speech.setPitch(1.06f);
-                }
+                if(status==TextToSpeech.SUCCESS)configureDutchVoice();
             });
         } catch(RuntimeException ignored) {speech=null;}
+    }
+
+    /** Select the best available offline Dutch voice; engine quality varies by device. */
+    private void configureDutchVoice() {
+        if(released || speech==null)return;
+        Locale dutch=Locale.forLanguageTag("nl-NL");
+        try {
+            int available=speech.setLanguage(dutch);
+            if(available==TextToSpeech.LANG_MISSING_DATA ||
+                    available==TextToSpeech.LANG_NOT_SUPPORTED) {
+                ttsReady=false;
+                return;
+            }
+            Voice bestVoice=null;
+            int bestRank=-1;
+            Set<Voice> installed=speech.getVoices();
+            if(installed!=null)for(Voice voice:installed) {
+                int rank=PlaylumiVoiceChoice.rank(voice.getLocale(),
+                        voice.isNetworkConnectionRequired(),voice.getQuality());
+                if(rank>bestRank) {
+                    bestRank=rank;
+                    bestVoice=voice;
+                }
+            }
+            if(bestVoice!=null &&
+                    speech.setVoice(bestVoice)!=TextToSpeech.SUCCESS)
+                speech.setLanguage(dutch);
+            speech.setSpeechRate(.97f);
+            speech.setPitch(1.0f);
+            ttsReady=true;
+        } catch(RuntimeException ignored) {
+            ttsReady=false;
+        }
     }
     private void prepare() {
         for(int i=0;i<PlaylumiTunes.COUNT && !released;i++) {
             try {
-                File file=new File(app.getCacheDir(),"playlumi-chime-v2-"+i+".wav");
+                File file=new File(app.getCacheDir(),"playlumi-chime-v3-"+i+".wav");
                 if(!file.isFile() || file.length()<100) {
                     byte[] wav=PlaylumiTunes.wav(i);
                     try(FileOutputStream out=new FileOutputStream(file)) {out.write(wav);}
@@ -85,38 +110,40 @@ public final class PlaylumiAudio {
         enabled=value;
         if(!value && speech!=null)speech.stop();
     }
-    private void cue(int effect,int fallbackTone) {
-        if(released || !enabled)return;
+    /** Effects and explicit speech can be controlled separately. */
+    public boolean effectsEnabled() {return effectsEnabled;}
+    public void setEffectsEnabled(boolean value) {
+        effectsEnabled=value;
+        if(!value && pool!=null)pool.autoPause();
+    }
+    private void cue(int effect) {
+        if(released || !enabled || !effectsEnabled)return;
         SoundPool current=pool;
         int id=soundIds.get(effect);
         if(current!=null && id>0 && loaded.get(effect)==1) {
             try {
-                // Gentle maximum level: protects young ears.
-                current.play(id,.34f,.34f,1,0,1f);
-                return;
+                // No harsh emergency beep while the original chime loads.
+                current.play(id,.25f,.25f,1,0,1f);
             } catch(RuntimeException ignored){}
         }
-        if(fallback!=null) {
-            try {fallback.startTone(fallbackTone,75);} catch(RuntimeException ignored){}
-        }
     }
-    public void tap(){cue(PlaylumiTunes.TAP,ToneGenerator.TONE_PROP_BEEP);}
-    public void good(){cue(PlaylumiTunes.SUCCESS,ToneGenerator.TONE_PROP_ACK);}
-    public void mistake(){cue(PlaylumiTunes.TRY_AGAIN,ToneGenerator.TONE_PROP_NACK);}
-    public void unlock(){cue(PlaylumiTunes.UNLOCK,ToneGenerator.TONE_PROP_ACK);}
-    public void hello(){cue(PlaylumiTunes.HELLO,ToneGenerator.TONE_PROP_BEEP2);}
-    public void pop(){cue(PlaylumiTunes.POP,ToneGenerator.TONE_PROP_BEEP);}
-    public void dance(){cue(PlaylumiTunes.DANCE,ToneGenerator.TONE_PROP_ACK);}
-    public void sparkle(){cue(PlaylumiTunes.SPARKLE,ToneGenerator.TONE_PROP_ACK);}
+    public void tap(){cue(PlaylumiTunes.TAP);}
+    public void good(){cue(PlaylumiTunes.SUCCESS);}
+    public void mistake(){cue(PlaylumiTunes.TRY_AGAIN);}
+    public void unlock(){cue(PlaylumiTunes.UNLOCK);}
+    public void hello(){cue(PlaylumiTunes.HELLO);}
+    public void pop(){cue(PlaylumiTunes.POP);}
+    public void dance(){cue(PlaylumiTunes.DANCE);}
+    public void sparkle(){cue(PlaylumiTunes.SPARKLE);}
     public void note(int index){
         if(index<0 || index>=PlaylumiMelody.NOTES)throw new IllegalArgumentException("note");
-        cue(PlaylumiTunes.NOTE_GREEN+index,ToneGenerator.TONE_PROP_BEEP);
+        cue(PlaylumiTunes.NOTE_GREEN+index);
     }
     public boolean speak(String text) {
-        if(!enabled || !ttsReady || speech==null || released || text==null)return false;
+        if(!enabled || !ttsReady || speech==null || released || text==null || text.trim().isEmpty())return false;
         try {
-            speech.speak(text,TextToSpeech.QUEUE_FLUSH,null,"playlumi-listen");
-            return true;
+            return speech.speak(text,TextToSpeech.QUEUE_FLUSH,null,
+                    "playlumi-listen")==TextToSpeech.SUCCESS;
         } catch(RuntimeException ignored) {return false;}
     }
     /** Keep narration on its current page, never talk over the next activity. */
@@ -129,7 +156,6 @@ public final class PlaylumiAudio {
         released=true;
         if(speech!=null) {speech.stop();speech.shutdown();speech=null;}
         if(pool!=null) {pool.release();pool=null;}
-        if(fallback!=null) {fallback.release();fallback=null;}
         // The private app cache may keep tiny synthesized WAVs for next launch.
     }
 }

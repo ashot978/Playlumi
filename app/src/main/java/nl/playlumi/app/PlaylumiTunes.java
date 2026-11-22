@@ -49,8 +49,8 @@ public final class PlaylumiTunes {
                     double pitch=effect==POP?f*(1.0-.32*(double)i/perNote):f;
                     double phase=2*Math.PI*pitch*t;
                     double primary=Math.sin(phase);
-                    double high=.23*Math.sin(2*phase);
-                    v=amp*(primary+high)*.16;
+                    double high=.10*Math.sin(2*phase);
+                    v=amp*(primary+high)*.14;
                 }
                 short sample=(short)Math.max(-32768,Math.min(32767,Math.round(v*32767)));
                 wave[offset++]=(byte)(sample&255);
