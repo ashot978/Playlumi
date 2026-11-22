@@ -166,3 +166,14 @@ rotating the phone or backgrounding the app cannot start music on its own.
 Keep global sound mute authoritative; parent decorative-effects preference
 does not block an explicitly selected musical tune. Preserve existing saved
 game data and Android minSdk 23, with clean CI and signed APK.
+
+## Playlumi 0.49.0 - child-composed personal melody
+Within the existing Muziekdoos, children can tap four large animal instrument
+buttons to record up to 12 notes, listen using an explicit playback button,
+undo the last note or clear the tune. Automatically save notes as a compact
+0-3 string in each child's existing per-profile local SharedPreferences.
+Re-entering the music box or rotating the device must restore the composition,
+without any automatic playback. A sequence uses the existing original
+instrument sound bank and can be stopped, canceled by another musical choice,
+or canceled by leaving the screen/backgrounding. No human TTS, network,
+microphone, rewards or scoring. Keep original Android package and signing.
