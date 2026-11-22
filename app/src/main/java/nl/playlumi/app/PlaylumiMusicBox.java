@@ -22,6 +22,10 @@ public final class PlaylumiMusicBox {
     public static int effect(int index){check(index);return PlaylumiTunes.BONUS+index;}
     public static String name(int index){check(index);return NAMES[index];}
     public static String title(int index){check(index);return ICONS[index]+" "+NAMES[index];}
+    /** Display markers are visual only; changing selection never starts audio. */
+    public static String displayTitle(int index,boolean selected,boolean favorite){
+        return (selected?"🎵 ":"")+(favorite?"⭐ ":"")+title(index);
+    }
     public static int safePage(int page){return page<0||page>=PAGES?0:page;}
     public static int safeSelected(int index){return index<0||index>=COUNT?-1:index;}
     public static int firstOnPage(int page){return safePage(page)*PAGE_SIZE;}
