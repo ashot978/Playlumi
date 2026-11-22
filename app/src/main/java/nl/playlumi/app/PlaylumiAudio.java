@@ -80,7 +80,7 @@ public final class PlaylumiAudio {
                         choice.isNetworkConnectionRequired(),
                         choice.getQuality())>=0)offlineCandidates.add(choice);
             }
-            offlineCandidates.sort((one,two)->{
+            Collections.sort(offlineCandidates,(one,two)->{
                 int a=PlaylumiVoiceChoice.rank(one.getLocale(),
                         one.isNetworkConnectionRequired(),one.getQuality());
                 int b=PlaylumiVoiceChoice.rank(two.getLocale(),
