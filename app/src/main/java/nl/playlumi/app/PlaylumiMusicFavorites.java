@@ -54,6 +54,34 @@ public final class PlaylumiMusicFavorites {
                 (!favoritesOnly || isFavorite(track));
     }
 
+    /**
+     * Navigate the current collection, wrapping at both ends. Missing
+     * selections start at the first/last visible track depending on direction.
+     * Returning -1 lets the UI handle an empty favorites collection safely.
+     */
+    public int adjacent(boolean favoritesOnly,int previous,int direction) {
+        if(direction!=1 && direction!=-1)
+            throw new IllegalArgumentException("direction");
+        int count=visibleCount(favoritesOnly);
+        if(count==0)return -1;
+        int[] tracks=onAll(favoritesOnly);
+        int position=-1;
+        for(int i=0;i<tracks.length;i++) {
+            if(tracks[i]==previous) {position=i;break;}
+        }
+        if(position<0)return direction>0?tracks[0]:tracks[count-1];
+        return tracks[Math.floorMod(position+direction,count)];
+    }
+
+    private int[] onAll(boolean favoritesOnly) {
+        int[] tracks=new int[visibleCount(favoritesOnly)];
+        int n=0;
+        for(int track=0;track<PlaylumiMusicBox.COUNT;track++) {
+            if(!favoritesOnly || isFavorite(track))tracks[n++]=track;
+        }
+        return tracks;
+    }
+
     public int mask() {return favorites;}
     public int count() {return Integer.bitCount(favorites);}
     public int visibleCount(boolean favoritesOnly) {
