@@ -19,6 +19,16 @@ public final class PlaylumiVoiceChoiceTest {
         int low=PlaylumiVoiceChoice.rank(Locale.forLanguageTag("nl-NL"),false,100);
         assertTrue(high>low);
     }
+    @Test public void offlineVoicesCycleSafely() {
+        assertEquals(-1,PlaylumiVoiceChoice.nextIndex(0,0));
+        assertEquals(0,PlaylumiVoiceChoice.nextIndex(-1,3));
+        assertEquals(1,PlaylumiVoiceChoice.nextIndex(0,3));
+        assertEquals(2,PlaylumiVoiceChoice.nextIndex(1,3));
+        assertEquals(0,PlaylumiVoiceChoice.nextIndex(2,3));
+        assertEquals(0,PlaylumiVoiceChoice.nextIndex(3,3));
+        assertEquals(0,PlaylumiVoiceChoice.nextIndex(0,1));
+    }
+
     @Test public void qualityRankIsBounded() {
         assertEquals(PlaylumiVoiceChoice.rank(Locale.forLanguageTag("nl-NL"),false,0),
                 PlaylumiVoiceChoice.rank(Locale.forLanguageTag("nl-NL"),false,-1));

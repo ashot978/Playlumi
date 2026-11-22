@@ -108,3 +108,14 @@ Provide independent locally saved on/off control for gentle game sounds
 without disabling the requested voice. Remove harsh ToneGenerator fallbacks.
 Preserve all local saves, original signing identity, privacy and Android
 CI emulator gates; a completed change needs a signed, verified APK.
+
+## Playlumi 0.44.0 — deliberate voice preview and calm defaults
+No auto narration. Keep sound effects OFF by default for profiles that have
+not actively stored a preference; preserve existing effects_on values.
+In parent settings, add a manual (explicit tap) voice preview and a safe
+3-step speed setting (slow/normal/brisk). If Android supplies multiple offline
+Dutch voices, allow parents to cycle between them and preview. Persist only
+selected device voice name and speed within the child's local preferences.
+Never list non-Dutch or network-required voices. Never auto-play a preview on
+initialization or after settings navigation, and never add Internet permission.
+Keep original signing certificate, app-ID and saved gameplay data.

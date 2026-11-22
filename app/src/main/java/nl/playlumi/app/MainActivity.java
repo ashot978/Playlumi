@@ -150,7 +150,9 @@ public class MainActivity extends Activity {
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
-        sound.setEffectsEnabled(prefs.getBoolean("effects_on",true));
+        sound.setEffectsEnabled(prefs.getBoolean("effects_on",false));
+        sound.setSpeechSpeed(prefs.getInt("tts_speed",PlaylumiSpeechSettings.NORMAL));
+        sound.setPreferredVoiceName(prefs.getString("tts_voice",""));
         PlaylumiMotion.setReduced(prefs.getBoolean("reduced_motion",false));
         int today=dayStamp();
         if(prefs.getInt("usage_day",-1)!=today)
@@ -2789,6 +2791,48 @@ public class MainActivity extends Activity {
         addText("🗣️ Alleen voorlezen als je erom vraagt",19,TEXT,8,4);
         addText("Geen automatische stem. Gebruik zelf de 🔊-knop "+
                 "bij een vraag of antwoord.",15,SUB,2,7);
+        Button speed=tile("🐢 Spreektempo: "+
+                PlaylumiSpeechSettings.label(sound.speechSpeed()),
+                "Kies rustig, normaal of vlot",0xffe8ecff,78);
+        addTile(speed,6);
+        speed.setOnClickListener(v->{
+            int next=PlaylumiSpeechSettings.next(sound.speechSpeed());
+            sound.setSpeechSpeed(next);
+            prefs().edit().putInt("tts_speed",next).apply();
+            showPage();
+        });
+        int voiceCount=sound.offlineVoiceCount();
+        Button voiceChoice=tile(sound.offlineVoiceLabel(),
+                voiceCount>1?"Tik om een andere offline Nederlandse stem te kiezen":
+                        "Beschikbare stemmen worden door Android bepaald",
+                0xffe7f3f7,82);
+        addTile(voiceChoice,5);
+        voiceChoice.setEnabled(voiceCount>1);
+        voiceChoice.setOnClickListener(v->{
+            String chosen=sound.nextOfflineVoice();
+            prefs().edit().putString("tts_voice",chosen).apply();
+            showPage();
+        });
+        Button preview=tile("🔊 Test de voorleesstem",
+                "Alleen op deze knop hoor je een voorbeeld",0xffdcf3e6,85);
+        addTile(preview,5);
+        TextView previewMessage=text("",14,SUB);
+        previewMessage.setMinHeight(dp(28));
+        addWidget(previewMessage,0,5);
+        preview.setOnClickListener(v->{
+            String message;
+            if(!sound.isEnabled()) {
+                message="Zet eerst Geluid aan om de voorleesstem te horen.";
+            } else if(!sound.speak("Hallo! Ik ben jouw Playlumi-stem. "+
+                    "We gaan rustig en vrolijk samen leren.")) {
+                message="Voorlezen is niet beschikbaar. Controleer de "+
+                        "Nederlandse stemmen in de Android-instellingen.";
+            } else {
+                message="Je hoort nu de voorbeeldstem. Er wordt "+
+                        "verder niets automatisch voorgelezen.";
+            }
+            previewMessage.setText(message);
+        });
         Button effects=tile(sound.effectsEnabled()?
                 "🎵 Geluidseffecten: aan":"🤫 Geluidseffecten: uit",
                 "Tikjes en melodietjes los van voorlezen regelen",0xffe6f0ff,89);

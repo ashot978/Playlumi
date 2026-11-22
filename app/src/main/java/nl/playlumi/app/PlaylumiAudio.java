@@ -10,6 +10,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
@@ -24,6 +27,10 @@ public final class PlaylumiAudio {
     private SoundPool pool;
     private TextToSpeech speech;
     private volatile boolean ttsReady,enabled,effectsEnabled=true,released;
+    private volatile int speedSetting=PlaylumiSpeechSettings.NORMAL;
+    private volatile String preferredVoiceName="";
+    private volatile String selectedVoiceName="";
+    private volatile List<Voice> offlineVoices=Collections.emptyList();
     private Thread preloader;
 
     public PlaylumiAudio(Context context,boolean enabled) {
@@ -66,27 +73,98 @@ public final class PlaylumiAudio {
                 ttsReady=false;
                 return;
             }
-            Voice bestVoice=null;
-            int bestRank=-1;
+            ArrayList<Voice> offlineCandidates=new ArrayList<>();
             Set<Voice> installed=speech.getVoices();
-            if(installed!=null)for(Voice voice:installed) {
-                int rank=PlaylumiVoiceChoice.rank(voice.getLocale(),
-                        voice.isNetworkConnectionRequired(),voice.getQuality());
-                if(rank>bestRank) {
-                    bestRank=rank;
-                    bestVoice=voice;
-                }
+            if(installed!=null)for(Voice choice:installed) {
+                if(PlaylumiVoiceChoice.rank(choice.getLocale(),
+                        choice.isNetworkConnectionRequired(),
+                        choice.getQuality())>=0)offlineCandidates.add(choice);
             }
-            if(bestVoice!=null &&
-                    speech.setVoice(bestVoice)!=TextToSpeech.SUCCESS)
-                speech.setLanguage(dutch);
-            speech.setSpeechRate(.97f);
+            Collections.sort(offlineCandidates,(one,two)->{
+                int a=PlaylumiVoiceChoice.rank(one.getLocale(),
+                        one.isNetworkConnectionRequired(),one.getQuality());
+                int b=PlaylumiVoiceChoice.rank(two.getLocale(),
+                        two.isNetworkConnectionRequired(),two.getQuality());
+                int byQuality=Integer.compare(b,a);
+                return byQuality!=0?byQuality:one.getName().compareTo(two.getName());
+            });
+            offlineVoices=Collections.unmodifiableList(offlineCandidates);
+            applyVoicePreference();
+            speech.setSpeechRate(PlaylumiSpeechSettings.rate(speedSetting));
             speech.setPitch(1.0f);
             ttsReady=true;
         } catch(RuntimeException ignored) {
             ttsReady=false;
         }
     }
+    /** No speech is triggered when choosing an installed voice. */
+    private void applyVoicePreference() {
+        if(speech==null)return;
+        List<Voice> options=offlineVoices;
+        Voice target=null;
+        for(Voice option:options) {
+            if(option.getName().equals(preferredVoiceName)) {
+                target=option;
+                break;
+            }
+        }
+        if(target==null && !options.isEmpty())target=options.get(0);
+        if(target!=null &&
+                speech.setVoice(target)==TextToSpeech.SUCCESS) {
+            selectedVoiceName=target.getName();
+        } else {
+            selectedVoiceName="";
+        }
+    }
+
+    public void setPreferredVoiceName(String value) {
+        preferredVoiceName=value==null?"":value;
+        if(ttsReady)applyVoicePreference();
+    }
+
+    public int offlineVoiceCount() {return offlineVoices.size();}
+
+    private int selectedVoiceIndex() {
+        List<Voice> options=offlineVoices;
+        for(int index=0;index<options.size();index++)
+            if(options.get(index).getName().equals(selectedVoiceName))return index;
+        return -1;
+    }
+
+    public String offlineVoiceLabel() {
+        int count=offlineVoiceCount();
+        if(!ttsReady)return "🗣️ Stemmen worden geladen";
+        if(count==0)return "🗣️ Geen offline Nederlandse stem gevonden";
+        int index=selectedVoiceIndex();
+        return "🗣️ Nederlandse stem "+(Math.max(index,0)+1)+" van "+count;
+    }
+
+    public String nextOfflineVoice() {
+        List<Voice> options=offlineVoices;
+        if(!ttsReady || speech==null || options.size()<2)return selectedVoiceName;
+        int next=PlaylumiVoiceChoice.nextIndex(
+                selectedVoiceIndex(),options.size());
+        Voice candidate=options.get(next);
+        try {
+            if(speech.setVoice(candidate)==TextToSpeech.SUCCESS) {
+                preferredVoiceName=candidate.getName();
+                selectedVoiceName=preferredVoiceName;
+            }
+        } catch(RuntimeException ignored){}
+        return selectedVoiceName;
+    }
+
+    public int speechSpeed() {return speedSetting;}
+
+    public void setSpeechSpeed(int value) {
+        speedSetting=PlaylumiSpeechSettings.normalize(value);
+        if(ttsReady && speech!=null) {
+            try {
+                speech.setSpeechRate(PlaylumiSpeechSettings.rate(speedSetting));
+            } catch(RuntimeException ignored){}
+        }
+    }
+
     private void prepare() {
         for(int i=0;i<PlaylumiTunes.COUNT && !released;i++) {
             try {
