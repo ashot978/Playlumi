@@ -702,7 +702,7 @@ public class MainActivity extends Activity {
     }
     private ImageView mascot(int size) {
         ImageView m=new ImageView(this);
-        m.setImageResource(R.drawable.playlumi_icon);
+        m.setImageResource(R.drawable.playlumi_brand_icon);
         m.setScaleType(ImageView.ScaleType.FIT_CENTER);
         m.setContentDescription("Playlumi, het vrolijke sterretje");
         m.setLayoutParams(new LinearLayout.LayoutParams(dp(size),dp(size)));
