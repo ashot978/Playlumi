@@ -1250,7 +1250,8 @@ public class MainActivity extends Activity {
      * advanced modes via the separate full-catalog button.
      */
     private void showPicturePlay() {
-        header("🧸 Kies een plaatje","Tik op wat je wilt doen!");
+        header("🧸 Kies een plaatje",sound!=null && sound.isEnabled()?
+                "Tik om te spelen • Houd vast om te luisteren":"Tik op wat je wilt doen!");
         java.util.List<View> choices=new java.util.ArrayList<>();
         int chosenAge=Math.max(0,Math.min(2,age));
         for(int i=0;i<PlaylumiPicturePlay.COUNT;i++) {
@@ -1262,6 +1263,13 @@ public class MainActivity extends Activity {
             bubble.setOnClickListener(v->{
                 sound.tap();
                 startPictureGame(selected);
+            });
+            // Long-press is an optional spoken preview; a single tap still plays.
+            // No text is stored or sent to an online service.
+            bubble.setOnLongClickListener(v->{
+                if(sound!=null && sound.isEnabled())
+                    sound.speak(PlaylumiPicturePlay.spokenLabel(chosenAge,selected));
+                return true;
             });
             choices.add(bubble);
         }

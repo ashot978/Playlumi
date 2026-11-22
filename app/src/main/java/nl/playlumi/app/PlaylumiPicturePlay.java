@@ -46,6 +46,10 @@ public final class PlaylumiPicturePlay {
     public static String icon(int age,int item){
         return PICTURES[checkedAge(age)][checkedIndex(item)];
     }
+    /** Friendly, local text-to-speech hint for children who cannot read yet. */
+    public static String spokenLabel(int age,int item) {
+        return "Dit is "+label(age,item)+". Tik om te spelen.";
+    }
     public static int difficulty(int age){return checkedAge(age);}
     public static int variant(int age,int item){
         checkedAge(age);checkedIndex(item);return 0;
