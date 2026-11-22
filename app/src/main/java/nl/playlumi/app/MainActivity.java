@@ -1267,7 +1267,7 @@ public class MainActivity extends Activity {
         root.addView(section,headingParams);
 
         Button quick=tile("Speel meteen  →",
-                "Een korte, vrolijke speelronde",PlaylumiVisualStyle.MINT,98);
+                "",PlaylumiVisualStyle.MINT,98);
         quick.setBackground(primaryAction());
         quick.setTextColor(Color.WHITE);
         quick.setTextSize(19);
