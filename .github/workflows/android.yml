@@ -25,13 +25,6 @@ jobs:
         run: echo "PLAYLUMI_BUILD_CODE=$((24000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
-      - name: Publish installable debug APK for testers
-        uses: actions/upload-artifact@v4
-        with:
-          name: playlumi-debug-apk-installable
-          path: app/build/outputs/apk/debug/*-debug.apk
-          if-no-files-found: error
-          retention-days: 14
   emulator-launch:
     needs: build
     runs-on: ubuntu-latest
@@ -123,4 +116,4 @@ jobs:
         run: |
           echo "## Playlumi app release gate" >> "$GITHUB_STEP_SUMMARY"
           echo "The workflow gates the unsigned release artifact on emulator startup without an immediate crash; still requires device acceptance." >> "$GITHUB_STEP_SUMMARY"
-          echo "Debug APK is installable for testing but cannot replace a release-signed installation. Unsigned release APK still needs original private signing. Full gameplay and Samsung device tests are outstanding." >> "$GITHUB_STEP_SUMMARY"
+          echo "Only the original-certificate signed APK is suitable for updating an existing installation. Without original keystore secrets no installable update is published. Full gameplay and Samsung device tests are outstanding." >> "$GITHUB_STEP_SUMMARY"
