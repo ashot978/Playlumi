@@ -73,14 +73,14 @@ public final class PlaylumiAudio {
                 ttsReady=false;
                 return;
             }
-            ArrayList<Voice> available=new ArrayList<>();
+            ArrayList<Voice> offlineCandidates=new ArrayList<>();
             Set<Voice> installed=speech.getVoices();
             if(installed!=null)for(Voice choice:installed) {
                 if(PlaylumiVoiceChoice.rank(choice.getLocale(),
                         choice.isNetworkConnectionRequired(),
-                        choice.getQuality())>=0)available.add(choice);
+                        choice.getQuality())>=0)offlineCandidates.add(choice);
             }
-            available.sort((one,two)->{
+            offlineCandidates.sort((one,two)->{
                 int a=PlaylumiVoiceChoice.rank(one.getLocale(),
                         one.isNetworkConnectionRequired(),one.getQuality());
                 int b=PlaylumiVoiceChoice.rank(two.getLocale(),
@@ -88,7 +88,7 @@ public final class PlaylumiAudio {
                 int byQuality=Integer.compare(b,a);
                 return byQuality!=0?byQuality:one.getName().compareTo(two.getName());
             });
-            offlineVoices=Collections.unmodifiableList(available);
+            offlineVoices=Collections.unmodifiableList(offlineCandidates);
             applyVoicePreference();
             speech.setSpeechRate(PlaylumiSpeechSettings.rate(speedSetting));
             speech.setPitch(1.0f);
