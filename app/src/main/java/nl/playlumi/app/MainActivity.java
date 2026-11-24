@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -94,6 +94,10 @@ public class MainActivity extends Activity {
     private boolean melodySolved;
     private TextView melodyStatus;
     private int bubbleRound;
+    private int starCatchRound;
+    private PlaylumiStarCatch starCatch;
+    private boolean starCatchSolved;
+    private TextView starCatchProgress;
     private boolean bubbleSolved;
     private PlaylumiAdventure adventures;
     private PlaylumiAdaptive adaptive;
@@ -249,6 +253,16 @@ public class MainActivity extends Activity {
         }
         if(page==MUSIC_PLAY && melody==null)
             melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        if(page==STAR_CATCH) {
+            starCatchRound=state==null?0:Math.max(0,Math.min(PlaylumiStarCatch.ROUNDS,state.getInt("starCatchRound",0)));
+            if(starCatchRound<PlaylumiStarCatch.ROUNDS){
+                if(state!=null && state.getInt("starCatchTotal",0)>0)try {
+                    starCatch=PlaylumiStarCatch.restore(state.getInt("starCatchTarget"),state.getInt("starCatchTotal"),state.getInt("starCatchMask"));
+                } catch(IllegalArgumentException ignored) {}
+                if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
+                starCatchSolved=starCatch.finished();
+            }
+        }
         if(page==BUBBLE_PLAY) {
             if(state!=null && state.getInt("bubbleTotal",0)>0) {
                 try {
@@ -295,6 +309,8 @@ public class MainActivity extends Activity {
         out.putInt("miniKind",miniKind);
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
+        out.putInt("starCatchRound",starCatchRound);
+        if(starCatch!=null){out.putInt("starCatchTarget",starCatch.target());out.putInt("starCatchTotal",starCatch.total());out.putInt("starCatchMask",starCatch.mask());}
         out.putInt("melodyRound",melodyRound);
         out.putBoolean("melodySolved",melodySolved);
         if(melody!=null) {
@@ -346,7 +362,7 @@ public class MainActivity extends Activity {
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
         if(page==GARDEN_MENU) {move(ROOM);return;}
         if(page==GARDEN_PLANT) {move(GARDEN_MENU);return;}
-        if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY) {move(MINI_MENU);return;}
+        if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY || page==STAR_CATCH) {move(MINI_MENU);return;}
         if(page==MINI_MENU) {move(HOME);return;}
         if(page==WORLD_HUB) {move(WORLD_PICKER);return;}
         if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
@@ -576,7 +592,7 @@ public class MainActivity extends Activity {
                         android.content.res.Configuration.ORIENTATION_LANDSCAPE);
     }
     private boolean gameScreen() {
-        return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY ||
+        return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY || page==STAR_CATCH ||
                 page==MUSIC_PLAY || page==STORY_PLAY || page==STORY_REACTION ||
                 page==GARDEN_PLANT || page==DRAW;
     }
@@ -723,6 +739,7 @@ public class MainActivity extends Activity {
             case GARDEN_MENU: showGardenMenu();break;
             case GARDEN_PLANT: showGardenPlant();break;
             case BUBBLE_PLAY: showBubblePlay();break;
+            case STAR_CATCH: showStarCatch();break;
             default: throw new IllegalStateException("page");
         }
         if(!PlaylumiMotion.isReduced()) {
@@ -1463,7 +1480,9 @@ public class MainActivity extends Activity {
         });
         addTwo(first[0],first[1],103);
         addTwo(first[2],bubblesButton,103);
-        addTile(musicButton,7);
+        Button stars=tile("🌟 Vang de sterren","Tik rustig sterren aan",0xffffe8ba,104);
+        stars.setOnClickListener(v->{starCatchRound=0;starCatchSolved=false;starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());move(STAR_CATCH);});
+        addTwo(musicButton,stars,103);
     }
 
     private void showMiniPlay() {
@@ -2203,6 +2222,50 @@ public class MainActivity extends Activity {
         });
     }
 
+
+    /** Ten calm rounds; progress is kept separate from existing score/rewards. */
+    private void showStarCatch() {
+        header("🌟 Vang de sterren","Ronde "+Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+" / "+PlaylumiStarCatch.ROUNDS);
+        if(starCatchRound>=PlaylumiStarCatch.ROUNDS){
+            characterHero(140);
+            addText("🏆 Alle sterren gevangen!",24,0xff59438f,8,12);
+            Button again=tile("🌟 Speel nog eens","",0xffd4f4e2,88);
+            addTile(again,8);
+            again.setOnClickListener(v->{starCatchRound=0;starCatchSolved=false;starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());move(STAR_CATCH);});
+            Button back=tile("🎪 Andere spelletjes","",0xffe8dfff,80);
+            addTile(back,7);back.setOnClickListener(v->move(MINI_MENU));return;
+        }
+        if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
+        final PlaylumiStarCatch round=starCatch;
+        addText("Tik "+round.target()+" sterren aan. Geen tijdslimiet!",20,0xff60458e,5,7);
+        starCatchProgress=text("⭐ "+round.collected()+" / "+round.target(),21,0xff298064);
+        addWidget(starCatchProgress,2,6);
+        if(sound.isEnabled()){
+            Button listen=tile("🔊 Luister","",0xffe9e0ff,51);
+            addTile(listen,2);listen.setOnClickListener(v->sound.speak("Vang "+round.target()+" sterren"));
+        }
+        PlaylumiStarCatchBoard board=new PlaylumiStarCatchBoard(this,round,new PlaylumiStarCatchBoard.Listener(){
+            @Override public void onStar(int count){starCatchProgress.setText("⭐ "+count+" / "+round.target());sound.pop();}
+            @Override public void onFinished(){
+                if(starCatchSolved)return;
+                starCatchSolved=true;
+                sound.good();
+                if(playPal!=null)playPal.dance();
+                PlaylumiMotion.celebrate(stage,starCatchRound+1);
+                if(nextButton!=null){nextButton.setVisibility(View.VISIBLE);PlaylumiMotion.pop(nextButton);}
+            }
+        });
+        int h=PlaylumiLayout.sceneHeight(280,landscapeScreen(),getResources().getConfiguration().screenHeightDp);
+        root.addView(board,new LinearLayout.LayoutParams(-1,dp(h)));
+        nextButton=tile("🌟 Volgende ronde","",0xffd4f3dd,78);
+        addTile(nextButton,6);nextButton.setVisibility(starCatchSolved?View.VISIBLE:View.GONE);
+        nextButton.setOnClickListener(v->{
+            if(!starCatchSolved)return;
+            starCatchRound++;starCatchSolved=false;
+            starCatch=starCatchRound>=PlaylumiStarCatch.ROUNDS?null:PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
+            move(STAR_CATCH);
+        });
+    }
 
     /** New sensory counting minigame, with one clear goal at a time. */
     private void showBubblePlay() {
