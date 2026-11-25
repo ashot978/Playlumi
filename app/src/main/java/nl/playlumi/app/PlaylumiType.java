@@ -13,6 +13,10 @@ public final class PlaylumiType {
     private PlaylumiType() {}
 
     public static SpannableString tileText(String title, String description) {
+        return tileText(title,description,false);
+    }
+    public static SpannableString tileText(String title,String description,boolean darkBackground) {
+        int descriptionColor=darkBackground?PlaylumiWorldStyle.SECONDARY_ON_DARK:0xff68617d;
         String body = description.isEmpty() ? title : title + "\n" + description;
         SpannableString styled = new SpannableString(body);
         int firstBreak = body.indexOf('\n');
@@ -26,7 +30,7 @@ public final class PlaylumiType {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             styled.setSpan(new RelativeSizeSpan(.78f), secondBreak + 1, body.length(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            styled.setSpan(new ForegroundColorSpan(0xff68617d), secondBreak + 1, body.length(),
+            styled.setSpan(new ForegroundColorSpan(descriptionColor), secondBreak + 1, body.length(),
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (firstBreak >= 0) {
             styled.setSpan(new StyleSpan(Typeface.BOLD), 0, firstBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -37,7 +41,7 @@ public final class PlaylumiType {
             }
             styled.setSpan(new RelativeSizeSpan(description.isEmpty() ? 1.0f : .86f),
                     firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            if (!description.isEmpty()) styled.setSpan(new ForegroundColorSpan(0xff68617d),
+            if (!description.isEmpty()) styled.setSpan(new ForegroundColorSpan(descriptionColor),
                     firstBreak + 1, body.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         } else if (containsEmoji(body)) {
             int split=body.indexOf(' ');

@@ -33,7 +33,7 @@ public final class PlaylumiWorldBackdrop extends View {
         float[] b=PlaylumiVillageHit.bounds(world);
         // Isolate the individual building rather than the adjacent world.
         return new Rect(Math.max(0,(int)b[0]+8),Math.max(0,(int)b[1]-8),
-                Math.min(941,(int)b[2]-8),Math.min(1672,(int)b[3]-44));
+                Math.min(941,(int)b[2]-8),Math.min(1672,(int)b[3]-90));
     }
     public PlaylumiWorldBackdrop(Context context,int world) {
         super(context);this.world=world;artwork=art(context);
@@ -48,7 +48,7 @@ public final class PlaylumiWorldBackdrop extends View {
         canvas.drawBitmap(artwork,src,new RectF((w-dw)/2,(h-dh)/2,(w+dw)/2,(h+dh)/2),paint);
         int pale=PlaylumiWorldStyle.pale(world);
         paint.setShader(new LinearGradient(0,0,0,h,
-                new int[]{0xef000000|(pale&0xffffff),0xf8fffff4,0xe9000000|(pale&0xffffff)},null,Shader.TileMode.CLAMP));
+                new int[]{0xf6000000|(pale&0xffffff),0xfcfffff4,0xf5000000|(pale&0xffffff)},null,Shader.TileMode.CLAMP));
         canvas.drawRect(0,0,w,h,paint);paint.setShader(null);
         paint.setColor(0x24000000|(PlaylumiWorldStyle.accent(world)&0xffffff));
         float edge=12*getResources().getDisplayMetrics().density;

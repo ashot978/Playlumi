@@ -39,16 +39,15 @@ public final class PlaylumiPortalView extends View {
                 PlaylumiWorldStyle.deep(world),Shader.TileMode.CLAMP));
         canvas.drawRect(box,p);p.setShader(null);
         Rect src=PlaylumiWorldBackdrop.crop(world);
-        float titleH=Math.min(34*density,h*.25f);
-        float areaH=box.height()-titleH;
-        // Preserve the original illustration proportions, never stretch it.
-        float scale=Math.min(box.width()/src.width(),areaH/src.height());
+        float scale=Math.max(box.width()/src.width(),box.height()/src.height());
         float dw=src.width()*scale,dh=src.height()*scale;
-        RectF dst=new RectF((w-dw)/2,m+(areaH-dh)/2,(w+dw)/2,m+(areaH+dh)/2);
-        p.setColor(0xfffce2a7);
-        canvas.drawRoundRect(dst.left-2*density,dst.top,dst.right+2*density,dst.bottom,8*density,8*density,p);
+        RectF dst=new RectF((w-dw)/2,(h-dh)/2,(w+dw)/2,(h+dh)/2);
         canvas.drawBitmap(art,src,dst,p);
-        p.setColor(0xff26164b);canvas.drawRect(box.left,box.bottom-titleH,box.right,box.bottom,p);
+        float titleH=Math.min(42*density,box.height()*.42f);
+        p.setShader(new LinearGradient(0,box.bottom-titleH*1.5f,0,box.bottom,
+                new int[]{0x0026164b,0xee26164b,0xff26164b},null,Shader.TileMode.CLAMP));
+        canvas.drawRect(box.left,box.bottom-titleH*1.5f,box.right,box.bottom,p);
+        p.setShader(null);
         p.setColor(0xffffe8af);p.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         p.setTextAlign(Paint.Align.CENTER);
         p.setTextSize(Math.min(22*density,w/(heading.length()*.62f+3)));

@@ -9,22 +9,24 @@ import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-/** Native illustrated personal room with the child's own customized star character. */
+/** Native illustrated personal room with the child's own chosen companion. */
 public final class PlaylumiRoomView extends FrameLayout {
     private final PlaylumiRoom room;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-    public PlaylumiRoomView(Context context,PlaylumiRoom room,PlaylumiWardrobe wardrobe) {
+    public PlaylumiRoomView(Context context,PlaylumiRoom room,int avatar) {
         super(context);
         this.room=room;
         setWillNotDraw(false);
-        setContentDescription("De eigen kamer van jouw stervriend, met gekozen inrichting");
+        setContentDescription("De eigen kamer van jouw maatje, met gekozen inrichting");
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.WINDOW][room.selected(PlaylumiRoom.WINDOW)],
                 54,Gravity.TOP|Gravity.LEFT,32,30);
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.FURNITURE][room.selected(PlaylumiRoom.FURNITURE)],
                 60,Gravity.BOTTOM|Gravity.LEFT,12,37);
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.DECOR][room.selected(PlaylumiRoom.DECOR)],
                 54,Gravity.BOTTOM|Gravity.RIGHT,16,45);
-        PlaylumiCharacterView friend=new PlaylumiCharacterView(context,wardrobe);
+        PlaylumiAvatar friend=new PlaylumiAvatar(context,avatar);
+        friend.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        friend.setContentDescription("Jouw maatje in de kamer");
         LayoutParams starParams=new LayoutParams(dp(202),dp(225),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
         starParams.bottomMargin=dp(11);
         addView(friend,starParams);

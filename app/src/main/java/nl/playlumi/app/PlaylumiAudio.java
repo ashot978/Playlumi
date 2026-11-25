@@ -5,17 +5,15 @@ import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.media.ToneGenerator;
-import android.speech.tts.TextToSpeech;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
  * Playlumi's own original eight chimes, played quietly. Short WAVs are
  * synthesized once in the private app cache; no music download or permission.
- * Existing text-to-speech remains optional and works without these sounds.
+ * Synthetic narration is intentionally absent; music and effects are retained.
  */
 public final class PlaylumiAudio {
     private final AtomicIntegerArray loaded=new AtomicIntegerArray(PlaylumiTunes.COUNT);
@@ -23,8 +21,7 @@ public final class PlaylumiAudio {
     private final Context app;
     private SoundPool pool;
     private ToneGenerator fallback;
-    private TextToSpeech speech;
-    private volatile boolean ttsReady,enabled,released;
+    private volatile boolean enabled,released;
     private Thread preloader;
 
     public PlaylumiAudio(Context context,boolean enabled) {
@@ -49,18 +46,6 @@ public final class PlaylumiAudio {
             pool=null;
         }
         try {fallback=new ToneGenerator(AudioManager.STREAM_MUSIC,32);} catch(RuntimeException ignored){}
-        try {
-            speech=new TextToSpeech(app,status->{
-                if(released || speech==null)return;
-                if(status==TextToSpeech.SUCCESS) {
-                    int result=speech.setLanguage(Locale.forLanguageTag("nl-NL"));
-                    ttsReady=result!=TextToSpeech.LANG_MISSING_DATA &&
-                            result!=TextToSpeech.LANG_NOT_SUPPORTED;
-                    speech.setSpeechRate(.89f);
-                    speech.setPitch(1.06f);
-                }
-            });
-        } catch(RuntimeException ignored) {speech=null;}
     }
     private void prepare() {
         for(int i=0;i<PlaylumiTunes.COUNT && !released;i++) {
@@ -83,7 +68,6 @@ public final class PlaylumiAudio {
     public boolean isEnabled() {return enabled;}
     public void setEnabled(boolean value) {
         enabled=value;
-        if(!value && speech!=null)speech.stop();
     }
     private void cue(int effect,int fallbackTone) {
         if(released || !enabled)return;
@@ -112,22 +96,8 @@ public final class PlaylumiAudio {
         if(index<0 || index>=PlaylumiMelody.NOTES)throw new IllegalArgumentException("note");
         cue(PlaylumiTunes.NOTE_GREEN+index,ToneGenerator.TONE_PROP_BEEP);
     }
-    public boolean speak(String text) {
-        if(!enabled || !ttsReady || speech==null || released || text==null)return false;
-        try {
-            speech.speak(text,TextToSpeech.QUEUE_FLUSH,null,"playlumi-listen");
-            return true;
-        } catch(RuntimeException ignored) {return false;}
-    }
-    /** Keep narration on its current page, never talk over the next activity. */
-    public void stopSpeaking() {
-        if(speech!=null) {
-            try {speech.stop();} catch(RuntimeException ignored) {}
-        }
-    }
     public void close() {
         released=true;
-        if(speech!=null) {speech.stop();speech.shutdown();speech=null;}
         if(pool!=null) {pool.release();pool=null;}
         if(fallback!=null) {fallback.release();fallback=null;}
         // The private app cache may keep tiny synthesized WAVs for next launch.
