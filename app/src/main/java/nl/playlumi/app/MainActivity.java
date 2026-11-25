@@ -1058,19 +1058,34 @@ public class MainActivity extends Activity {
     }
     private void showDetail() {
         int mode=game.mode();
-        PlaylumiScores.Score s=scores.get(mode);
-        header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"Jouw eigen avontuur");
-        addText(ICONS[mode],76,0xff8a5ac6,6,4);
-        addText("⭐ "+s.correct+" punten",27,0xff3d8a72,7,4);
-        addText("Dit is jouw score voor "+LearningGame.GAME_NAMES[mode]+".",14,SUB,0,10);
-        Button play=tile("▶  Spelen!","Kies hoe je wilt spelen",0xffcff4dd,105);
-        addTile(play,6);play.setOnClickListener(v->move(LEVEL));
-        Button badge=tile("🏅 Mijn badges",s.earnedBadges()+" van 6 verdiend",
-                0xffffe4b9,94);
-        addTile(badge,6);badge.setOnClickListener(v->{badgePage=0;badgesFromTrophy=false;move(BADGES);});
+        PlaylumiScores.Score score=scores.get(mode);
+        String name=LearningGame.GAME_NAMES[mode];
+        header(ICONS[mode]+" "+name,"Jouw magische avontuur");
+        addIllustratedPortal(portalForMode(mode),name,240);
+        TextView progress=text("★  "+score.correct+" punten    ✦    "+
+                score.earnedBadges()+"/6 badges",20,0xffffe4a1);
+        GradientDrawable badgeBg=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff8052b8,0xff503180});
+        badgeBg.setCornerRadius(dp(23));
+        badgeBg.setStroke(dp(2),0xffffd49a);
+        progress.setPadding(dp(8),dp(11),dp(8),dp(11));
+        progress.setBackground(badgeBg);
+        addWidget(progress,3,9);
+        Button play=tile("▶  START AVONTUUR!","Direct spelen op jouw niveau",
+                0xffbdeecf,105);
+        play.setTextSize(21);
+        addTile(play,7);play.setOnClickListener(v->startCategoryNow());
+        Button level=tile("🎯  Niveau en spelvorm kiezen",
+                "Pas het spel aan zoals jij wilt",0xffe7d8fb,82);
+        addTile(level,4);level.setOnClickListener(v->move(LEVEL));
+        Button badge=tile("🏅  Mijn badges",
+                score.earnedBadges()+" van 6 verdiend",0xffffe4b9,76);
+        addTile(badge,4);
+        badge.setOnClickListener(v->{badgePage=0;badgesFromTrophy=false;move(BADGES);});
     }
     private void showLevel() {
         header("🚀 Kies je uitdaging","Hoe moeilijk wil je spelen?");
+        addIllustratedPortal(portalForMode(game.mode()),"Kies je missie",134);
         String[] descriptions={"Rustig beginnen","Een stapje verder","Een flinke uitdaging"};
         String[] emojis={"🌱","🌼","🏆"};
         for(int i=0;i<3;i++) {
@@ -1123,6 +1138,7 @@ public class MainActivity extends Activity {
     }
     private void showVariants() {
         header("🎲 Hoe wil je spelen?","Kies een spelvorm");
+        addIllustratedPortal(portalForMode(game.mode()),"Speel jouw avontuur",118);
         String[] names=variantNames();
         addText((variantPage+1)+" / 3",17,0xff9466c1,0,14);
         String[] icons={"🎯","🧩","✨","🌟","🚀"};
@@ -1182,6 +1198,7 @@ public class MainActivity extends Activity {
         LearningGame.Round round=game.round();
         boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
+        addIllustratedPortal(portalForMode(mode),LearningGame.GAME_NAMES[mode],102);
 
         LinearLayout progressRow=new LinearLayout(this);
         progressRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -1220,7 +1237,13 @@ public class MainActivity extends Activity {
         promptLine.setGravity(Gravity.CENTER_VERTICAL);
         TextView question=text(round.prompt,wide?18:20,0xff583b97);
         question.setPadding(dp(9),dp(9),dp(9),dp(9));
-        question.setBackground(rounded(0xfff0e4ff,19));
+        question.setTextColor(0xffffebad);
+        GradientDrawable promptBg=new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff7752b2,0xff4d2c83});
+        promptBg.setCornerRadius(dp(19));
+        promptBg.setStroke(dp(2),0xffffdf8f);
+        question.setBackground(promptBg);
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
         promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
@@ -1241,7 +1264,12 @@ public class MainActivity extends Activity {
                 round.display.length()>12?30:wide?32:38;
         TextView picture=text(round.display,pictureSize,round.displayColor);
         picture.setPadding(dp(9),dp(10),dp(9),dp(10));
-        picture.setBackground(rounded(Color.WHITE,22));
+        GradientDrawable pictureBg=new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.WHITE,0xfff2ecff,0xfffff5e5});
+        pictureBg.setCornerRadius(dp(22));
+        pictureBg.setStroke(dp(2),0xffd4a8e9);
+        picture.setBackground(pictureBg);
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
@@ -1611,6 +1639,7 @@ public class MainActivity extends Activity {
     }
     private void showMiniMenu() {
         header("🎪 Het speelplein","Tik een spelletje aan.");
+        addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Het Speelplein",164);
         String[] names={"Sleep de vormen","Tik de ballon","Dierenmemory"};
         String[] notes={"Sleep naar het huisje","Vind de juiste ballon",
                 "Zoek dezelfde diertjes"};
@@ -1653,6 +1682,7 @@ public class MainActivity extends Activity {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
                 "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
+        addIllustratedPortal(PlaylumiVillageView.SHAPES,"Speelplein",100);
         if(miniRound>=20) {
             characterHero(150);
             addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
@@ -2390,6 +2420,7 @@ public class MainActivity extends Activity {
     /** Ten calm rounds; progress is kept separate from existing score/rewards. */
     private void showStarCatch() {
         header("🌟 Vang de sterren","Ronde "+Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+" / "+PlaylumiStarCatch.ROUNDS);
+        addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Vang de sterren",98);
         if(starCatchRound>=PlaylumiStarCatch.ROUNDS){
             characterHero(140);
             addText("🏆 Alle sterren gevangen!",24,0xff59438f,8,12);
@@ -2435,6 +2466,7 @@ public class MainActivity extends Activity {
     private void showBubblePlay() {
         if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
         header("🫧 Het Bellenfeest","Ronde "+Math.min(bubbleRound+1,20)+" van 20");
+        addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Bellenfeest",96);
         if(bubbleRound>=20) {
             characterHero(170);
             addText("🎉 Wat een bubbelkampioen!",25,0xff63458c,10,10);
@@ -2622,6 +2654,7 @@ public class MainActivity extends Activity {
         if(melody==null)melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
         header("🎵 Het Muziekatelier","Melodie "+Math.min(melodyRound+1,PlaylumiMelody.ROUNDS)+
                 " / "+PlaylumiMelody.ROUNDS);
+        addIllustratedPortal(PlaylumiVillageView.MUSIC,"Muziekstudio",105);
         if(melodyRound>=PlaylumiMelody.ROUNDS) {
             characterHero(170);
             addText("🏆 Wat een muzikale ster!",26,0xff61418f,10,14);
