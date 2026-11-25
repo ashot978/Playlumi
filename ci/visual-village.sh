@@ -26,7 +26,7 @@ home() {
   echo "Rendered Android safe area: top=$safeTop bottom=$safeBottom"
 }
 snap() {
-  local name="$1",file="build/visual/screenshots/$1.png"
+  local name="$1" file="build/visual/screenshots/$1.png"
   adb shell screencap -p "/sdcard/visual-${name}.png"
   adb pull "/sdcard/visual-${name}.png" "$file" >/dev/null
   local bytes
