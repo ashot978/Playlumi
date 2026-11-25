@@ -217,6 +217,7 @@ public class MainActivity extends Activity {
             adaptive.restore(cat,prefs.getInt("learn_lvl_"+cat,-1),
                     prefs.getInt("learn_seen_"+cat,0),prefs.getInt("learn_good_"+cat,0));
         smartDifficulty=prefs.getBoolean("smart_mode",false);
+        if(page==PLAY&&villageLaunch==PlaylumiVillageHit.ROCKET&&PlaylumiRocketCurriculum.isMathMode(mode))smartDifficulty=false;
         adventures=new PlaylumiAdventure();
         for(int w=0;w<PlaylumiAdventure.WORLDS;w++)
             adventures.restore(w,prefs.getInt("adventure_progress_"+w,0));
