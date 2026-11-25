@@ -32,7 +32,7 @@ Do not substitute a flat illustration or an empty screen.
 ## Private offline signing
 Read the original PKCS12 keystore from the private key archive. Never upload its
 contents or password to GitHub, logs or release artifacts.
-Use standard SDK zipalign and apksigner (v1 and v2 compatible from minSdk 23),
+Check Gradle's existing APK ZIP alignment with the portable checker, then use official Android SDK apksigner (v1 and v2 compatible from minSdk 23),
 through `scripts/sign-release.sh`. No private key should enter any Git commit.
 Compare the certificate fingerprint against the fixed original fingerprint.
 
