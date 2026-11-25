@@ -1,0 +1,62 @@
+name: Android Playlumi 0.74 Rendered Screens
+on: [push, workflow_dispatch]
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Download exact Playlumi 0.74 APK from successful packaging run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p app/build/outputs/apk/debug
+          gh run download 45620111605 \
+            --repo ashot978/Playlumi \
+            --name playlumi-074-package-debug-apk \
+            --dir /tmp/playlumi-verified-build
+          cp /tmp/playlumi-verified-build/app/build/outputs/apk/debug/app-debug.apk \
+            app/build/outputs/apk/debug/app-debug.apk
+          echo "d1465add9b7c55083104b88f64d3455157dda2f7ea18d9a2133264c8439d924e  app/build/outputs/apk/debug/app-debug.apk" | sha256sum --check
+
+      - name: Enable KVM or emulator software fallback
+        shell: bash
+        run: |
+          if [[ -e /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+          fi
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+          fi
+
+      - name: Real rendered screenshot and navigation acceptance
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          disable-linux-hw-accel: auto
+          emulator-boot-timeout: 390
+          script: bash ci/visual-village.sh
+
+      - name: Preserve actual nonblank game screenshots for human review
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playlumi-074-rendered-screen-previews
+          path: build/visual/screenshots/
+          if-no-files-found: warn
+          retention-days: 30

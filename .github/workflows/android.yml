@@ -1,10 +1,10 @@
-name: Android Playlumi CI
+name: Android Playlumi 0.74 UI acceptance
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600730" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600740" >> "$GITHUB_ENV"
       - name: Test, lint and build both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
 
@@ -37,7 +37,7 @@ jobs:
               exit 1
             fi
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600730'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600740'"
           done
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
@@ -55,22 +55,38 @@ jobs:
           chmod +x build/signing-tools/apksigner build/signing-tools/zipalign
           (cd build/signing-tools && sha256sum apksigner lib/apksigner.jar zipalign > tool-checksums.txt)
 
+      - name: Enable KVM acceleration for Android emulator
+        shell: bash
+        run: |
+          if [[ -e /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+          fi
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo "ANDROID_I_WANT_MY_TCG=yes" >> "$GITHUB_ENV"
+            echo "WARNING: no KVM; enabling Android emulator software fallback"
+          else
+            echo "KVM hardware acceleration available"
+          fi
+
       - name: Emulator game and screenshot regression
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          target: google_apis
+          target: aosp_atd
           arch: x86_64
           profile: pixel_7
           disable-animations: true
-          emulator-boot-timeout: 900
+          emulator-boot-timeout: 360
+          disable-linux-hw-accel: auto
           script: bash ci/smoke-village.sh
 
       - name: Upload emulator QA screenshots
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playlumi-073-screen-qa
+          name: playlumi-074-screen-qa
           path: build/qa/screenshots/
           if-no-files-found: warn
           retention-days: 30
@@ -78,7 +94,7 @@ jobs:
       - name: Upload validated debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-debug-apk
+          name: playlumi-074-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             build-debug-sha256.txt
@@ -88,7 +104,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-unsigned-release
+          name: playlumi-074-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -98,7 +114,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-offline-signing-tools
+          name: playlumi-074-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30

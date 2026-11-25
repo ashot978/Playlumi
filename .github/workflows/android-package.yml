@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600730" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600740" >> "$GITHUB_ENV"
       - name: Test, lint and build both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
 
@@ -37,7 +37,7 @@ jobs:
               exit 1
             fi
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600730'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600740'"
           done
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
@@ -58,7 +58,7 @@ jobs:
       - name: Upload validated debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-debug-apk
+          name: playlumi-074-package-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             build-debug-sha256.txt
@@ -68,7 +68,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-unsigned-release
+          name: playlumi-074-package-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -78,7 +78,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-signing-tools
+          name: playlumi-074-package-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
