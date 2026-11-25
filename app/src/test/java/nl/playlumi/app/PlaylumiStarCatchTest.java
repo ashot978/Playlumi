@@ -1,35 +1,47 @@
 package nl.playlumi.app;
-
 import org.junit.Test;
 import java.util.Random;
 import static org.junit.Assert.*;
 
 public final class PlaylumiStarCatchTest {
-    @Test public void allAgeGroupsGetReachableStarTargets() {
+    @Test public void allAgeGroupsGetExactlyEnoughStarsAndDistractors() {
         Random rng=new Random(96);
         for(int age=0;age<3;age++)for(int tryNo=0;tryNo<250;tryNo++){
             PlaylumiStarCatch game=PlaylumiStarCatch.generate(age,rng);
             assertEquals(age+3,game.target());
+            assertEquals(game.target(),Integer.bitCount(game.starMask()));
             assertTrue(game.total()>game.target());
-            for(int index=0;index<game.target();index++){
-                assertTrue(game.catchStar(index));
-                assertFalse(game.catchStar(index));
+            for(int i=0;i<game.total();i++){
+                if(!game.isStar(i)){
+                    assertFalse(game.catchStar(i));
+                    assertFalse(game.caught(i));
+                }
+            }
+            assertEquals(0,game.collected());
+            for(int i=0;i<game.total();i++){
+                if(game.isStar(i)){
+                    assertTrue(game.catchStar(i));
+                    assertFalse(game.catchStar(i));
+                }
             }
             assertTrue(game.finished());
-            assertFalse(game.catchStar(game.target()));
+            for(int i=0;i<game.total();i++)assertFalse(game.catchStar(i));
         }
     }
-    @Test public void starsPersistIfTheScreenRotates() {
+    @Test public void starsAndHeartsPersistIfTheScreenRotates() {
         PlaylumiStarCatch before=PlaylumiStarCatch.generate(1,new Random(28));
-        before.catchStar(0);
-        before.catchStar(2);
-        PlaylumiStarCatch after=PlaylumiStarCatch.restore(
-                before.target(),before.total(),before.mask());
-        assertEquals(2,after.collected());
-        assertTrue(after.caught(0));
-        assertTrue(after.caught(2));
-        assertFalse(after.catchStar(0));
-        for(int i=0;i<after.total()&&!after.finished();i++)after.catchStar(i);
+        int chosen=-1;
+        for(int i=0;i<before.total();i++)if(before.isStar(i)){chosen=i;break;}
+        assertTrue(before.catchStar(chosen));
+        PlaylumiStarCatch after=PlaylumiStarCatch.restore(before.target(),before.total(),before.starMask(),before.mask());
+        assertEquals(1,after.collected());
+        assertEquals(before.starMask(),after.starMask());
+        assertTrue(after.caught(chosen));
+        assertFalse(after.catchStar(chosen));
+        for(int i=0;i<after.total();i++){
+            if(!after.isStar(i))assertFalse(after.catchStar(i));
+            else if(i!=chosen)assertTrue(after.catchStar(i));
+        }
         assertTrue(after.finished());
     }
     @Test(expected=IllegalArgumentException.class)
@@ -38,7 +50,11 @@ public final class PlaylumiStarCatchTest {
         game.catchStar(game.total());
     }
     @Test(expected=IllegalArgumentException.class)
+    public void aHeartCannotBeRestoredAsCollected(){
+        PlaylumiStarCatch.restore(3,6,7,8);
+    }
+    @Test(expected=IllegalArgumentException.class)
     public void tamperedStateDoesNotRestore(){
-        PlaylumiStarCatch.restore(3,6,63);
+        PlaylumiStarCatch.restore(3,6,63,0);
     }
 }

@@ -8,7 +8,7 @@ import java.util.Random;
 /** Independently testable rules for three hands-on preschool minigames. */
 public final class PlaylumiMiniChallenge {
     public static final int DRAG=0, BALLOONS=1, MEMORY=2;
-    public static final String[] NAMES={"Sleep de vormen","Tik de ballon","Memory"};
+    public static final String[] NAMES={"Sleep de vormen","Tel de ballonnen","Memory"};
     public static final String[] ICONS={"🔷","🎈","🃏"};
     public final int kind,level;
     public final String question,target;
@@ -43,11 +43,12 @@ public final class PlaylumiMiniChallenge {
                     options.get(answer),options,answer);
         }
         if(kind==BALLOONS) {
-            int maximum=level==0?9:level==1?20:50;
+            // Count small concrete quantities instead of matching printed numbers.
+            int maximum=level==0?3:level==1?5:8;
             List<Integer> nums=uniqueIndices(random,count,maximum);
             for(int number:nums)options.add(""+(number+1));
             int answer=random.nextInt(options.size());
-            return new PlaylumiMiniChallenge(kind,level,"Tik op de ballon met "+options.get(answer),
+            return new PlaylumiMiniChallenge(kind,level,"Waar zie je "+options.get(answer)+(options.get(answer).equals("1")?" ballon?":" ballonnen?"),
                     options.get(answer),options,answer);
         }
         int pairs=level==0?3:level==1?4:6;
@@ -62,6 +63,16 @@ public final class PlaylumiMiniChallenge {
         for(int i=0;i<range;i++)values.add(i);
         Collections.shuffle(values,r);
         return values.subList(0,count);
+    }
+    /** A balloon card represents a quantity, never a printed number. */
+    public int balloonCount(int index){
+        if(kind!=BALLOONS)throw new IllegalStateException("not balloons");
+        check(index);
+        return Integer.parseInt(choices.get(index));
+    }
+    public int targetBalloonCount(){
+        if(kind!=BALLOONS)throw new IllegalStateException("not balloons");
+        return balloonCount(correctIndex);
     }
     /** Clicks only work in tap-based games. A shape MUST arrive via a drag drop. */
     public boolean choose(int index) {

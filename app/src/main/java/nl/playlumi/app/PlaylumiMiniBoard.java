@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.view.DragEvent;
@@ -146,7 +147,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             board.addView(choices,choiceParams);
             addChoices(choices,false);
         } else if(question.kind==PlaylumiMiniChallenge.BALLOONS) {
-            status.setText("🎈 "+question.question);
+            status.setText("Tel rustig en kies een groep.");
             addView(status,new LayoutParams(-1,dp(45)));
             addChoices(this,true);
         } else {
@@ -169,21 +170,29 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     }
     private void addChoices(LinearLayout parent,boolean balloon) {
         int count=question.choices.size();
-        int columns=count==3 || count>4?3:2;
+        int columns=balloon?2:(count==3 || count>4?3:2);
         for(int start=0;start<count;start+=columns) {
             LinearLayout row=new LinearLayout(getContext());
             row.setGravity(Gravity.CENTER);
             for(int idx=start;idx<Math.min(start+columns,count);idx++) {
                 final int answer=idx;
-                String content=balloon?"🎈\n"+question.choices.get(idx):question.choices.get(idx);
+                String content=balloon?"":question.choices.get(idx);
                 Button b=tile(content,idx,balloon?28:landscape()?31:36);
-                LayoutParams p=new LayoutParams(0,dp(balloon?96:76),1f);
+                if(balloon){
+                    int quantity=question.balloonCount(idx);
+                    LayerDrawable art=new LayerDrawable(new android.graphics.drawable.Drawable[]{
+                            PlaylumiMagicArt.pastel(getContext(),0),new PlaylumiBalloonGroup(quantity)});
+                    b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),art,null));
+                    b.setContentDescription("Groep met "+quantity+(quantity==1?" ballon":" ballonnen"));
+                }
+                int balloonHeight=landscape()?120:(getResources().getConfiguration().screenHeightDp<700?98:112);
+                LayoutParams p=new LayoutParams(0,dp(balloon?balloonHeight:76),1f);
                 p.setMargins(dp(4),dp(4),dp(4),dp(4));
                 row.addView(b,p);
                 cards.add(b);
                 if(balloon) {
                     b.setOnClickListener(v->checkAnswer(answer,false));
-                    floatBalloon(b,idx);
+                    // Keep all balloons still and individually countable.
                 } else {
                     // Tap provides guidance only; a real ACTION_DROP is necessary to score.
                     b.setOnClickListener(v->status.setText("👆 Houd de vorm vast en sleep naar het huisje"));

@@ -19,8 +19,9 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
     public interface Listener {
         void onStar(int collected);
         void onFinished();
+        void onMistake();
     }
-    private static final String[] ICONS={"⭐","🌟","💛","✨","💜","⭐","🌟","💛"};
+    private static final String STAR="⭐",HEART="💜";
     private static final int[] COLORS={0xffffedab,0xffd6eafa,0xffffd5e6,
             0xffd7f5de,0xffe8ddff,0xffffe6c6};
     private final ArrayList<Button> stars=new ArrayList<>();
@@ -37,17 +38,17 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
                 new int[]{0xffe5f6ff,0xfff6eaff,0xffe7fae8});
         backdrop.setCornerRadius(dp(24));
         setBackground(backdrop);
-        setContentDescription("Vang de sterren door ze aan te raken");
+        setContentDescription("Vang alleen de gouden sterren");
         for(int i=0;i<game.total();i++){
             final int index=i;
             Button star=new Button(context);
             star.setAllCaps(false);
-            star.setText(ICONS[i%ICONS.length]);
+            star.setText(game.isStar(index)?STAR:HEART);
             star.setTextSize(32);
             star.setGravity(Gravity.CENTER);
             star.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
             star.setPadding(0,0,0,0);
-            star.setContentDescription("Vang ster "+(index+1));
+            star.setContentDescription((game.isStar(index)?"Vang ster ":"Hartje ")+(index+1));
             GradientDrawable shape=new GradientDrawable();
             shape.setShape(GradientDrawable.OVAL);
             shape.setColor(COLORS[i%COLORS.length]);
@@ -82,6 +83,10 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
         return (int)(getResources().getDisplayMetrics().density*val+.5f);
     }
     private void catchStar(Button star,int index) {
+        if(!game.isStar(index)) {
+            if(!game.finished()){PlaylumiDelight.wiggle(star);listener.onMistake();}
+            return;
+        }
         if(!game.catchStar(index))return;
         ObjectAnimator floating=motions.get(index);
         if(floating!=null)floating.cancel();

@@ -32,6 +32,19 @@ public class PlaylumiMiniChallengeTest {
                     }
                 }
     }
+    @Test public void balloonCardsAreUniqueCountableGroups(){
+        Random r=new Random(812);
+        for(int age=0;age<3;age++)for(int n=0;n<200;n++){
+            PlaylumiMiniChallenge game=PlaylumiMiniChallenge.generate(PlaylumiMiniChallenge.BALLOONS,age,r);
+            int max=age==0?3:age==1?5:8;
+            assertTrue(game.question.startsWith("Waar zie je "+game.targetBalloonCount()+" ballon"));
+            for(int i=0;i<game.choices.size();i++){
+                int quantity=game.balloonCount(i);
+                assertTrue(quantity>=1 && quantity<=max);
+                assertEquals(quantity==game.targetBalloonCount(),game.choose(i));
+            }
+        }
+    }
     @Test(expected=IllegalStateException.class)
     public void tappingAShapeCannotCompleteADragChallenge() {
         PlaylumiMiniChallenge drag=PlaylumiMiniChallenge.generate(

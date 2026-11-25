@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.79: full Android rendering, real controls and regression tests.
+# Playlumi 0.80: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
@@ -219,6 +219,67 @@ adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
 grep -q "Mijn beloningen" build/qa/ui.xml
 ! grep -q "Sterkleur" build/qa/ui.xml
 screenshot rewards
+# Real taps: choose a wrong balloon quantity, then the correct quantity.
+home
+tapVillage 185 1040
+assertScreen 43
+tapText "Tel de ballonnen"
+assertScreen 13
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+read -r good bad < <(python3 - <<'PY'
+import re,xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+target=next(int(m.group(1)) for n in nodes if (m:=re.search(r'Waar zie je (\d+) ballon',n.get('text',''))))
+groups=[]
+for n in nodes:
+    m=re.fullmatch(r'Groep met (\d+) ballon(?:nen)?',n.get('content-desc',''))
+    if m and n.get('clickable')=='true':
+        assert n.get('text','')=='', 'Balloon card must not show a printed number'
+        groups.append(int(m.group(1)))
+assert target in groups and len(set(groups))==len(groups)
+print(target,next(x for x in groups if x!=target))
+PY
+)
+tapText "Groep met $bad ballon"
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "Probeer eens een andere" build/qa/ui.xml
+! grep -q "Verder spelen!" build/qa/ui.xml
+tapText "Groep met $good ballon"
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "Verder spelen!" build/qa/ui.xml
+screenshot game-balloon-count-solved
+# A heart must leave the score at zero; only real stars complete the round.
+home
+tapVillage 185 1040
+assertScreen 43
+tapText "Vang de sterren"
+assertScreen 42
+tapText "Hartje "
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+target=$(python3 - <<'PY'
+import re,xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+for n in nodes:
+    m=re.search(r'0 / ([345])',n.get('text',''))
+    if m:
+        print(m.group(1));break
+else: raise SystemExit('Heart changed the star score')
+PY
+)
+tapText "Hartje "
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "0 / $target" build/qa/ui.xml
+for ((i=0;i<target;i++)); do tapText "Vang ster "; done
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "$target / $target" build/qa/ui.xml
+grep -q "Volgende ronde" build/qa/ui.xml
+screenshot game-stars-solved
 # Exercise unfolded / tablet proportions on the same real rendered emulator.
 adb shell wm size 1600x1768
 adb shell wm density 280
@@ -245,4 +306,4 @@ adb shell wm density reset
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"
+echo "PASS: real balloon quantities, heart rejection, star collection, six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"

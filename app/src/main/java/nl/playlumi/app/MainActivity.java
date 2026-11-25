@@ -266,7 +266,7 @@ public class MainActivity extends Activity {
             starCatchRound=state==null?0:Math.max(0,Math.min(PlaylumiStarCatch.ROUNDS,state.getInt("starCatchRound",0)));
             if(starCatchRound<PlaylumiStarCatch.ROUNDS){
                 if(state!=null && state.getInt("starCatchTotal",0)>0)try {
-                    starCatch=PlaylumiStarCatch.restore(state.getInt("starCatchTarget"),state.getInt("starCatchTotal"),state.getInt("starCatchMask"));
+                    starCatch=PlaylumiStarCatch.restore(state.getInt("starCatchTarget"),state.getInt("starCatchTotal"),state.getInt("starCatchTypes",0),state.getInt("starCatchMask"));
                 } catch(IllegalArgumentException ignored) {}
                 if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
                 starCatchSolved=starCatch.finished();
@@ -326,7 +326,7 @@ public class MainActivity extends Activity {
         out.putInt("miniRound",miniRound);
         out.putInt("bubbleRound",bubbleRound);
         out.putInt("starCatchRound",starCatchRound);
-        if(starCatch!=null){out.putInt("starCatchTarget",starCatch.target());out.putInt("starCatchTotal",starCatch.total());out.putInt("starCatchMask",starCatch.mask());}
+        if(starCatch!=null){out.putInt("starCatchTarget",starCatch.target());out.putInt("starCatchTotal",starCatch.total());out.putInt("starCatchMask",starCatch.mask());out.putInt("starCatchTypes",starCatch.starMask());}
         out.putInt("melodyRound",melodyRound);
         out.putBoolean("melodySolved",melodySolved);
         if(melody!=null) {
@@ -1142,7 +1142,7 @@ public class MainActivity extends Activity {
                 break;
             case PlaylumiVillageHit.PLAYGROUND:
                 worldChoice("Dierenmemory","Zoek bij elkaar passende dieren",COLORS[0],()->startWorldMini(PlaylumiMiniChallenge.MEMORY));
-                worldChoice("Tik de ballon","Vind de juiste ballon",COLORS[1],()->startWorldMini(PlaylumiMiniChallenge.BALLOONS));
+                worldChoice("Tel de ballonnen","Leer hoeveelheden tellen",COLORS[1],()->startWorldMini(PlaylumiMiniChallenge.BALLOONS));
                 worldChoice("Bellenfeest","Laat zeepbellen knappen",COLORS[2],()->{
                     bubbleRound=0;bubbleSolved=false;pendingBadges.clear();
                     bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());move(BUBBLE_PLAY);
@@ -1670,13 +1670,13 @@ public class MainActivity extends Activity {
 
     private int miniCategory() {
         return miniKind==PlaylumiMiniChallenge.DRAG?LearningGame.SHAPES:
-                miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.NUMBERS:LearningGame.PATTERNS;
+                miniKind==PlaylumiMiniChallenge.BALLOONS?LearningGame.COUNT:LearningGame.PATTERNS;
     }
     private void showMiniMenu() {
         header("🎪 Het speelplein","Tik een spelletje aan.");
         addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Het Speelplein",164);
-        String[] names={"Sleep de vormen","Tik de ballon","Dierenmemory"};
-        String[] notes={"Sleep naar het huisje","Vind de juiste ballon",
+        String[] names={"Sleep de vormen","Tel de ballonnen","Dierenmemory"};
+        String[] notes={"Sleep naar het huisje","Leer hoeveelheden tellen",
                 "Zoek dezelfde diertjes"};
         Button[] first=new Button[3];
         for(int i=0;i<3;i++) {
@@ -2435,7 +2435,7 @@ public class MainActivity extends Activity {
 
     /** Ten calm rounds; progress is kept separate from existing score/rewards. */
     private void showStarCatch() {
-        header("🌟 Vang de sterren","Ronde "+Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+" / "+PlaylumiStarCatch.ROUNDS);
+        header("Sterren vangen",Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+"/"+PlaylumiStarCatch.ROUNDS);
         addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Vang de sterren",98);
         if(starCatchRound>=PlaylumiStarCatch.ROUNDS){
             characterHero(140);
@@ -2448,11 +2448,14 @@ public class MainActivity extends Activity {
         }
         if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
         final PlaylumiStarCatch round=starCatch;
-        addText("Tik "+round.target()+" sterren aan. Geen tijdslimiet!",20,0xff60458e,5,7);
-        starCatchProgress=text("⭐ "+round.collected()+" / "+round.target(),21,0xff298064);
+        addWidget(magicRibbon("Vang "+round.target()+" gouden sterren!",19),0,5);
+        starCatchProgress=text("⭐ "+round.collected()+" / "+round.target(),21,PlaylumiMagicArt.INK);
+        starCatchProgress.setBackground(PlaylumiMagicArt.creamPlate(this));
+        starCatchProgress.setPadding(dp(8),dp(8),dp(8),dp(8));
         addWidget(starCatchProgress,2,6);
         PlaylumiStarCatchBoard board=new PlaylumiStarCatchBoard(this,round,new PlaylumiStarCatchBoard.Listener(){
             @Override public void onStar(int count){starCatchProgress.setText("⭐ "+count+" / "+round.target());sound.pop();}
+            @Override public void onMistake(){sound.mistake();}
             @Override public void onFinished(){
                 if(starCatchSolved)return;
                 starCatchSolved=true;
