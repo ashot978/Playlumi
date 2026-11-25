@@ -77,8 +77,10 @@ tasks.register('prepareVillageArt') {
     }
 }
 android.sourceSets.main.assets.srcDirs += [generatedVillageDir]
+// All app tasks that can inspect assets must wait for artwork generation.
+// This also covers AGP's lint model tasks, not only mergeDebugAssets.
 tasks.configureEach {
-    if (name == 'mergeDebugAssets' || name == 'mergeReleaseAssets') {
+    if (name != 'prepareVillageArt' && name != 'clean') {
         dependsOn(tasks.named('prepareVillageArt'))
     }
 }
