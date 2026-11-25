@@ -811,6 +811,10 @@ public class MainActivity extends Activity {
                     }
                     stage.setPadding(0,Math.max(0,top),0,Math.max(0,bottom));
                     currentScroller.setPadding(0,0,0,0);
+                    if((getApplicationInfo().flags &
+                            android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
+                        android.util.Log.i("PlaylumiQA","safeTop="+Math.max(0,top)+
+                                " safeBottom="+Math.max(0,bottom));
                 } else {
                     stage.setPadding(0,0,0,0);
                     currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
@@ -865,6 +869,9 @@ public class MainActivity extends Activity {
             case STAR_CATCH: showStarCatch();break;
             default: throw new IllegalStateException("page");
         }
+        if((getApplicationInfo().flags &
+                android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
+            android.util.Log.i("PlaylumiQA","screen="+page+" villageLaunch="+villageLaunch);
         if(!PlaylumiMotion.isReduced()) {
             stage.setAlpha(0f);stage.setTranslationX(dp(22));
             stage.animate().alpha(1).translationX(0).setDuration(280)
