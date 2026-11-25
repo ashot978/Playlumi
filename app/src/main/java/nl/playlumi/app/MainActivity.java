@@ -813,7 +813,7 @@ public class MainActivity extends Activity {
                     move(WORLD_HUB);
                     break;
                 case PlaylumiVillageView.SHAPES:
-                    miniKind=PlaylumiMiniChallenge.SHAPES;
+                    miniKind=PlaylumiMiniChallenge.DRAG;
                     miniRound=0;miniSolved=false;pendingBadges.clear();
                     mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
                     move(MINI_PLAY);
