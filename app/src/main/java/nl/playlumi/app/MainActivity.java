@@ -1320,7 +1320,7 @@ public class MainActivity extends Activity {
         root.addView(section,headingParams);
 
         Button quick=tile("Speel meteen  →",
-                "Een vrolijke korte ronde",PlaylumiVisualStyle.MINT,tablet?90:95);
+                "",PlaylumiVisualStyle.MINT,tablet?90:95);
         quick.setBackground(primaryAction());
         quick.setTextColor(Color.WHITE);
         quick.setTextSize(20);
@@ -1616,6 +1616,8 @@ public class MainActivity extends Activity {
         progressParams.setMargins(dp(3),0,dp(3),dp(10));
         root.addView(progressRow,progressParams);
 
+        // Distribute spare vertical space around the game on tall Fold/tablet displays.
+        if(wide)root.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1f));
         LinearLayout questions=root;
         LinearLayout answers=root;
         if(wide) {
@@ -1727,6 +1729,7 @@ public class MainActivity extends Activity {
         answers.addView(nextButton,nextParams);
         nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->continueAfterAnswer());
+        if(wide)root.addView(new View(this),new LinearLayout.LayoutParams(-1,0,1f));
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
