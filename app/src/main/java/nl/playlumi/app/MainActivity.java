@@ -491,6 +491,50 @@ public class MainActivity extends Activity {
         GradientDrawable b=new GradientDrawable();
         b.setColor(color);b.setCornerRadius(dp(radius));return b;
     }
+    private int mix(int a,int b,float amount) {
+        float t=Math.max(0f,Math.min(1f,amount));
+        return Color.rgb(
+                Math.round(Color.red(a)*(1-t)+Color.red(b)*t),
+                Math.round(Color.green(a)*(1-t)+Color.green(b)*t),
+                Math.round(Color.blue(a)*(1-t)+Color.blue(b)*t));
+    }
+    /** A playful glossy 3D-like card, matching the purple-and-gold village. */
+    private GradientDrawable gameTileBackground(int color) {
+        GradientDrawable b=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{mix(color,Color.WHITE,.40f),color,mix(color,0xffb299d7,.20f)});
+        b.setCornerRadius(dp(21));
+        b.setStroke(dp(2),mix(color,0xff8154b9,.55f));
+        return b;
+    }
+    private void addIllustratedPortal(int place,String title,int heightDp) {
+        PlaylumiPortalView art=new PlaylumiPortalView(this,place,title);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(heightDp));
+        p.setMargins(dp(1),dp(8),dp(1),dp(9));
+        root.addView(art,p);
+    }
+    private int portalForMode(int mode) {
+        if(mode==LearningGame.COUNT || mode==LearningGame.NUMBERS)
+            return PlaylumiVillageView.ROCKET;
+        if(mode==LearningGame.LETTERS || mode==LearningGame.WORDS)
+            return PlaylumiVillageView.BOOKS;
+        if(mode==LearningGame.SHAPES)
+            return PlaylumiVillageView.SHAPES;
+        if(mode==LearningGame.COLORS)
+            return PlaylumiVillageView.COLORS;
+        return PlaylumiVillageView.PLAYGROUND;
+    }
+    private void startCategoryNow() {
+        quickCategoryPlay=true;
+        storyStage=-1;smartDifficulty=true;roundHadMistake=false;pendingLevel=-1;
+        sessionSolved=0;sessionAttempts=0;feedback="";
+        pendingBadges.clear();
+        difficulty=adaptive.level(game.mode(),Math.max(0,age));
+        game.configure(game.mode(),0,difficulty);
+        prefs().edit().putInt("last_played_category",game.mode())
+                .putInt("last_played_variant",0).apply();
+        saveRecent();
+        move(PLAY);
+    }
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
@@ -516,9 +560,9 @@ public class MainActivity extends Activity {
         b.setMaxLines(4);
         b.setPadding(dp(10),dp(9),dp(10),dp(9));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                rounded(color,20),null));
-        b.setElevation(dp(2));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55ffffff),
+                gameTileBackground(color),null));
+        b.setElevation(dp(5));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -627,11 +671,18 @@ public class MainActivity extends Activity {
         boolean gameHeader=gameScreen();
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8),dp(4),dp(8),dp(4));
+        GradientDrawable barBg=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff8056bf,0xff58368e,0xff442879});
+        barBg.setCornerRadius(dp(20));
+        barBg.setStroke(dp(2),0xffd4b3f2);
+        row.setBackground(barBg);
+        row.setElevation(dp(5));
         if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
-            TextView back=text("←",27,0xff60448e);
+            TextView back=text("❮",22,0xffffe6a7);
             back.setGravity(Gravity.CENTER);
             back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
-                    rounded(0xffeee4ff,16),null));
+                    rounded(0xff7652a8,14),null));
             back.setContentDescription("Terug naar het vorige scherm");
             back.setClickable(true);back.setFocusable(true);
             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(42),dp(42));
@@ -639,7 +690,7 @@ public class MainActivity extends Activity {
             row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        TextView title=text(heading,gameHeader?19:22,0xff52378b);
+        TextView title=text(heading,gameHeader?18:21,Color.WHITE);
         title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
         title.setMaxLines(1);
         title.setSingleLine(true);
@@ -648,7 +699,7 @@ public class MainActivity extends Activity {
         row.addView(title,tp);
         if(gameHeader) {
             if(subtitle!=null && !subtitle.isEmpty()) {
-                TextView status=text(subtitle.replace("Uitdaging ",""),12,SUB);
+                TextView status=text(subtitle.replace("Uitdaging ",""),12,0xffffe3a0);
                 status.setSingleLine(true);
                 status.setPadding(dp(5),0,dp(5),0);
                 row.addView(status,new LinearLayout.LayoutParams(-2,dp(45)));
@@ -667,8 +718,21 @@ public class MainActivity extends Activity {
             iconParams.setMargins(dp(5),0,0,0);
             row.addView(star,iconParams);
         }
-        LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(50));
-        rowp.setMargins(0,0,0,dp(gameHeader?4:5));
+        // One consistent exit to the real illustrated village on every game page.
+        if(page!=HOME && page!=AGE) {
+            TextView village=text("⌂",28,0xffffdf86);
+            village.setGravity(Gravity.CENTER);
+            village.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
+                    rounded(0xff6c469d,14),null));
+            village.setContentDescription("Terug naar het magische dorp");
+            village.setClickable(true);village.setFocusable(true);
+            LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(dp(42),dp(42));
+            hp.setMargins(dp(5),0,0,0);
+            row.addView(village,hp);
+            village.setOnClickListener(v->move(HOME));
+        }
+        LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(gameHeader?60:66));
+        rowp.setMargins(0,0,0,dp(gameHeader?9:10));
         root.addView(row,rowp);
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
