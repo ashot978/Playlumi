@@ -25,21 +25,8 @@ mkdir -p app/build/reports/playlumi-visual
 adb exec-out screencap -p > app/build/reports/playlumi-visual/first-launch.png
 test -s app/build/reports/playlumi-visual/first-launch.png
 
-# Install the EXACT original-signed release while the CI emulator is still alive.
-SIGNED="release-candidates/playlumi-0.63.0-original-signed.apk"
-if [ -s "$SIGNED" ]; then
-  adb uninstall nl.playlumi.app
-  adb install "$SIGNED"
-  adb logcat -c
-  adb shell am start -W -n nl.playlumi.app/.MainActivity
-  sleep 5
-  test -n "$(adb shell pidof nl.playlumi.app | tr -d '\r')"
-  if adb logcat -d -v brief | grep -F "Process: nl.playlumi.app"; then
-    echo "FAIL: original-signed Playlumi crashed after actual emulator install"
-    exit 1
-  fi
-  echo "PASS: original-signed Playlumi installed and launched on API 35 emulator"
-fi
+# Keep the newly compiled debug APK installed for the UI-navigation smoke test.
+# The previously signed 0.63 release must NOT replace the candidate under test.
 
 # Screenshot is best effort; Android Pixel Launcher can show an unrelated
 # first-boot ANR dialog before Playlumi's own UI becomes interactive.
