@@ -673,7 +673,7 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        root.setPadding(dp(side),dp(5),dp(side),dp(12));
+        root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),\n                page==HOME?0:dp(side),page==HOME?0:dp(12));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
@@ -801,48 +801,60 @@ public class MainActivity extends Activity {
         saveRecent();
         move(PLAY);
     }
-    /** The start screen is one living game world, not a digital workbook menu. */
+    /** Picture-driven village hub. Every building goes to a real existing game. */
     private void showHome() {
-        header("🌟 Playlumi","Welkom in jouw sterrenwereld");
-        PlaylumiStarWorld starWorld=new PlaylumiStarWorld(this,location->{
-            if(sound!=null)sound.tap();
-            switch(location) {
-                case PlaylumiStarWorld.ADVENTURE:
-                    world=0;
-                    storyPage=Math.min(2,adventures.progress(world)/2);
-                    move(ADVENTURE_MAP);
+        PlaylumiVillageView village=new PlaylumiVillageView(this,place->{
+            switch(place) {
+                case PlaylumiVillageView.ROCKET:
+                    selectCategory(LearningGame.COUNT);
                     break;
-                case PlaylumiStarWorld.EXPLORE:
-                    move(WORLD_PICKER);
+                case PlaylumiVillageView.BOOKS:
+                    world=1;storyPage=Math.min(2,adventures.progress(world)/2);
+                    move(WORLD_HUB);
                     break;
-                case PlaylumiStarWorld.MINI_GAMES:
-                    move(MINI_MENU);
+                case PlaylumiVillageView.SHAPES:
+                    miniKind=PlaylumiMiniChallenge.SHAPES;
+                    miniRound=0;miniSolved=false;pendingBadges.clear();
+                    mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+                    move(MINI_PLAY);
                     break;
-                case PlaylumiStarWorld.MUSIC:
-                    melodyRound=0;melodySolved=false;
-                    pendingBadges.clear();
+                case PlaylumiVillageView.MUSIC:
+                    melodyRound=0;melodySolved=false;pendingBadges.clear();
                     melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
                     move(MUSIC_PLAY);
                     break;
-                case PlaylumiStarWorld.GARDEN:
-                    gardenPage=0;
-                    move(GARDEN_MENU);
+                case PlaylumiVillageView.PLAYGROUND:
+                    move(MINI_MENU);
                     break;
-                case PlaylumiStarWorld.FRIEND:
+                case PlaylumiVillageView.COLORS:
+                    selectCategory(LearningGame.COLORS);
+                    break;
+                case PlaylumiVillageView.FRIEND:
                     move(AVATAR);
                     break;
-                default: break;
+                case PlaylumiVillageView.PARENTS:
+                    move(HOME_OPTIONS);
+                    break;
+                case PlaylumiVillageView.MISSIONS:
+                    world=0;storyPage=Math.min(2,adventures.progress(world)/2);
+                    move(ADVENTURE_MAP);
+                    break;
+                case PlaylumiVillageView.REWARDS:
+                    move(SHOP);
+                    break;
+                case PlaylumiVillageView.HOME:
+                    // Already in the village.
+                    break;
+                case PlaylumiVillageView.COLLECTION:
+                    move(TROPHY_WORLDS);
+                    break;
+                case PlaylumiVillageView.PROFILE:
+                    move(PROFILES);
+                    break;
+                default:break;
             }
         });
-        LinearLayout.LayoutParams worldParams=new LinearLayout.LayoutParams(-1,-2);
-        worldParams.setMargins(0,dp(2),0,dp(4));
-        root.addView(starWorld,worldParams);
-        Button surprise=tile("✨ Verrassingsavontuur","Spring meteen in een spel!",0xffffe8b0,82);
-        addTile(surprise,3);
-        surprise.setOnClickListener(v->startEasyPlay());
-        Button options=tile("⚙️ Voor ouders en instellingen","",0xffe4d9ff,60);
-        addTile(options,3);
-        options.setOnClickListener(v->move(HOME_OPTIONS));
+        root.addView(village,new LinearLayout.LayoutParams(-1,-2));
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
