@@ -46,6 +46,8 @@ public final class LearningGame {
     public LearningGame(Random random) { this.random = random; nextRound(); }
     public int mode() { return mode; }
     public int variant() { return variant; }
+    /** Lowercase matching is intentionally a visual-only exercise. */
+    public boolean allowsQuestionNarration() { return mode != LETTERS || variant != 0; }
     public int level() { return level; }
     public Round round() { return current; }
     public void setHistory(QuestionHistory history) { this.history = history; }

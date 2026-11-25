@@ -109,16 +109,21 @@ public final class PlaylumiVillageView extends View {
         c.drawRoundRect(l,t,r,b,24,24,pen);
     }
     private void drawRealCounters(Canvas c) {
-        // The original concept contains decorative placeholder numbers.
-        // Cover only those values with live game state, never fake game currency.
-        rounded(c,346,24,490,79,0xff552d96);
-        rounded(c,539,24,681,79,0xff552d96);
-        rounded(c,729,24,822,79,0xff552d96);
-        rounded(c,120,158,298,211,0xff552d96);
-        text(c,"★ "+Math.min(99999,starBalance),417,62,37,0xffffe8a4);
-        text(c,"★ "+PlaylumiVillageProgress.visitedCount(discovered)+"/6",610,61,33,0xffffe8a4);
-        text(c,"P"+(profileNumber+1),772,62,31,Color.WHITE);
-        text(c,"Speler "+(profileNumber+1),209,194,28,Color.WHITE);
+        // One opaque HUD covers the entire old decorative currency strip,
+        // including its baked-in icons. The three live controls share one frame.
+        paintColor(0xff48267c);
+        c.drawRoundRect(322,3,850,101,25,25,pen);
+        paintColor(0xff6540a1);
+        c.drawRoundRect(333,13,503,90,20,20,pen);
+        c.drawRoundRect(509,13,683,90,20,20,pen);
+        c.drawRoundRect(689,13,839,90,20,20,pen);
+        text(c,"★ "+Math.min(99999,starBalance),418,65,
+                starBalance>=10000?27:35,0xffffe6a2);
+        text(c,"⚑ "+PlaylumiVillageProgress.visitedCount(discovered)+"/6",596,65,33,0xffffe6a2);
+        text(c,"P"+(profileNumber+1),764,65,32,Color.WHITE);
+        // Cover the complete original level meter, not only its number.
+        rounded(c,112,150,313,222,0xff48267c);
+        text(c,"Speler "+(profileNumber+1),212,196,29,Color.WHITE);
     }
     private void drawDiscovered(Canvas c) {
         for(int i=0;i<PlaylumiVillageProgress.BUILDINGS;i++) {
@@ -166,14 +171,6 @@ public final class PlaylumiVillageView extends View {
                 new RectF(0,0,PlaylumiVillageHit.ART_W,PlaylumiVillageHit.ART_H),pen);
         drawRealCounters(canvas);
         drawDiscovered(canvas);
-        if(pressed>=0) {
-            float[] box=PlaylumiVillageHit.bounds(pressed);
-            paintColor(0xd5ffdf68);
-            pen.setStyle(Paint.Style.STROKE);
-            pen.setStrokeWidth(7f);
-            canvas.drawRoundRect(box[0]+3,box[1]+3,box[2]-3,box[3]-3,26,26,pen);
-            pen.setStyle(Paint.Style.FILL);
-        }
         drawSparkles(canvas);
         canvas.restore();
         if(animated && getWindowVisibility()==VISIBLE && !PlaylumiMotion.isReduced()) {

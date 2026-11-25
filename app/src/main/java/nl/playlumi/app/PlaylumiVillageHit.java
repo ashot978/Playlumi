@@ -13,8 +13,8 @@ public final class PlaylumiVillageHit {
             {351,614,613,921},{730,83,940,190},
             {0,1467,177,1672},{179,1467,365,1672},
             {366,1434,574,1672},{575,1467,759,1672},
-            {761,1467,941,1672},{816,0,941,86},
-            {330,0,500,88},{510,0,700,88},{0,95,310,220}
+            {761,1467,941,1672},{850,0,941,101},
+            {322,0,505,101},{506,0,685,101},{0,105,313,222}
     };
     private PlaylumiVillageHit() {}
     /** Aspect fill for phones; letterboxed artwork on wide tablets/foldables. */
@@ -49,7 +49,7 @@ public final class PlaylumiVillageHit {
         if(x<0||y<0||x>ART_W||y>ART_H)return -1;
         // Controls win when their artwork overlaps interactive village scenery.
         if(contains(SETTINGS,x,y))return SETTINGS;
-        if(x>=710 && x<816 && y>=0 && y<=86)return PLAYER;
+        if(x>=686 && x<850 && y>=0 && y<=101)return PLAYER;
         for(int i=STARS;i<=PLAYER;i++)if(contains(i,x,y))return i;
         for(int i=PARENTS;i<=PROFILE;i++)if(contains(i,x,y))return i;
         if(contains(FRIEND,x,y))return FRIEND;

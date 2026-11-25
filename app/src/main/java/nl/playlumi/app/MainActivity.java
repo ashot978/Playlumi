@@ -888,11 +888,11 @@ public class MainActivity extends Activity {
                 usage.shouldSuggestBreak()) {
             breakReturn=next;next=BREAK_SCREEN;saveUsage();
         }
+        if(sound!=null)sound.tap();
         if(PlaylumiMotion.isReduced()) {
             page=next;showPage();return;
         }
         moving=true;
-        if(sound!=null)sound.tap();
         FrameLayout previous=stage;
         final int destination=next;
         previous.animate().cancel();
@@ -984,6 +984,7 @@ public class MainActivity extends Activity {
                     move(SHOP);
                     break;
                 case PlaylumiVillageView.DISCOVERY:
+                    if(sound!=null)sound.tap();
                     int mask=getSharedPreferences("playlumi-village-"+activeProfile,
                             MODE_PRIVATE).getInt("visited",0);
                     int count=PlaylumiVillageProgress.visitedCount(mask);
@@ -998,6 +999,7 @@ public class MainActivity extends Activity {
                     move(PROFILES);
                     break;
                 case PlaylumiVillageView.HOME:
+                    if(sound!=null)sound.tap();
                     // Already in the village.
                     break;
                 case PlaylumiVillageView.COLLECTION:
@@ -1221,6 +1223,7 @@ public class MainActivity extends Activity {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
+        boolean narrateQuestion=game.allowsQuestionNarration();
         boolean wide=landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
         addIllustratedPortal(portalForMode(mode),LearningGame.GAME_NAMES[mode],102);
@@ -1272,7 +1275,7 @@ public class MainActivity extends Activity {
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
         promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
-        if(sound.isEnabled()) {
+        if(narrateQuestion && sound.isEnabled()) {
             Button listen=tile("🔊","",0xffe7e3ff,46);
             listen.setTextSize(21);
             listen.setPadding(dp(3),dp(3),dp(3),dp(3));
@@ -1298,14 +1301,18 @@ public class MainActivity extends Activity {
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
-        picture.setContentDescription("Tik op het plaatje om de vraag te horen");
-        picture.setClickable(true);
-        picture.setFocusable(true);
-        picture.setOnClickListener(v->{
-            if(sound!=null)sound.speak(round.prompt);
-            PlaylumiDelight.hop(picture);
-            PlaylumiDelight.sprinkle(stage,picture);
-        });
+        if(narrateQuestion && sound.isEnabled()) {
+            picture.setContentDescription("Tik op het plaatje om de vraag te horen");
+            picture.setClickable(true);
+            picture.setFocusable(true);
+            picture.setOnClickListener(v->{
+                if(sound!=null)sound.speak(round.prompt);
+                PlaylumiDelight.hop(picture);
+                PlaylumiDelight.sprinkle(stage,picture);
+            });
+        } else {
+            picture.setContentDescription(round.display);
+        }
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
         feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
@@ -1339,7 +1346,7 @@ public class MainActivity extends Activity {
         answers.addView(nextButton,nextParams);
         nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
         nextButton.setOnClickListener(v->continueAfterAnswer());
-        if(!answerLocked)readThisPage(round.prompt);
+        if(narrateQuestion && !answerLocked)readThisPage(round.prompt);
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
@@ -2694,8 +2701,7 @@ public class MainActivity extends Activity {
             addTile(other,7);other.setOnClickListener(v->move(MINI_MENU));
             return;
         }
-        // More room for the musical instruments and large touch targets.
-        addText("🐸 🐱 🐥 🦋",31,0xff7652ac,8,7);
+        // Only the actual melody preview and playable animal buttons are shown.
         melodyStatus=text(sound.isEnabled()?
                 "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
                 20,0xff65418f);
