@@ -22,7 +22,7 @@ def check(path: Path) -> int:
             stored += 1
             f.seek(entry.header_offset)
             local = f.read(30)
-            if len(local) != 30 or local[:4] != b"PK\\x03\\x04":
+            if len(local) != 30 or local[:4] != b"PK\x03\x04":
                 raise ValueError("Invalid local ZIP header")
             name_len, extra_len = struct.unpack_from("<HH", local, 26)
             offset = entry.header_offset + 30 + name_len + extra_len
