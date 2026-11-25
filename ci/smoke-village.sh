@@ -32,8 +32,10 @@ home() {
     echo "Android WindowInsets missing from the village screen" >&2
     exit 1
   fi
-  if [[ "$safeTop" -le 0 || "$safeBottom" -le 0 ]]; then
-    echo "Expected Android status/navigation safe area: top=$safeTop bottom=$safeBottom" >&2
+  # AOSP ATD sometimes deliberately hides the navigation bar.
+  # bottom=0 is correct there; a real Samsung 3-button bar reports >0.
+  if [[ "$safeTop" -le 0 || "$safeBottom" -lt 0 ]]; then
+    echo "Invalid Android safe insets: top=$safeTop bottom=$safeBottom" >&2
     exit 1
   fi
   echo "Actual Android safe insets: top=$safeTop bottom=$safeBottom"
