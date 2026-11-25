@@ -59,4 +59,14 @@ public final class PlaylumiLayoutTest {
             assertTrue(PlaylumiLayout.tileHeight(height,true)<=80);
         }
     }
+    @Test public void widerQuizIsCenteredAndContentWidthIsCapped(){
+        assertTrue(PlaylumiLayout.centeredMagicQuiz(700,780));
+        assertTrue(PlaylumiLayout.centeredMagicQuiz(900,1000));
+        assertFalse(PlaylumiLayout.centeredMagicQuiz(800,400));
+        assertFalse(PlaylumiLayout.centeredMagicQuiz(360,800));
+        assertTrue(1400-2*PlaylumiLayout.magicSidePadding(1400)<=760);
+        assertEquals(3,PlaylumiLayout.centeredAnswerColumns(6));
+        assertEquals(2,PlaylumiLayout.centeredAnswerColumns(4));
+        assertTrue(PlaylumiLayout.centeredAnswerHeight(700,6)>=50);
+    }
 }

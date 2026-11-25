@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.82: full Android rendering, real controls and regression tests.
+# Playlumi 0.83: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
@@ -116,7 +116,7 @@ PY
 # Verify every number representation and automatic advancement using live controls.
 numberRound() {
   local label="$1" menu="$2" mode="$3"
-  home
+  if [[ "$mode" == hands ]]; then home 0; else home 1; fi
   tapVillage 280 395
   assertScreen 43
   tapText "$menu"
@@ -176,6 +176,64 @@ PY
   echo "PASS: $label wrong/correct answer, automatic advance, safe answer bounds ($reserved px)"
 }
 
+# Verify the age-dependent menu and actual arithmetic using native controls.
+mathRound() {
+  local label="$1" menu="$2"
+  home 2
+  tapVillage 280 395
+  assertScreen 43
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q '7+ jaar' build/qa/ui.xml
+  grep -q 'Optellen' build/qa/ui.xml
+  grep -q 'Aftrekken' build/qa/ui.xml
+  ! grep -q 'Vingers tellen' build/qa/ui.xml
+  screenshot "game-math-menu-${mode}"
+  tapText "$menu"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local coords reserved
+  reserved=$(adb logcat -d -s PlaylumiQA:I | grep 'gameReservedBottom=' | tail -1 | sed -nE 's/.*gameReservedBottom=([0-9]+).*/\1/p')
+  coords=$(python3 - "$label" "$screenH" "$reserved" <<'PY'
+import sys,re,xml.etree.ElementTree as E
+label,h,safe=sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+pat={'add':r'(\d+) \+ (\d+) = \?','subtract':r'(\d+) − (\d+) = \?','missing':r'(\d+) \+ \? = (\d+)'}[label]
+match=next(m for n in nodes if (m:=re.fullmatch(pat,n.get('content-desc',''))))
+a,b=map(int,match.groups())
+answer=a+b if label=='add' else a-b if label=='subtract' else b-a
+assert max(a,b,answer)<=20 and answer>=0
+cards=[]
+for n in nodes:
+    d=n.get('content-desc','')
+    if n.get('clickable')=='true' and re.fullmatch(r'\d+',d):
+        b=list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+        assert b[2]>b[0] and b[3]>b[1] and b[3]<=h-safe
+        cards.append((int(d),(b[0]+b[2])//2,(b[1]+b[3])//2))
+assert len(cards)==4 and len({x[0] for x in cards})==4
+good=next(c for c in cards if c[0]==answer)
+bad=next(c for c in cards if c[0]!=answer)
+print(bad[1],bad[2],good[1],good[2])
+PY
+)
+  screenshot "game-math-$label-${mode}"
+  local bx by gx gy
+  read -r bx by gx gy <<< "$coords"
+  adb shell input tap "$bx" "$by"
+  sleep 1
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "Probeer nog eens" build/qa/ui.xml
+  grep -q "0/8" build/qa/ui.xml
+  adb shell input tap "$gx" "$gy"
+  sleep 3
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "1/8" build/qa/ui.xml
+  echo "PASS: 7+ $label actual arithmetic and automatic advancement ($mode)"
+}
 # Test real six-option shape boards and actual drag gestures.
 shapeRound() {
   home 2
@@ -487,6 +545,9 @@ numberRound word-to-digit "Woord naar cijfer" digit
 finishNumberRound
 shapeRound
 wordRound
+mathRound add "Optellen"
+mathRound subtract "Aftrekken"
+mathRound missing "Getal aanvullen"
 
 else
   echo "Fresh unfolded emulator: ${screenW}x${screenH}"
@@ -510,6 +571,9 @@ numberRound fold-word-to-digit "Woord naar cijfer" digit
 finishNumberRound
 shapeRound
 wordRound
+mathRound add "Optellen"
+mathRound subtract "Aftrekken"
+mathRound missing "Getal aanvullen"
 
 fi
 # The native layout must not have crashed anywhere during the recorded journeys.

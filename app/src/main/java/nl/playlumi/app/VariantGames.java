@@ -24,7 +24,7 @@ public final class VariantGames {
         {"Bijbehorend dier","Woord uit drie","Plaatje zoeken"},
         {"Rijmwoord zoeken","Rijmpaar afmaken","Welk rijmt niet?"},
         {"Grootste getal","Kleinste getal","Is het gelijk?"},
-        {"Ontbrekend getal","Verdubbelen","Tel er twee bij"},
+        {"Ontbrekend getal","Verdubbelen","Verhaalsommen"},
         {"Sprongen van twee","Welk getal ontbreekt?","Sprongen van drie"},
         {"Tegenovergesteld","Andere kant","Koppel woorden"},
         {"Zoek een dier","Zoek een fruitsoort","Welk hoort niet?"}
@@ -111,7 +111,7 @@ public final class VariantGames {
             case 9: return pictures(v,level,r);
             case 10: return rhymes(v,level,r);
             case 11: return compare(v,level,r);
-            case 12: return math(v,level,r);
+            case 12: return PlaylumiMathPractice.next(variant,level,r);
             case 13: return sequences(v,level,r);
             case 14: return opposites(v,level,r);
             case 15: return categories(v,level,r);

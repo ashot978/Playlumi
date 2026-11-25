@@ -124,6 +124,33 @@ public final class PlaylumiMagicArt {
                 183,578,769,660);
         return new Skin(b,false,.08f);
     }
+    private static GradientDrawable sculpted(Context c,int[] colors,float radius,int stroke,int border){
+        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,colors);
+        float density=c.getResources().getDisplayMetrics().density;
+        d.setCornerRadius(radius*density);
+        d.setStroke(Math.max(1,Math.round(stroke*density)),border);
+        return d;
+    }
+    /** Scalable real rounded surfaces, not stretched rectangular textures. */
+    public static Drawable softPanel(Context c){
+        return sculpted(c,new int[]{0xe638235c,0xec4b326f,0xe62f1e50},30,1,0x90c7a1ef);
+    }
+    public static Drawable silkRibbon(Context c){
+        return sculpted(c,new int[]{0xff8854c0,0xff62308d,0xff442162},24,2,0xffffd382);
+    }
+    public static Drawable parchment(Context c){
+        return sculpted(c,new int[]{0xfffff8dc,0xffffe7b4,0xfffff2d3},30,3,0xffeeb45b);
+    }
+    public static Drawable gemButton(Context c,int index){
+        int base=PASTELS[((index%PASTELS.length)+PASTELS.length)%PASTELS.length];
+        int edge=blend(base,0xff9672bd,.42f);
+        GradientDrawable outer=sculpted(c,new int[]{0xfffffff9,base,blend(base,0xff8d65b0,.24f)},29,2,edge);
+        GradientDrawable inner=sculpted(c,new int[]{blend(base,Color.WHITE,.75f),base,blend(base,0xffd5bce8,.12f)},25,1,0xcaffffff);
+        android.graphics.drawable.LayerDrawable layers=new android.graphics.drawable.LayerDrawable(new Drawable[]{outer,inner});
+        int inset=Math.max(2,Math.round(c.getResources().getDisplayMetrics().density*3));
+        layers.setLayerInset(1,inset,inset,inset,inset);
+        return layers;
+    }
     public static Drawable creamPlate(Context c) {
         GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xfffffff3,0xffffedcf,0xffffdfb6});
@@ -195,6 +222,8 @@ public final class PlaylumiMagicArt {
             case PlaylumiVillageHit.COLORS:return new Rect(0,135,941,417);
             case PlaylumiVillageHit.MUSIC:return new Rect(0,127,941,437);
             case PlaylumiVillageHit.PLAYGROUND:return new Rect(0,135,941,478);
+            case PlaylumiVillageHit.ROCKET:return new Rect(0,222,514,481);
+            case PlaylumiVillageHit.SHAPES:return new Rect(0,505,350,786);
             default:return PlaylumiWorldBackdrop.crop(world);
         }
     }
@@ -203,18 +232,40 @@ public final class PlaylumiMagicArt {
                 world==PlaylumiVillageHit.MUSIC || world==PlaylumiVillageHit.PLAYGROUND;
     }
     private static final class Hero extends View {
-        private final Bitmap art;private final Rect src;private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+        private final Bitmap art;private final Rect src;private final int world;private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
         Hero(Context c,int w){
-            super(c);art=hasApprovedHero(w)?source(c,assetName(w)):PlaylumiWorldBackdrop.art(c);
+            super(c);world=w;art=hasApprovedHero(w)?source(c,assetName(w)):PlaylumiWorldBackdrop.art(c);
             src=heroRect(w);
             setContentDescription("Geillustreerde spelwereld "+PlaylumiWorldStyle.NAMES[w]);
         }
         @Override protected void onDraw(Canvas c){
             float w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
             RectF box=new RectF(0,0,w,h);
-            Path clip=new Path();clip.addRoundRect(box,14,14,Path.Direction.CW);
+            float radius=Math.min(h*.22f,26*getResources().getDisplayMetrics().density);
+            Path clip=new Path();clip.addRoundRect(box,radius,radius,Path.Direction.CW);
             c.save();c.clipPath(clip);
             p.setColor(0xff392360);c.drawRect(box,p);
+            if(!hasApprovedHero(world)&&w/h>3.25f){
+                // Show the entire building in a dedicated rounded illustrated
+                // hero rather than zooming into a tiny crop across a tablet.
+                p.setShader(new LinearGradient(0,0,w,h,new int[]{0xff314969,0xff442764,0xff744a9c},null,Shader.TileMode.CLAMP));
+                c.drawRect(box,p);p.setShader(null);
+                float imageW=h*src.width()/src.height(),imageH=h;
+                float x=Math.max(0,(w*.48f-imageW)/2);
+                c.drawBitmap(art,src,new RectF(x,0,x+imageW,imageH),p);
+                p.setShader(new LinearGradient(x+imageW*.82f,0,x+imageW,0,0x00442764,0xff442764,Shader.TileMode.CLAMP));
+                c.drawRect(x+imageW*.82f,0,x+imageW,h,p);p.setShader(null);
+                float tx=w*.73f;
+                p.setColor(0xffffdd89);p.setTypeface(android.graphics.Typeface.create("sans-serif-rounded",android.graphics.Typeface.BOLD));
+                p.setTextAlign(Paint.Align.CENTER);p.setTextSize(Math.min(h*.22f,w*.035f));
+                c.drawText(PlaylumiWorldStyle.NAMES[world],tx,h*.50f,p);
+                p.setTextSize(h*.18f);p.setColor(0xfff4d5ff);
+                c.drawText("✦  Jouw sterrenavontuur  ✦",tx,h*.74f,p);
+                c.restore();
+                p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);p.setColor(0xffffd88b);
+                c.drawRoundRect(1,1,w-1,h-1,radius,radius,p);p.setStyle(Paint.Style.FILL);
+                return;
+            }
             // On a folded/unfolded screen, cover the full banner with scenery,
             // preserving proportions rather than stretching the building.
             float scale=Math.max(w/src.width(),h/src.height());
@@ -222,7 +273,7 @@ public final class PlaylumiMagicArt {
             c.drawBitmap(art,src,new RectF((w-dw)/2,(h-dh)/2,(w+dw)/2,(h+dh)/2),p);
             c.restore();
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);p.setColor(0xffffd88b);
-            c.drawRoundRect(1,1,w-1,h-1,14,14,p);p.setStyle(Paint.Style.FILL);
+            c.drawRoundRect(1,1,w-1,h-1,radius,radius,p);p.setStyle(Paint.Style.FILL);
         }
     }
     private static final class Backdrop extends View {
@@ -238,6 +289,37 @@ public final class PlaylumiMagicArt {
             float w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
             p.setShader(new LinearGradient(0,0,0,h,new int[]{0xff251748,0xff503080,0xff63468e,0xff3b225f},null,Shader.TileMode.CLAMP));
             c.drawRect(0,0,w,h,p);p.setShader(null);
+            if(getResources().getConfiguration().screenWidthDp>=600){
+                // A coherent starry sky with a soft illustrated garden footer.
+                // No stretched side strips or hard rectangular transitions.
+                p.setShader(new android.graphics.RadialGradient(w*.5f,h*.42f,
+                        Math.max(w,h)*.74f,new int[]{0xff6b4b9b,0xff493170,0xff281943},null,Shader.TileMode.CLAMP));
+                c.drawRect(0,0,w,h,p);p.setShader(null);
+                Bitmap garden=PlaylumiWorldBackdrop.art(getContext());
+                Rect gardenSrc=new Rect(0,1240,941,1454);
+                float footer=Math.min(h*.20f,w*.22f);
+                c.drawBitmap(garden,gardenSrc,new RectF(0,h-footer,w,h),p);
+                p.setShader(new LinearGradient(0,h-footer,0,h,
+                        new int[]{0xff32204f,0xe632204f,0x9032204f,0x1232204f},
+                        new float[]{0,.22f,.58f,1f},Shader.TileMode.CLAMP));
+                c.drawRect(0,h-footer,w,h,p);p.setShader(null);
+                float density=getResources().getDisplayMetrics().density;
+                for(int i=0;i<35;i++){
+                    float x=((i*97+17)%101)/100f*w;
+                    float y=((i*61+29)%101)/100f*(h-footer*.4f);
+                    float starRadius=(i%7==0?3.8f:i%3==0?1.8f:1.1f)*density;
+                    p.setColor(i%7==0?0x8fffe2a1:0x4cfff3d0);
+                    if(i%7==0){
+                        Path star=new Path();
+                        star.moveTo(x,y-starRadius*1.6f);star.lineTo(x+starRadius*.35f,y-starRadius*.35f);
+                        star.lineTo(x+starRadius*1.6f,y);star.lineTo(x+starRadius*.35f,y+starRadius*.35f);
+                        star.lineTo(x,y+starRadius*1.6f);star.lineTo(x-starRadius*.35f,y+starRadius*.35f);
+                        star.lineTo(x-starRadius*1.6f,y);star.lineTo(x-starRadius*.35f,y-starRadius*.35f);
+                        star.close();c.drawPath(star,p);
+                    }else c.drawCircle(x,y,starRadius,p);
+                }
+                return;
+            }
             float edge=Math.min(w*.053f,55*getResources().getDisplayMetrics().density);
             // Only foliage and the stone-path footer are sampled: no baked
             // buttons, letters, scores, or prompts in the background.
