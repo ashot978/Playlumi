@@ -70,7 +70,7 @@ public final class PlaylumiStarWorld extends View {
     private void label(Canvas c,String text,float x,float y,float size,int color,boolean bold) {
         fill(color);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(size);
         p.setTypeface(android.graphics.Typeface.create(
-                bold?"sans-serif-rounded":"sans-serif",bold?1:0));
+                bold?"sans-serif-rounded":"sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));
         c.drawText(text,x,y,p);
     }
     private void rounded(Canvas c,RectF r,float radius,int color) {
