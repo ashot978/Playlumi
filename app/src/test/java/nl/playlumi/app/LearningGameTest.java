@@ -5,6 +5,15 @@ import java.util.Random;
 import static org.junit.Assert.*;
 
 public class LearningGameTest {
+    @Test public void lowercaseMatchingDoesNotOfferQuestionNarration() {
+        LearningGame game = new LearningGame(new Random(42));
+        game.configure(LearningGame.LETTERS, 0, 1);
+        assertFalse(game.allowsQuestionNarration());
+        game.configure(LearningGame.LETTERS, 1, 1);
+        assertTrue(game.allowsQuestionNarration());
+        game.configure(LearningGame.COUNT, 0, 1);
+        assertTrue(game.allowsQuestionNarration());
+    }
     @Test public void everyGameVariantAndLevelProducesPlayableRound() {
         LearningGame game = new LearningGame(new Random(42));
         for (int mode = 0; mode < LearningGame.GAME_NAMES.length; mode++)

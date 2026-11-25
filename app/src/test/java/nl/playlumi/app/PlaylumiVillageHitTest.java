@@ -26,6 +26,15 @@ public final class PlaylumiVillageHitTest {
         assertEquals(PlaylumiVillageHit.COLLECTION,PlaylumiVillageHit.hit(670,1540));
         assertEquals(PlaylumiVillageHit.PROFILE,PlaylumiVillageHit.hit(841,1540));
     }
+    @Test public void newHudButtonsDoNotOverlap() {
+        assertEquals(PlaylumiVillageHit.STARS,PlaylumiVillageHit.hit(335,50));
+        assertEquals(PlaylumiVillageHit.STARS,PlaylumiVillageHit.hit(502,50));
+        assertEquals(PlaylumiVillageHit.DISCOVERY,PlaylumiVillageHit.hit(510,50));
+        assertEquals(PlaylumiVillageHit.DISCOVERY,PlaylumiVillageHit.hit(680,50));
+        assertEquals(PlaylumiVillageHit.PLAYER,PlaylumiVillageHit.hit(690,50));
+        assertEquals(PlaylumiVillageHit.PLAYER,PlaylumiVillageHit.hit(840,50));
+        assertEquals(PlaylumiVillageHit.SETTINGS,PlaylumiVillageHit.hit(875,50));
+    }
     @Test public void tallPhoneArtCoordinatesMatchScreen() {
         int width=412,height=915;
         float x=285f*width/PlaylumiVillageHit.ART_W;
