@@ -663,12 +663,31 @@ public class MainActivity extends Activity {
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
+        final boolean villageScreen=page==HOME;
+        // Android 15+ draws applications behind system bars by default.
+        // WindowInsets (not guessed screen margins) defines the safe area.
+        int appearance=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if(Build.VERSION.SDK_INT>=26)appearance|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        if(Build.VERSION.SDK_INT>=30) {
+            android.view.WindowInsetsController controller=getWindow().getInsetsController();
+            if(controller!=null) {
+                int mask=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                controller.setSystemBarsAppearance(villageScreen?0:mask,mask);
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(villageScreen?0:appearance);
+        }
+        getWindow().setStatusBarColor(villageScreen?0xff50308c:0xffeaf5ff);
+        getWindow().setNavigationBarColor(villageScreen?0xff50308c:0xfffff6e4);
+        if(Build.VERSION.SDK_INT>=29)getWindow().setNavigationBarContrastEnforced(false);
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
+                villageScreen?new int[]{0xff50308c,0xff5b3b96,0xff50308c}:
+                        new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
-        if(page==HOME || page==WORLD_PICKER || page==WORLD_HUB ||
+        if(page==WORLD_PICKER || page==WORLD_HUB ||
                 page==AVATAR || page==CLOSET || page==ROOM ||
                 page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
                 page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
@@ -699,8 +718,24 @@ public class MainActivity extends Activity {
                     top=insets.getSystemWindowInsetTop();
                     bottom=insets.getSystemWindowInsetBottom();
                 }
-                // Reserve an actual safe, scrollable viewport above system navigation.
-                currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
+                if(villageScreen) {
+                    // The entire illustrated world must fit BETWEEN the real
+                    // status bar, camera cutout and 3-button/gesture navigation bar.
+                    // Use live insets, so changing navigation mode is supported.
+                    if(Build.VERSION.SDK_INT>=30) {
+                        android.graphics.Insets safe=insets.getInsets(
+                                android.view.WindowInsets.Type.statusBars()|
+                                android.view.WindowInsets.Type.navigationBars()|
+                                android.view.WindowInsets.Type.displayCutout());
+                        top=Math.max(top,safe.top);
+                        bottom=Math.max(bottom,safe.bottom);
+                    }
+                    stage.setPadding(0,Math.max(0,top),0,Math.max(0,bottom));
+                    currentScroller.setPadding(0,0,0,0);
+                } else {
+                    stage.setPadding(0,0,0,0);
+                    currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
+                }
             }
             return insets;
         });
