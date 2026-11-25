@@ -673,6 +673,8 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
+        int screenWidth=getResources().getConfiguration().screenWidthDp;
+        if(screenWidth>1040)side=Math.max(side,(screenWidth-1040)/2);
         root.setPadding(dp(side),dp(5),dp(side),dp(12));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
@@ -801,31 +803,68 @@ public class MainActivity extends Activity {
         saveRecent();
         move(PLAY);
     }
+    /** A compact two-column game lobby on tablets and unfolded foldables. */
+    private void homeCards(Button... cards) {
+        boolean grid=getResources().getConfiguration().screenWidthDp>=600;
+        if(!grid) {
+            for(Button card:cards)addTile(card,5);
+            return;
+        }
+        for(int i=0;i<cards.length;i+=2) {
+            LinearLayout row=new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER);
+            for(int j=i;j<Math.min(i+2,cards.length);j++) {
+                Button card=cards[j];
+                card.setMinHeight(dp(105));
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1f);
+                p.setMargins(dp(5),dp(5),dp(5),dp(5));
+                row.addView(card,p);
+            }
+            // Keep the final odd card in its own full-width row instead of stretching it.
+            if(i+1>=cards.length) {
+                LinearLayout.LayoutParams spacerParams=new LinearLayout.LayoutParams(0,dp(1),1f);
+                View spacer=new View(this);
+                row.addView(spacer,spacerParams);
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
     private void showHome() {
-        header("🌟 Playlumi","Kies een plaatje om te beginnen.");
-        characterHero(118);
-        addText("🌟 "+wardrobe.stars()+" sterren",17,0xffa77933,0,3);
+        boolean tablet=getResources().getConfiguration().screenWidthDp>=600;
+        header("🌟 Playlumi","Kies jouw volgende avontuur!");
+        if(!tablet)characterHero(84);
+        addText("🌟 "+wardrobe.stars()+" sterren",17,0xff91631e,0,tablet?12:5);
 
-        Button quick=tile("▶ Speel meteen","",0xffccf2db,112);
+        Button quick=tile("▶ Speel meteen","Een vrolijke korte ronde",0xffc9f3dd,115);
         quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
-        addTile(quick,6);
         quick.setOnClickListener(v->startEasyPlay());
         PlaylumiDelight.invite(quick);
 
-        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
+        Button worlds=tile("🌈 Leerwerelden","Ontdekken en leren",0xffdceeff,108);
         worlds.setOnClickListener(v->move(WORLD_PICKER));
 
-        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
+        Button play=tile("🎪 Speelplein","Minigames en beweging",0xffd7f3e4,108);
         play.setOnClickListener(v->move(MINI_MENU));
-        addTwo(worlds,play,107);
 
-        Button friend=tile("⭐ Mijn stervriend","Kleden en versieren",0xffffe7bb,86);
-        addTile(friend,4);
+        Button friend=tile("⭐ Mijn stervriend","Aankleden en versieren",0xffffe7bb,108);
         friend.setOnClickListener(v->move(AVATAR));
 
-        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
-        addTile(options,8);
+        Button roomButton=tile("🏠 Mijn kamer","Mijn eigen plekje",0xffffe0e8,108);
+        roomButton.setOnClickListener(v->move(ROOM));
+
+        Button shopButton=tile("🎁 Schatkamer","Ontdek je beloningen",0xffe5e0ff,108);
+        shopButton.setOnClickListener(v->move(SHOP));
+
+        Button options=tile("⚙️ Instellingen","Leeftijd en profiel",0xffece5ff,100);
         options.setOnClickListener(v->move(HOME_OPTIONS));
+
+        if(tablet)homeCards(quick,worlds,play,friend,roomButton,shopButton,options);
+        else {
+            addTile(quick,7);
+            addTwo(worlds,play,102);
+            homeCards(friend,roomButton,shopButton,options);
+        }
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
@@ -1016,7 +1055,7 @@ public class MainActivity extends Activity {
         int mode=game.mode();
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
-        boolean wide=landscapeScreen();
+        boolean wide=getResources().getConfiguration().screenWidthDp>=600 || landscapeScreen();
         header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
 
         LinearLayout progressRow=new LinearLayout(this);
@@ -1047,6 +1086,12 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams rightParams=new LinearLayout.LayoutParams(0,-2,1f);
             leftParams.setMargins(0,0,dp(7),0);
             rightParams.setMargins(dp(7),0,0,0);
+            questions.setPadding(dp(12),dp(13),dp(12),dp(13));
+            answers.setPadding(dp(12),dp(13),dp(12),dp(13));
+            questions.setBackground(rounded(0xfff9f4ff,23));
+            answers.setBackground(rounded(0xfff1f9ff,23));
+            questions.setElevation(dp(2));
+            answers.setElevation(dp(2));
             columns.addView(questions,leftParams);
             columns.addView(answers,rightParams);
         }
@@ -1078,7 +1123,7 @@ public class MainActivity extends Activity {
         TextView picture=text(round.display,pictureSize,round.displayColor);
         picture.setPadding(dp(9),dp(10),dp(9),dp(10));
         picture.setBackground(rounded(Color.WHITE,22));
-        picture.setMinHeight(dp(wide?150:112));
+        picture.setMinHeight(dp(wide?145:112));
         picture.setMaxLines(4);
         picture.setElevation(dp(2));
         picture.setContentDescription("Tik op het plaatje om de vraag te horen");
@@ -1091,7 +1136,7 @@ public class MainActivity extends Activity {
         });
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
-        feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
+        feedbackText=text("👇 Kies het juiste antwoord",wide?17:16,0xff52378b);
         feedbackText.setMinHeight(dp(28));
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
@@ -1102,7 +1147,7 @@ public class MainActivity extends Activity {
             for(int j=i;j<Math.min(i+2,round.answers.size());j++) {
                 final int answer=j;
                 String value=round.answers.get(j);
-                Button button=tile(value,"",COLORS[(mode+j)%6],wide?60:70);
+                Button button=tile(value,"",COLORS[(mode+j)%6],wide?85:70);
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:
                         value.length()>=6?20:27);
                 button.setPadding(dp(5),dp(7),dp(5),dp(7));
