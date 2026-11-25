@@ -246,7 +246,9 @@ public final class PlaylumiVillageView extends View {
         if(lastDiscovered>=0&&!PlaylumiMotion.isReduced()) {
             long elapsed=SystemClock.uptimeMillis()-celebrationStarted;
             if(elapsed<1100) {
-                float[] r=HIT[lastDiscovered],x=(r[0]+r[2])*.5f,y=(r[1]+r[3])*.5f;
+                float[] r=HIT[lastDiscovered];
+                float x=(r[0]+r[2])*.5f;
+                float y=(r[1]+r[3])*.5f;
                 sparkle(c,x,y-110,36+elapsed*.09f,0xffffe29b);
                 postInvalidateDelayed(55);
             } else lastDiscovered=-1;
