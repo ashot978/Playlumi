@@ -14,7 +14,7 @@ public final class PlaylumiVillageProgressTest {
         assertEquals(3,PlaylumiVillageProgress.markVisited(3,-1));
         assertEquals(3,PlaylumiVillageProgress.markVisited(3,6));
         assertFalse(PlaylumiVillageProgress.isVisited(3,6));
-        assertEquals(3,PlaylumiVillageProgress.sanitize(0xFF));
+        assertEquals(63,PlaylumiVillageProgress.sanitize(0xFF));
     }
     @Test public void masksDoNotAffectEachOther() {
         int childOne=PlaylumiVillageProgress.markVisited(0,0);
