@@ -979,6 +979,24 @@ public class MainActivity extends Activity {
                 case PlaylumiVillageView.REWARDS:
                     move(SHOP);
                     break;
+                case PlaylumiVillageView.STARS:
+                    villageLaunch=PlaylumiVillageView.REWARDS;
+                    move(SHOP);
+                    break;
+                case PlaylumiVillageView.DISCOVERY:
+                    int mask=getSharedPreferences("playlumi-village-"+activeProfile,
+                            MODE_PRIVATE).getInt("visited",0);
+                    int count=PlaylumiVillageProgress.visitedCount(mask);
+                    new android.app.AlertDialog.Builder(this)
+                            .setTitle("Mijn ontdekkingen")
+                            .setMessage(count+" van de 6 speelplekken bezocht.")
+                            .setPositiveButton("Verder spelen",null)
+                            .show();
+                    break;
+                case PlaylumiVillageView.PLAYER:
+                    villageLaunch=PlaylumiVillageView.PROFILE;
+                    move(PROFILES);
+                    break;
                 case PlaylumiVillageView.HOME:
                     // Already in the village.
                     break;

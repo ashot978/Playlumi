@@ -35,11 +35,15 @@ public final class PlaylumiVillageView extends View {
             HOME=PlaylumiVillageHit.HOME,
             COLLECTION=PlaylumiVillageHit.COLLECTION,
             PROFILE=PlaylumiVillageHit.PROFILE,
-            SETTINGS=PlaylumiVillageHit.SETTINGS;
+            SETTINGS=PlaylumiVillageHit.SETTINGS,
+            STARS=PlaylumiVillageHit.STARS,
+            DISCOVERY=PlaylumiVillageHit.DISCOVERY,
+            PLAYER=PlaylumiVillageHit.PLAYER;
     private static final String[] NAMES={
             "Rekenraket","Letterhuis","Vormkasteel","Muziekstudio",
             "Speelplein","Kleurentuin","Stervriend","Ouderzone",
-            "Missies","Beloningen","Home","Collectie","Profiel","Instellingen"
+            "Missies","Beloningen","Home","Collectie","Profiel","Instellingen",
+            "Sterren","Ontdekte gebouwen","Speler"
     };
     private static final float[][] DISCOVERED_AT={
             {384,459},{851,464},{291,775},{856,778},{327,1119},{838,1124}
@@ -110,9 +114,11 @@ public final class PlaylumiVillageView extends View {
         rounded(c,346,24,490,79,0xff552d96);
         rounded(c,539,24,681,79,0xff552d96);
         rounded(c,729,24,822,79,0xff552d96);
+        rounded(c,120,158,298,211,0xff552d96);
         text(c,"★ "+Math.min(99999,starBalance),417,62,37,0xffffe8a4);
         text(c,"★ "+PlaylumiVillageProgress.visitedCount(discovered)+"/6",610,61,33,0xffffe8a4);
         text(c,"P"+(profileNumber+1),772,62,31,Color.WHITE);
+        text(c,"Speler "+(profileNumber+1),209,194,28,Color.WHITE);
     }
     private void drawDiscovered(Canvas c) {
         for(int i=0;i<PlaylumiVillageProgress.BUILDINGS;i++) {

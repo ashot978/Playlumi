@@ -5,7 +5,7 @@ public final class PlaylumiVillageHit {
     public static final float ART_W=941f, ART_H=1672f;
     public static final int ROCKET=0,BOOKS=1,SHAPES=2,MUSIC=3,PLAYGROUND=4,COLORS=5,
             FRIEND=6,PARENTS=7,MISSIONS=8,REWARDS=9,HOME=10,COLLECTION=11,PROFILE=12,
-            SETTINGS=13;
+            SETTINGS=13, STARS=14, DISCOVERY=15, PLAYER=16;
     private static final float[][] HIT={
             {115,253,467,530},{535,262,927,548},
             {25,535,360,880},{610,542,924,887},
@@ -13,7 +13,8 @@ public final class PlaylumiVillageHit {
             {351,614,613,921},{730,83,940,190},
             {0,1467,177,1672},{179,1467,365,1672},
             {366,1434,574,1672},{575,1467,759,1672},
-            {761,1467,941,1672},{816,0,941,86}
+            {761,1467,941,1672},{816,0,941,86},
+            {330,0,500,88},{510,0,700,88},{0,95,310,220}
     };
     private PlaylumiVillageHit() {}
     /** Aspect fill for phones; letterboxed artwork on wide tablets/foldables. */
@@ -48,6 +49,8 @@ public final class PlaylumiVillageHit {
         if(x<0||y<0||x>ART_W||y>ART_H)return -1;
         // Controls win when their artwork overlaps interactive village scenery.
         if(contains(SETTINGS,x,y))return SETTINGS;
+        if(x>=710 && x<816 && y>=0 && y<=86)return PLAYER;
+        for(int i=STARS;i<=PLAYER;i++)if(contains(i,x,y))return i;
         for(int i=PARENTS;i<=PROFILE;i++)if(contains(i,x,y))return i;
         if(contains(FRIEND,x,y))return FRIEND;
         for(int i=ROCKET;i<=COLORS;i++)if(contains(i,x,y))return i;

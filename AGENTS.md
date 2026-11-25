@@ -4,3 +4,4 @@
 - Preserve locally stored progress across updates. Avoid accounts, ads, analytics and extra permissions without explicit approval and a privacy review.
 - Run unit tests, lint and the debug build when the Android SDK and Gradle are available. Verify interaction and accessibility on a real device before claiming device support.
 - Do not publish, merge or release without explicit authorization.
+- Village counters must show real profile data and offer meaningful, testable actions; never depict decorative levels as actual progression.
