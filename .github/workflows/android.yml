@@ -4,6 +4,10 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [phone, fold]
     timeout-minutes: 35
     permissions:
       contents: read
@@ -92,18 +96,19 @@ jobs:
           emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-linux-hw-accel: auto
-          script: bash ci/smoke-village.sh
+          script: bash ci/smoke-village.sh ${{ matrix.mode }}
 
       - name: Upload emulator QA screenshots
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playlumi-081-screen-qa
+          name: playlumi-081-screen-qa-${{ matrix.mode }}
           path: build/qa/screenshots/
           if-no-files-found: warn
           retention-days: 30
 
       - name: Upload validated debug APK
+        if: matrix.mode == 'phone'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-081-debug-apk
@@ -114,6 +119,7 @@ jobs:
           retention-days: 30
 
       - name: Upload unsigned production release for offline signing only
+        if: matrix.mode == 'phone'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-081-unsigned-release
@@ -124,6 +130,7 @@ jobs:
           retention-days: 30
 
       - name: Upload standard Android SDK signing utilities
+        if: matrix.mode == 'phone'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-081-offline-signing-tools
