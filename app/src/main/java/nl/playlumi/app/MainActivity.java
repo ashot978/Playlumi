@@ -309,7 +309,7 @@ public class MainActivity extends Activity {
         if((getApplicationInfo().flags &
                 android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 &&
                 getIntent()!=null && getIntent().getBooleanExtra("playlumi_ci_home",false)) {
-            age=Math.max(0,age);
+            age=Math.max(0,Math.min(2,getIntent().getIntExtra("playlumi_ci_age",Math.max(0,age))));
             page=HOME;
         }
         showPage();
