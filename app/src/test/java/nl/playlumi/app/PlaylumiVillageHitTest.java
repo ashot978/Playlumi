@@ -13,6 +13,10 @@ public final class PlaylumiVillageHitTest {
         assertEquals(PlaylumiVillageHit.COLORS,PlaylumiVillageHit.hit(785,1050));
     }
     @Test public void topAndBottomNavigationRemainTouchable() {
+        assertEquals(PlaylumiVillageHit.STARS,PlaylumiVillageHit.hit(417,52));
+        assertEquals(PlaylumiVillageHit.DISCOVERY,PlaylumiVillageHit.hit(610,52));
+        assertEquals(PlaylumiVillageHit.PLAYER,PlaylumiVillageHit.hit(80,155));
+        assertEquals(PlaylumiVillageHit.PLAYER,PlaylumiVillageHit.hit(770,52));
         assertEquals(PlaylumiVillageHit.SETTINGS,PlaylumiVillageHit.hit(877,55));
         assertEquals(PlaylumiVillageHit.PARENTS,PlaylumiVillageHit.hit(840,135));
         assertEquals(PlaylumiVillageHit.FRIEND,PlaylumiVillageHit.hit(470,761));
@@ -40,4 +44,3 @@ public final class PlaylumiVillageHitTest {
         assertEquals(-1,PlaylumiVillageHit.at(1800,1300,5,650));
     }
 }
-
