@@ -801,30 +801,47 @@ public class MainActivity extends Activity {
         saveRecent();
         move(PLAY);
     }
+    /** The start screen is one living game world, not a digital workbook menu. */
     private void showHome() {
-        header("🌟 Playlumi","Kies een plaatje om te beginnen.");
-        characterHero(118);
-        addText("🌟 "+wardrobe.stars()+" sterren",17,0xffa77933,0,3);
-
-        Button quick=tile("▶ Speel meteen","",0xffccf2db,112);
-        quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
-        addTile(quick,6);
-        quick.setOnClickListener(v->startEasyPlay());
-        PlaylumiDelight.invite(quick);
-
-        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
-        worlds.setOnClickListener(v->move(WORLD_PICKER));
-
-        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
-        play.setOnClickListener(v->move(MINI_MENU));
-        addTwo(worlds,play,107);
-
-        Button friend=tile("⭐ Mijn stervriend","Kleden en versieren",0xffffe7bb,86);
-        addTile(friend,4);
-        friend.setOnClickListener(v->move(AVATAR));
-
-        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
-        addTile(options,8);
+        header("🌟 Playlumi","Welkom in jouw sterrenwereld");
+        PlaylumiStarWorld starWorld=new PlaylumiStarWorld(this,location->{
+            if(sound!=null)sound.tap();
+            switch(location) {
+                case PlaylumiStarWorld.ADVENTURE:
+                    world=0;
+                    storyPage=Math.min(2,adventures.progress(world)/2);
+                    move(ADVENTURE_MAP);
+                    break;
+                case PlaylumiStarWorld.EXPLORE:
+                    move(WORLD_PICKER);
+                    break;
+                case PlaylumiStarWorld.MINI_GAMES:
+                    move(MINI_MENU);
+                    break;
+                case PlaylumiStarWorld.MUSIC:
+                    melodyRound=0;melodySolved=false;
+                    pendingBadges.clear();
+                    melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+                    move(MUSIC_PLAY);
+                    break;
+                case PlaylumiStarWorld.GARDEN:
+                    gardenPage=0;
+                    move(GARDEN_MENU);
+                    break;
+                case PlaylumiStarWorld.FRIEND:
+                    move(AVATAR);
+                    break;
+                default: break;
+            }
+        });
+        LinearLayout.LayoutParams worldParams=new LinearLayout.LayoutParams(-1,-2);
+        worldParams.setMargins(0,dp(2),0,dp(4));
+        root.addView(starWorld,worldParams);
+        Button surprise=tile("✨ Verrassingsavontuur","Spring meteen in een spel!",0xffffe8b0,82);
+        addTile(surprise,3);
+        surprise.setOnClickListener(v->startEasyPlay());
+        Button options=tile("⚙️ Voor ouders en instellingen","",0xffe4d9ff,60);
+        addTile(options,3);
         options.setOnClickListener(v->move(HOME_OPTIONS));
     }
     private void showWorldPicker() {
