@@ -52,9 +52,15 @@ capture() {
   adb exec-out screencap -p > "$OUT/$1.png"
   test -s "$OUT/$1.png"
 }
-# Emulator launches on age selection for fresh installation.
-assert_text "Klaar om te ontdekken"
-tap_text "3–4 jaar"
+# Emulator snapshots may retain a previous age choice.
+if ! adb shell dumpsys package nl.playlumi.app | grep -Fq "versionName=0.67.0"; then
+  echo "FAIL: emulator is not running Playlumi 0.67.0"
+  exit 1
+fi
+ui_dump
+if grep -Fq "Klaar om te ontdekken" "$OUT/hierarchy.xml"; then
+  tap_text "3–4 jaar"
+fi
 assert_text "Klaar voor een avontuur"
 capture home-phone
 tap_text "Speel meteen"
