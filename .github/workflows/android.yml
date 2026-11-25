@@ -22,7 +22,7 @@ jobs:
           gradle-version: '8.9'
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=24456" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=30580" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
   emulator-launch:
@@ -63,7 +63,7 @@ jobs:
           retention-days: 7
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=24456" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=30580" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
       - name: Check release APK ZIP alignment before any signing
@@ -85,11 +85,11 @@ jobs:
       # Pull requests prove code quality; only explicit release runs attempt signing.
       # A release run still fails closed if original credentials are absent.
       - name: Verify original-signed APK against the actual CI-built release
-        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
+        if: hashFiles('release-candidates/playlumi-0.66.0-original-signed.apk') != ''
         shell: bash
         run: |
           set -euo pipefail
-          SIGNED="release-candidates/playlumi-0.63.0-original-signed.apk"
+          SIGNED="release-candidates/playlumi-0.66.0-original-signed.apk"
           UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
           test -s "$SIGNED"
           test -s "$UNSIGNED"
@@ -128,15 +128,15 @@ jobs:
           [[ "$PACKAGE" == *"versionName='0.63.0'"* ]]
           echo "PASS: original release fingerprint, v1/v2, zipalign, exact version and package"
       - name: Publish emulator-approved original-signed release update
-        if: hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') != ''
+        if: hashFiles('release-candidates/playlumi-0.66.0-original-signed.apk') != ''
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-original-signed-release-update
-          path: release-candidates/playlumi-0.63.0-original-signed.apk
+          path: release-candidates/playlumi-0.66.0-original-signed.apk
           if-no-files-found: error
           retention-days: 14
       - name: Sign release only with the original verified Playlumi certificate
-        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') == ''
+        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.66.0-original-signed.apk') == ''
         id: sign_release
         shell: bash
         env:
@@ -192,7 +192,7 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "Release APK signed with the verified original certificate."
       - name: Publish verified original-signed update APK
-        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.63.0-original-signed.apk') == '' && steps.sign_release.outputs.signed == 'true'
+        if: github.event_name == 'workflow_dispatch' && hashFiles('release-candidates/playlumi-0.66.0-original-signed.apk') == '' && steps.sign_release.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-original-signed-release-update
