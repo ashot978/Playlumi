@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.81: full Android rendering, real controls and regression tests.
+# Playlumi 0.82: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
@@ -27,7 +27,7 @@ echo "Emulator screen: ${screenW}x${screenH}"
 home() {
   adb shell am force-stop "$app" >/dev/null || true
   adb logcat -c
-  adb shell am start -n "$activity" --ez playlumi_ci_home true >/dev/null
+  adb shell am start -n "$activity" --ez playlumi_ci_home true --ei playlumi_ci_age "${1:-0}" >/dev/null
   sleep 4
   adb shell pidof "$app" >/dev/null
   adb logcat -d -s PlaylumiQA:I | grep -q 'screen=1' || {
@@ -174,6 +174,134 @@ PY
   grep -q "Kies het juiste antwoord" build/qa/ui.xml
   ! grep -q "Volgende" build/qa/ui.xml
   echo "PASS: $label wrong/correct answer, automatic advance, safe answer bounds ($reserved px)"
+}
+
+# Test real six-option shape boards and actual drag gestures.
+shapeRound() {
+  home 2
+  tapVillage 185 690
+  assertScreen 43
+  tapText "Sleep de vormen"
+  assertScreen 13
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local reserved coords
+  reserved=$(adb logcat -d -s PlaylumiQA:I | grep 'gameReservedBottom=' | tail -1 | sed -nE 's/.*gameReservedBottom=([0-9]+).*/\1/p')
+  coords=$(python3 - "$screenW" "$screenH" "$reserved" "$mode" <<'PY'
+import re,sys,xml.etree.ElementTree as E
+w,h,inset=map(int,sys.argv[1:4]);mode=sys.argv[4]
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+gate=next(n for n in nodes if n.get('content-desc','').startswith('Vormpoort: '))
+symbol=gate.get('content-desc').split(': ',1)[1]
+def bounds(n):
+    b=list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+    assert len(b)==4 and b[2]>b[0] and b[3]>b[1] and b[3]<=h-inset,(n.get('content-desc'),b)
+    return b
+def center(b):return ((b[0]+b[2])//2,(b[1]+b[3])//2)
+gb=bounds(gate)
+cards=[n for n in nodes if n.get('clickable')=='true' and n.get('content-desc','') in ['⭐','🔺','🔵','🟩','💜','🔶','❤️','⬛','🔷','🔸','🟢','⬜']]
+assert len(cards)==6, 'Expected six advanced shapes'
+cb=[bounds(n) for n in cards]
+assert len({b[3]-b[1] for b in cb})==1,'Inconsistent card heights'
+assert len({b[2]-b[0] for b in cb})<=2,'Inconsistent card widths'
+if mode=='fold':
+    assert gb[2]<=min(b[0] for b in cb), 'Wide target should sit beside choices'
+    assert abs((gb[3]-gb[1])-(max(b[3] for b in cb)-min(b[1] for b in cb)))<=40,'Wide gate and card grid height mismatch'
+else:
+    assert gb[3]<=min(b[1] for b in cb),'Portrait target should sit above choices'
+good=next(n for n in cards if n.get('content-desc')==symbol)
+bad=next(n for n in cards if n.get('content-desc')!=symbol)
+print(*center(bounds(bad)),*center(bounds(good)),*center(gb))
+PY
+)
+  adb logcat -d -s PlaylumiQA:I | grep -F "headerFit=true title=Vormen slepen"
+  screenshot "game-shapes-${mode}"
+  local bx by gx gy tx ty
+  read -r bx by gx gy tx ty <<< "$coords"
+  adb shell input swipe "$bx" "$by" "$tx" "$ty" 1200
+  sleep 2
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "Probeer eens een andere" build/qa/ui.xml
+  ! grep -q "Verder spelen!" build/qa/ui.xml
+  adb shell input swipe "$gx" "$gy" "$tx" "$ty" 1200
+  sleep 2
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "Goed gedaan!" build/qa/ui.xml
+  grep -q "Verder spelen!" build/qa/ui.xml
+  screenshot "game-shapes-${mode}-solved"
+  echo "PASS: $mode six responsive shape choices, wrong and correct real drag"
+}
+wordRound() {
+  home 2
+  tapVillage 740 398
+  assertScreen 43
+  tapText "Woorden maken"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local answer bad full blank
+  read -r answer bad full blank < <(python3 - <<'PY'
+import re,xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+words='koe kat vis mus kip mol uil aap bok das hond beer muis geit haan poes eend duif slak wolf konijn paard leeuw tijger schaap varken dolfijn olifant giraf panda'.split()
+for n in nodes:
+    if n.get('clickable')=='false':
+        m=re.search(r'[a-z]*_[a-z]*',n.get('content-desc',''))
+        if m and len(m.group())>1:
+            blank=m.group();break
+else:raise SystemExit('Missing word blank')
+matching=[w for w in words if re.fullmatch(blank.replace('_','[a-z]'),w)]
+assert len(matching)==1,(blank,matching)
+full=matching[0];answer=full[blank.index('_')]
+choices=[n.get('content-desc','') for n in nodes if n.get('clickable')=='true']
+assert answer in choices
+bad=next(c for c in choices if len(c)==1 and c.isalpha() and c!=answer)
+print(answer,bad,full,blank)
+PY
+)
+  tapText "$bad"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -Fq "$blank" build/qa/ui.xml
+  grep -q "Probeer nog eens" build/qa/ui.xml
+  tapText "$answer"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -Fq "$full" build/qa/ui.xml
+  ! grep -Fq "$blank" build/qa/ui.xml
+  grep -q "Volgende" build/qa/ui.xml
+  screenshot "game-word-${mode}-filled"
+  echo "PASS: $mode word $blank -> $full; wrong letter did not fill the blank"
+}
+finishNumberRound() {
+  # Called after numberRound word-to-digit; seven correct answers remain.
+  for i in {2..8}; do
+    adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+    adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+    local xy
+    xy=$(python3 - <<'PY'
+import re,xml.etree.ElementTree as E
+words=['één','twee','drie','vier','vijf','zes','zeven','acht','negen','tien']
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+n=next(n for n in nodes if n.get('content-desc','') in words and n.get('clickable')=='false')
+answer=str(words.index(n.get('content-desc'))+1)
+b=next(n for n in nodes if n.get('content-desc','')==answer and n.get('clickable')=='true')
+a=list(map(int,re.findall(r'\d+',b.get('bounds',''))))
+print((a[0]+a[2])//2,(a[1]+a[3])//2)
+PY
+)
+    adb shell input tap $xy
+    sleep 2
+  done
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q 'Knap gedaan!' build/qa/ui.xml
+  grep -q '8 vragen goed!' build/qa/ui.xml
+  adb logcat -d -s PlaylumiQA:I | grep -F "headerFit=true title=Knap gedaan!"
+  screenshot "game-completed-${mode}"
+  echo "PASS: $mode complete session and fully visible completion title"
 }
 
 if [[ "$mode" == phone ]]; then
@@ -356,6 +484,9 @@ screenshot game-stars-solved
 numberRound hands "Vingers tellen" hands
 numberRound digit-to-word "Cijfer naar woord" word
 numberRound word-to-digit "Woord naar cijfer" digit
+finishNumberRound
+shapeRound
+wordRound
 
 else
   echo "Fresh unfolded emulator: ${screenW}x${screenH}"
@@ -376,6 +507,9 @@ done
 numberRound fold-hands "Vingers tellen" hands
 numberRound fold-digit-to-word "Cijfer naar woord" word
 numberRound fold-word-to-digit "Woord naar cijfer" digit
+finishNumberRound
+shapeRound
+wordRound
 
 fi
 # The native layout must not have crashed anywhere during the recorded journeys.

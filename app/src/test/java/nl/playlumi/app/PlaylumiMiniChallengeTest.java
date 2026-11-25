@@ -99,4 +99,14 @@ public class PlaylumiMiniChallengeTest {
     public void rejectsOutOfRangeGame() {
         PlaylumiMiniChallenge.generate(3,0,new Random());
     }
+    @Test public void shapeRoundRestoresTheSameTargetAndOptions(){
+        Random random=new Random(5182);
+        for(int level=0;level<3;level++)for(int i=0;i<40;i++){
+            PlaylumiMiniChallenge original=PlaylumiMiniChallenge.generate(PlaylumiMiniChallenge.DRAG,level,random);
+            PlaylumiMiniChallenge restored=PlaylumiMiniChallenge.restoreDrag(level,original.target,original.choices,original.correctIndex);
+            assertEquals(original.target,restored.target);
+            assertEquals(original.choices,restored.choices);
+            for(int k=0;k<restored.choices.size();k++)assertEquals(k==original.correctIndex,restored.drop(k));
+        }
+    }
 }

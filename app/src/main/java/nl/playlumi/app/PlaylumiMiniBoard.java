@@ -34,6 +34,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     private final List<Button> cards=new ArrayList<>();
     private final List<ObjectAnimator> floating=new ArrayList<>();
     private TextView status;
+    private PlaylumiShapeGate shapeGate;
     private boolean solved,waiting;
     private static final class ShapeDrag {
         final PlaylumiMiniBoard owner;
@@ -91,26 +92,30 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                 android.content.res.Configuration.ORIENTATION_LANDSCAPE ||
                 getResources().getConfiguration().screenWidthDp>=600;
     }
+    private boolean shapeWide(){return PlaylumiLayout.shapeWide(getResources().getConfiguration().screenWidthDp,getResources().getConfiguration().screenHeightDp);}
     private void show() {
         removeAllViews();
         cards.clear();
         status=caption("",16,PlaylumiMagicArt.INK);
         status.setBackground(PlaylumiMagicArt.creamPlate(getContext()));
         if(question.kind==PlaylumiMiniChallenge.DRAG) {
-            status.setText("👆 Sleep de vorm naar het huisje");
-            addView(status,new LayoutParams(-1,dp(landscape()?36:42)));
+            status.setText("Houd een vorm vast en sleep.");
+            status.setPadding(dp(5),dp(4),dp(5),dp(4));
+            status.setTextSize(14);
+            addView(status,new LayoutParams(-1,dp(36)));
 
             LinearLayout board=new LinearLayout(getContext());
-            board.setOrientation(landscape()?HORIZONTAL:VERTICAL);
-            board.setGravity(Gravity.CENTER_VERTICAL);
+            boolean wide=shapeWide();
+            board.setOrientation(wide?HORIZONTAL:VERTICAL);
+            board.setGravity(Gravity.CENTER);
             addView(board,new LayoutParams(-1,-2));
 
-            TextView destination=caption("🏡\n"+question.target,landscape()?34:39,0xff7353ae);
-            destination.setBackground(bg(0xffe4f8dd));
-            destination.setContentDescription("Huisje. Laat hier de gekozen vorm los.");
-            int targetHeight=landscape()?194:108;
-            LayoutParams boxParams=landscape()?
-                    new LayoutParams(0,dp(targetHeight),1f):
+            PlaylumiShapeGate destination=new PlaylumiShapeGate(getContext(),question.target);
+            shapeGate=destination;
+            int targetHeight=PlaylumiLayout.shapeTargetHeight(getResources().getConfiguration().screenWidthDp,
+                    getResources().getConfiguration().screenHeightDp,question.choices.size());
+            LayoutParams boxParams=wide?
+                    new LayoutParams(0,dp(targetHeight),.92f):
                     new LayoutParams(-1,dp(targetHeight));
             boxParams.setMargins(dp(4),dp(3),dp(4),dp(5));
             board.addView(destination,boxParams);
@@ -121,16 +126,14 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                         return token instanceof ShapeDrag && ((ShapeDrag)token).owner==this;
                     }
                     case DragEvent.ACTION_DRAG_ENTERED:
-                        view.setScaleX(1.04f);view.setScaleY(1.04f);
-                        PlaylumiDelight.hop(view);
+                        view.setAlpha(.93f);
                         return true;
                     case DragEvent.ACTION_DRAG_EXITED:
                     case DragEvent.ACTION_DRAG_ENDED:
-                        view.setScaleX(1f);view.setScaleY(1f);
+                        view.setAlpha(1f);
                         return true;
                     case DragEvent.ACTION_DROP:
-                        view.setScaleX(1f);view.setScaleY(1f);
-                        PlaylumiDelight.wiggle(view);
+                        view.setAlpha(1f);
                         Object token=event.getLocalState();
                         if(token instanceof ShapeDrag && ((ShapeDrag)token).owner==this)
                             checkAnswer(((ShapeDrag)token).answerIndex,true);
@@ -141,8 +144,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             LinearLayout choices=new LinearLayout(getContext());
             choices.setOrientation(VERTICAL);
             choices.setGravity(Gravity.CENTER);
-            LayoutParams choiceParams=landscape()?
-                    new LayoutParams(0,-2,1f):new LayoutParams(-1,-2);
+            LayoutParams choiceParams=wide?
+                    new LayoutParams(0,-2,1.08f):new LayoutParams(-1,-2);
             choiceParams.setMargins(dp(3),0,dp(3),0);
             board.addView(choices,choiceParams);
             addChoices(choices,false);
@@ -165,19 +168,26 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             started=view.startDragAndDrop(clip,new View.DragShadowBuilder(view),token,0);
         else
             started=view.startDrag(clip,new View.DragShadowBuilder(view),token,0);
-        if(started)status.setText("🏡 Laat de vorm los in het groene huisje");
+        if(started)status.setText("Laat los in de vormpoort!");
         return started;
     }
     private void addChoices(LinearLayout parent,boolean balloon) {
         int count=question.choices.size();
-        int columns=balloon?2:(count==3 || count>4?3:2);
+        int width=getResources().getConfiguration().screenWidthDp;
+        int height=getResources().getConfiguration().screenHeightDp;
+        int columns=balloon?2:PlaylumiLayout.shapeColumns(width,height,count);
+        int shapeHeight=PlaylumiLayout.shapeTileHeight(width,height,count);
         for(int start=0;start<count;start+=columns) {
             LinearLayout row=new LinearLayout(getContext());
             row.setGravity(Gravity.CENTER);
             for(int idx=start;idx<Math.min(start+columns,count);idx++) {
                 final int answer=idx;
                 String content=balloon?"":question.choices.get(idx);
-                Button b=tile(content,idx,balloon?28:landscape()?31:36);
+                Button b=tile(content,idx,balloon?28:Math.max(28,Math.min(53,Math.round(shapeHeight*.49f))));
+                if(!balloon){
+                    b.setMinHeight(0);b.setMinimumHeight(0);
+                    b.setPadding(dp(3),dp(3),dp(3),dp(3));
+                }
                 if(balloon){
                     int quantity=question.balloonCount(idx);
                     LayerDrawable art=new LayerDrawable(new android.graphics.drawable.Drawable[]{
@@ -186,7 +196,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                     b.setContentDescription("Groep met "+quantity+(quantity==1?" ballon":" ballonnen"));
                 }
                 int balloonHeight=landscape()?120:(getResources().getConfiguration().screenHeightDp<700?98:112);
-                LayoutParams p=new LayoutParams(0,dp(balloon?balloonHeight:76),1f);
+                LayoutParams p=new LayoutParams(0,dp(balloon?balloonHeight:shapeHeight),1f);
                 p.setMargins(dp(4),dp(4),dp(4),dp(4));
                 row.addView(b,p);
                 cards.add(b);
@@ -195,7 +205,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                     // Keep all balloons still and individually countable.
                 } else {
                     // Tap provides guidance only; a real ACTION_DROP is necessary to score.
-                    b.setOnClickListener(v->status.setText("👆 Houd de vorm vast en sleep naar het huisje"));
+                    b.setOnClickListener(v->status.setText("Houd vast en sleep naar de poort!"));
                     b.setOnLongClickListener(v->beginShapeDrag(v,answer));
                     final float[] origin=new float[2];
                     final boolean[] dragging={false};
@@ -229,6 +239,14 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                     });
                 }
             }
+            if(!balloon){
+                for(int empty=Math.min(start+columns,count);empty<start+columns;empty++){
+                    View spacer=new View(getContext());
+                    LayoutParams p=new LayoutParams(0,dp(shapeHeight),1f);
+                    p.setMargins(dp(4),dp(4),dp(4),dp(4));
+                    row.addView(spacer,p);
+                }
+            }
             parent.addView(row,new LayoutParams(-1,-2));
         }
     }
@@ -246,6 +264,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         if(solved || (question.kind==PlaylumiMiniChallenge.DRAG && !dragged))return;
         if((question.kind==PlaylumiMiniChallenge.DRAG?question.drop(index):question.choose(index))) {
             solved=true;
+            if(shapeGate!=null)shapeGate.setCompleted(true);
             status.setText("🌟 Joepie! Goed gedaan!");
             status.setTextColor(0xff32886b);
             for(Button b:cards)b.setEnabled(false);
@@ -256,6 +275,14 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             if(index<cards.size())PlaylumiDelight.wiggle(cards.get(index));
             listener.onMistake();
         }
+    }
+    public void restoreSolvedShape(){
+        if(question.kind!=PlaylumiMiniChallenge.DRAG)return;
+        solved=true;
+        if(shapeGate!=null)shapeGate.setCompleted(true);
+        status.setText("🌟 Joepie! Goed gedaan!");
+        status.setTextColor(0xff276748);
+        for(Button b:cards)b.setEnabled(false);
     }
     private void addMemory() {
         int columns=landscape() && question.choices.size()>8?4:3;

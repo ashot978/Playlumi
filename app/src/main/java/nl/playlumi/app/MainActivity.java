@@ -80,7 +80,7 @@ public class MainActivity extends Activity {
     private LinearLayout root;
     private FrameLayout stage;
     private ScrollView scroller;
-    private TextView feedbackText,progressCounter;
+    private TextView feedbackText,progressCounter,questionPicture;
     private PlaylumiStarTrail roundStars;
     private Button nextButton;
     private String feedback="";
@@ -253,7 +253,30 @@ public class MainActivity extends Activity {
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
-        if(page==MINI_PLAY)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        if(state!=null && page==PLAY && state.containsKey("roundDisplay")){
+            try{
+                game.restoreRound(state.getString("roundPrompt"),state.getString("roundDisplay"),
+                        state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
+                        state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
+                        state.getInt("roundFingers"),state.getBoolean("roundSolved"));
+                feedback=state.getString("roundFeedback","");
+                ArrayList<Integer> savedBadges=state.getIntegerArrayList("roundBadges");
+                if(savedBadges!=null)pendingBadges.addAll(savedBadges);
+            }catch(IllegalArgumentException ignored){}
+        }
+        if(page==MINI_PLAY){
+            if(state!=null && miniKind==PlaylumiMiniChallenge.DRAG && state.containsKey("dragTarget")){
+                try {
+                    mini=PlaylumiMiniChallenge.restoreDrag(state.getInt("dragLevel"),
+                            state.getString("dragTarget"),state.getStringArrayList("dragChoices"),
+                            state.getInt("dragCorrect"));
+                    miniSolved=state.getBoolean("dragSolved");
+                    ArrayList<Integer> savedBadges=state.getIntegerArrayList("dragBadges");
+                    if(savedBadges!=null)pendingBadges.addAll(savedBadges);
+                }catch(IllegalArgumentException ignored){}
+            }
+            if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
+        }
         if(page==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
             try {
                 melody=PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
@@ -314,6 +337,22 @@ public class MainActivity extends Activity {
         out.putInt("categoryPage",categoryPage);out.putInt("variantPage",variantPage);
         out.putInt("badgePage",badgePage);out.putInt("sessionSolved",sessionSolved);
         out.putInt("sessionAttempts",sessionAttempts);out.putInt("page",page);
+        if(page==PLAY && game!=null){
+            LearningGame.Round round=game.round();
+            out.putString("roundPrompt",round.prompt);out.putString("roundDisplay",round.display);
+            out.putInt("roundColor",round.displayColor);out.putInt("roundCorrect",round.correctIndex);
+            out.putInt("roundFingers",round.fingerCount);out.putBoolean("roundSolved",round.isSolved());
+            out.putStringArrayList("roundAnswers",new ArrayList<>(round.answers));
+            out.putIntegerArrayList("roundColors",new ArrayList<>(round.answerColors));
+            out.putString("roundFeedback",feedback);
+            out.putIntegerArrayList("roundBadges",new ArrayList<>(pendingBadges));
+        }
+        if(page==MINI_PLAY && mini!=null && miniKind==PlaylumiMiniChallenge.DRAG){
+            out.putInt("dragLevel",mini.level);out.putString("dragTarget",mini.target);
+            out.putStringArrayList("dragChoices",new ArrayList<>(mini.choices));
+            out.putInt("dragCorrect",mini.correctIndex);out.putBoolean("dragSolved",miniSolved);
+            out.putIntegerArrayList("dragBadges",new ArrayList<>(pendingBadges));
+        }
         out.putInt("earnedBadge",earnedBadge);
         out.putInt("closetPage",closetPage);
         out.putInt("shopPage",shopPage);
@@ -545,6 +584,8 @@ public class MainActivity extends Activity {
             int available=getResources().getConfiguration().screenHeightDp;
             int height=PlaylumiLayout.magicHeroHeight(width,available,page==VILLAGE_MENU);
             if(page==PLAY && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?105:110);
+            if(page==MINI_PLAY && miniKind==PlaylumiMiniChallenge.DRAG)
+                height=PlaylumiLayout.shapeHeroHeight(available);
             View art=PlaylumiMagicArt.hero(this,place);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
             p.setMargins(0,0,0,dp(6));root.addView(art,p);
@@ -769,11 +810,24 @@ public class MainActivity extends Activity {
         TextView title=text(heading,gameHeader?17:20,Color.WHITE);
         if(theme>=0){title.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));title.setShadowLayer(dp(1),0,dp(1),0xff391452);}
         title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
-        title.setMaxLines(1);
-        title.setSingleLine(true);
-        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        if(theme>=0 && Build.VERSION.SDK_INT>=26)
-            title.setAutoSizeTextTypeUniformWithConfiguration(12,20,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        title.setSingleLine(false);
+        title.setHorizontallyScrolling(false);
+        title.setMaxLines(2);
+        title.setEllipsize(null);
+        title.setIncludeFontPadding(false);
+        title.setLineSpacing(0,1f);
+        if(Build.VERSION.SDK_INT>=26)
+            title.setAutoSizeTextTypeUniformWithConfiguration(11,gameHeader?19:20,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        if((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
+            title.addOnLayoutChangeListener((view,l,t,r,b,ol,ot,or,ob)->{
+                android.text.Layout layout=title.getLayout();
+                if(layout!=null&&layout.getLineCount()>0){
+                    int last=layout.getLineCount()-1;
+                    boolean fit=last<2 && layout.getLineEnd(last)>=title.length() &&
+                            layout.getEllipsisCount(last)==0 && layout.getLineBottom(last)<=title.getHeight()+2;
+                    android.util.Log.i("PlaylumiQA","headerFit="+fit+" title="+heading);
+                }
+            });
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1f);
         row.addView(title,tp);
         if(gameHeader) {
@@ -824,7 +878,7 @@ public class MainActivity extends Activity {
         if(page==CLOSET || page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
-        playPal=null;progressCounter=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;
+        playPal=null;progressCounter=null;questionPicture=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;
         final boolean villageScreen=page==HOME;
         final boolean magicScreen=worldTheme()>=0;
         final boolean darkBars=villageScreen || magicScreen;
@@ -1406,16 +1460,17 @@ public class MainActivity extends Activity {
         } else {
             int glyphSize=shortDisplay?(wide?76:58):
                     round.display.length()>22?25:round.display.length()>12?31:40;
-            TextView picture=text(round.display,glyphSize,PlaylumiMagicArt.INK);
+            TextView picture=text(round.visibleDisplay(),glyphSize,PlaylumiMagicArt.INK);
+            questionPicture=picture;
             picture.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
             picture.setBackground(PlaylumiMagicArt.question(this,!wide && shortDisplay));
             picture.setMinHeight(dp(questionH));
             picture.setPadding(dp(12),dp(5),dp(12),dp(5));
             picture.setMaxLines(4);
-            picture.setContentDescription(round.display);
+            updateQuestionPicture(round);
             addWidgetIn(questions,picture,0,dp(3));
         }
-        feedbackText=text(round.isSolved()?feedback:"Kies het juiste antwoord",15,PlaylumiMagicArt.CREAM);
+        feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):"Kies het juiste antwoord",15,PlaylumiMagicArt.CREAM);
         feedbackText.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         feedbackText.setMinHeight(dp(23));
         feedbackText.setShadowLayer(dp(1),0,dp(1),0xff2e164c);
@@ -1445,6 +1500,11 @@ public class MainActivity extends Activity {
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),colorPlate,null));
                     button.setTextColor(Color.WHITE);
                 }
+                if(round.isSolved() && j==round.correctIndex){
+                    button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
+                            PlaylumiMagicArt.pastel(this,3),null));
+                    button.setTextColor(0xff174f36);
+                }
                 LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(rowHeight),1f);
                 cell.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(button,cell);
                 answerButtons.add(button);
@@ -1460,6 +1520,21 @@ public class MainActivity extends Activity {
             nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
             nextButton.setOnClickListener(v->continueAfterAnswer());
         }
+    }
+    private void updateQuestionPicture(LearningGame.Round round){
+        if(questionPicture==null)return;
+        String shown=round.visibleDisplay();
+        int blank=round.letterBlank();
+        if(round.isSolved() && blank>=0){
+            int end=blank+round.answers.get(round.correctIndex).length();
+            android.text.SpannableString marked=new android.text.SpannableString(shown);
+            marked.setSpan(new android.text.style.ForegroundColorSpan(0xff237b49),blank,end,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            marked.setSpan(new android.text.style.UnderlineSpan(),blank,end,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            questionPicture.setText(marked);
+        }else questionPicture.setText(shown);
+        questionPicture.setContentDescription(shown);
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
@@ -1496,6 +1571,10 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
+            if(game.round().letterBlank()>=0){
+                updateQuestionPicture(game.round());
+                if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
+            }
             feedback="⭐ Goed gedaan! +3 🌟";
             if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
@@ -1584,7 +1663,7 @@ public class MainActivity extends Activity {
             if(stage==finishedScreen)PlaylumiMotion.celebrate(stage,10);
         });
         if(storyStage>=0) {
-            header("🏆 Avontuur voltooid!","");
+            header("Avontuur klaar!","");
             characterHero(172);
             addText(PlaylumiAdventure.ICONS[world][storyStage]+"  "+
                     PlaylumiAdventure.TITLES[world][storyStage],24,0xff543c97,12,8);
@@ -1605,7 +1684,7 @@ public class MainActivity extends Activity {
             });
             return;
         }
-        header("🏆 Jij bent een kampioen!","");
+        header("Knap gedaan!","");
         characterHero(145);
         addText("🌟 "+sessionGoal()+" vragen goed!",27,0xff4b3488,9,9);
         addText("Dat was knap! Zin in nog een ronde?",17,SUB,0,12);
@@ -1769,8 +1848,9 @@ public class MainActivity extends Activity {
 
     private void showMiniPlay() {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
-        header(miniKind==PlaylumiMiniChallenge.MEMORY?"Dierenmemory":PlaylumiMiniChallenge.NAMES[miniKind],
-                Math.min(miniRound+1,20)+"/20");
+        String miniTitle=miniKind==PlaylumiMiniChallenge.MEMORY?"Dierenmemory":
+                miniKind==PlaylumiMiniChallenge.DRAG?"Vormen slepen":PlaylumiMiniChallenge.NAMES[miniKind];
+        header(miniRound>=20?"Knap gedaan!":miniTitle,miniRound>=20?"":Math.min(miniRound+1,20)+"/20");
         addIllustratedPortal(worldTheme(),PlaylumiWorldStyle.NAMES[worldTheme()],116);
         if(miniRound>=20) {
             characterHero(150);
@@ -1786,7 +1866,8 @@ public class MainActivity extends Activity {
             addTile(back,8);back.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:MINI_MENU));
             return;
         }
-        addWidget(magicRibbon(miniKind==PlaylumiMiniChallenge.MEMORY?"Vind de gelijke dieren":mini.question,19),0,5);
+        addWidget(magicRibbon(miniKind==PlaylumiMiniChallenge.MEMORY?"Vind de gelijke dieren":
+                miniKind==PlaylumiMiniChallenge.DRAG?"Sleep naar de vormpoort":mini.question,19),0,5);
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
             @Override public void onSolved() {
                 if(miniSolved)return;
@@ -1796,8 +1877,11 @@ public class MainActivity extends Activity {
                 if(nextButton!=null) {
                     nextButton.setVisibility(View.VISIBLE);
                     PlaylumiMotion.pop(nextButton);
-                    scroller.post(()->scroller.smoothScrollTo(0,
-                            Math.max(0,root.getHeight()-scroller.getHeight())));
+                    final Button next=nextButton;
+                    next.post(()->{
+                        if(nextButton==next&&next.isShown())
+                            next.requestRectangleOnScreen(new android.graphics.Rect(0,0,next.getWidth(),next.getHeight()+dp(8)),false);
+                    });
                 }
                 PlaylumiMotion.celebrate(stage,miniRound+1);
             }
@@ -1811,6 +1895,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams boardParams=new LinearLayout.LayoutParams(-1,-2);
         boardParams.setMargins(dp(0),dp(2),dp(0),dp(4));
         root.addView(board,boardParams);
+        if(miniSolved && miniKind==PlaylumiMiniChallenge.DRAG)board.restoreSolvedShape();
         nextButton=tile("🌟 Verder spelen!","",0xffc9f2dc,66);
         addTile(nextButton,4);
         nextButton.setVisibility(miniSolved?View.VISIBLE:View.GONE);

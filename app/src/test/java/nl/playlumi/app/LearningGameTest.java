@@ -75,7 +75,23 @@ public class LearningGameTest {
                     assertEquals(1, round.display.length() - round.display.replace("_", "").length());
                     assertEquals(level == 0 ? 3 : level == 1 ? 4 : 6, round.answers.size());
                     assertEquals(1, round.answers.get(round.correctIndex).length());
+                    String original=round.display;
+                    String answer=round.answers.get(round.correctIndex);
+                    assertTrue(round.letterBlank()>=0);
+                    assertEquals(original,round.visibleDisplay());
+                    for(int k=0;k<round.answers.size();k++)if(k!=round.correctIndex){
+                        assertFalse(round.choose(k));
+                        assertEquals(original,round.visibleDisplay());
+                    }
                     assertTrue(round.choose(round.correctIndex));
+                    assertEquals(original.replace("_",answer),round.visibleDisplay());
+                    assertFalse(round.visibleDisplay().contains("_"));
+                    LearningGame restored=new LearningGame(new Random(11));
+                    restored.restoreRound(round.prompt,round.display,round.displayColor,
+                            round.answers,round.answerColors,round.correctIndex,round.fingerCount,true);
+                    assertEquals(round.visibleDisplay(),restored.round().visibleDisplay());
+                    assertTrue(restored.round().isSolved());
+                    assertFalse(restored.round().choose(round.correctIndex));
                     game.nextRound();
                 }
             }
