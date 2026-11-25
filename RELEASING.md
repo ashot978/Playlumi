@@ -5,7 +5,7 @@ working until the technical and visual gates below pass.
 
 ## Stable identity and source
 - Package/application ID: `nl.playlumi.app`.
-- Playlumi 0.73.0: `versionName=0.73.0`, `versionCode=600730`.
+- Playlumi 0.74.0: `versionName=0.74.0`, `versionCode=600740`.
 - Original certificate SHA-256:
   `d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef`.
 - Private release signing material MUST stay outside GitHub/CI/repo.
@@ -56,3 +56,10 @@ Increase BOTH versionName and the explicitly reserved versionCode; verify it is
 above the highest installed/published release versionCode. Update workflow checks,
 release notes and immutable asset hash if art changes. Never replace the original
 signing key to work around installation failures.
+
+## 0.74 additional UI acceptance gates
+- Respect Android WindowInsets dynamically on illustrated home for BOTH status/navigation bars.
+- Emulator must verify status/nav safe insets are nonzero, all six building taps route to the correct games and return directly to village, and the bottom destinations/parent gate work.
+- Test screenshots are written to CI artifact `playlumi-074-screen-qa` for actual visual review.
+- Detailed game portals reuse the original approved illustrated village asset; compare game pages and home visually.
+- CI attempts to enable KVM for emulator; on unavailable KVM, enables software fallback. Device screenshot review is still a distinct acceptance gate.
