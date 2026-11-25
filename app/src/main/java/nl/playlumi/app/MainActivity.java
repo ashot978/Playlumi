@@ -848,7 +848,7 @@ public class MainActivity extends Activity {
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                villageScreen?new int[]{0xff50308c,0xff5b3b96,0xff50308c}:
+                darkBars?new int[]{0xff30194f,0xff50308c,0xff30194f}:
                         new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
         int theme=worldTheme();
