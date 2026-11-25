@@ -58,7 +58,7 @@ jobs:
       - name: Upload validated debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-debug-apk
+          name: playlumi-074-package-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             build-debug-sha256.txt
@@ -68,7 +68,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-unsigned-release
+          name: playlumi-074-package-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -78,7 +78,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-073-package-signing-tools
+          name: playlumi-074-package-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
