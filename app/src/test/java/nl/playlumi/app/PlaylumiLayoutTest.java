@@ -29,6 +29,25 @@ public final class PlaylumiLayoutTest {
         assertTrue(PlaylumiLayout.heroHeight(240,false,false,600)<=76);
     }
 
+    @Test public void shapeBoardUsesBalancedRowsAndResponsiveGate(){
+        for(int[] screen:new int[][]{{320,570},{360,760},{412,915},{600,800},{900,1000},{800,380}}){
+            int w=screen[0],h=screen[1];
+            for(int count:new int[]{3,4,6}){
+                int cols=PlaylumiLayout.shapeColumns(w,h,count);
+                int row=PlaylumiLayout.shapeTileHeight(w,h,count);
+                int gate=PlaylumiLayout.shapeTargetHeight(w,h,count);
+                assertTrue(cols>=2&&cols<=3);
+                assertTrue(row>=54&&row<=118);
+                assertTrue(gate>=100&&gate<=248);
+                if(PlaylumiLayout.shapeWide(w,h)&&count>=4)
+                    assertTrue(Math.abs(gate-(count+cols-1)/cols*(row+8))<=24);
+            }
+        }
+        assertFalse(PlaylumiLayout.shapeWide(360,800));
+        assertTrue(PlaylumiLayout.shapeWide(900,1000));
+        assertTrue(PlaylumiLayout.shapeWide(800,380));
+        assertTrue(PlaylumiLayout.shapeTileHeight(900,1000,6)>PlaylumiLayout.shapeTileHeight(360,760,6));
+    }
     @Test public void roomsDrawingsAndButtonsRemainUsable() {
         assertEquals(215,PlaylumiLayout.drawingHeight(true,900));
         assertEquals(225,PlaylumiLayout.drawingHeight(false,650));

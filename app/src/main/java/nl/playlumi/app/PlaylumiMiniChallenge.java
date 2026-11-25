@@ -57,6 +57,14 @@ public final class PlaylumiMiniChallenge {
         Collections.shuffle(options,random);
         return new PlaylumiMiniChallenge(kind,level,"Zoek twee dezelfde diertjes","🐾",options,-1);
     }
+    public static PlaylumiMiniChallenge restoreDrag(int level,String target,List<String> choices,int correctIndex){
+        if(level<0||level>2||target==null||choices==null||choices.size()!=(level==0?3:level==1?4:6)||
+                correctIndex<0||correctIndex>=choices.size()||!target.equals(choices.get(correctIndex))||
+                new java.util.HashSet<>(choices).size()!=choices.size()||
+                !java.util.Arrays.asList(SHAPES).containsAll(choices))
+            throw new IllegalArgumentException("Invalid saved shape round");
+        return new PlaylumiMiniChallenge(DRAG,level,"Sleep de juiste vorm naar het huisje",target,choices,correctIndex);
+    }
     private static List<Integer> uniqueIndices(Random r,int count,int range) {
         if(count>range)throw new IllegalArgumentException("too many");
         List<Integer> values=new ArrayList<>();

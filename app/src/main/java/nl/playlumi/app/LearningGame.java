@@ -39,6 +39,19 @@ public final class LearningGame {
             this.correctIndex = correctIndex;
         }
         public boolean isSolved() { return solved; }
+        public int letterBlank() {
+            int index=display.indexOf('_');
+            if(index<0||index!=display.lastIndexOf('_'))return -1;
+            String answer=answers.get(correctIndex);
+            return answer.codePointCount(0,answer.length())==1 &&
+                    Character.isLetter(answer.codePointAt(0))?index:-1;
+        }
+        /** Never reveal an incorrect guess as part of the word. */
+        public String visibleDisplay() {
+            int blank=letterBlank();
+            if(!solved || blank<0)return display;
+            return display.substring(0,blank)+answers.get(correctIndex)+display.substring(blank+1);
+        }
         public boolean choose(int index) {
             if (solved || index != correctIndex) return false;
             solved = true;
@@ -53,6 +66,17 @@ public final class LearningGame {
     public boolean allowsQuestionNarration() { return mode != LETTERS || variant != 0; }
     public int level() { return level; }
     public Round round() { return current; }
+    /** Preserve the exact question and its solved state on configuration changes. */
+    public void restoreRound(String prompt,String display,int displayColor,List<String> answers,
+                             List<Integer> colors,int correct,int fingers,boolean solved) {
+        if(prompt==null||display==null||answers==null||colors==null||answers.isEmpty()||
+                answers.size()!=colors.size()||correct<0||correct>=answers.size()||
+                fingers<0||fingers>10||answers.get(correct)==null||answers.get(correct).isEmpty())
+            throw new IllegalArgumentException("Invalid saved round");
+        Round restored=new Round(prompt,display,displayColor,answers,colors,correct,fingers);
+        if(solved)restored.choose(correct);
+        current=restored;
+    }
     public void setHistory(QuestionHistory history) { this.history = history; }
     public void configure(int mode, int variant, int level) {
         if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > 4 || level < 0 || level > 2)

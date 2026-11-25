@@ -59,6 +59,35 @@ public final class PlaylumiLayout {
         int cap=widthDp>=600?192:heightDp<700?112:152;
         return Math.max(102,Math.min(cap,Math.round((widthDp-28)*.37f)));
     }
+    /** Shape board uses the available orientation, not a fixed phone layout. */
+    public static boolean shapeWide(int widthDp,int heightDp){
+        return widthDp>=600 || (widthDp>=520 && widthDp>heightDp);
+    }
+    public static int shapeColumns(int widthDp,int heightDp,int count){
+        int boardWidth=shapeWide(widthDp,heightDp)?Math.round(widthDp*.52f):widthDp;
+        return (count==3||count>4)&&boardWidth>=294?3:2;
+    }
+    public static int shapeHeroHeight(int heightDp){
+        return heightDp<470?54:heightDp<640?72:98;
+    }
+    public static int shapeTileHeight(int widthDp,int heightDp,int count){
+        boolean wide=shapeWide(widthDp,heightDp);
+        int columns=shapeColumns(widthDp,heightDp,count);
+        int rows=(count+columns-1)/columns;
+        int boardWidth=wide?Math.round(widthDp*.52f):widthDp;
+        int cardWidth=(boardWidth-32-columns*8)/columns;
+        int available=heightDp-56-shapeHeroHeight(heightDp)-56-40-84-(wide?0:shapeTargetHeight(widthDp,heightDp,count));
+        int cap=Math.min(Math.round(cardWidth*.90f),(available-rows*8)/rows);
+        return Math.max(54,Math.min(wide?118:100,cap));
+    }
+    public static int shapeTargetHeight(int widthDp,int heightDp,int count){
+        if(shapeWide(widthDp,heightDp)){
+            int columns=shapeColumns(widthDp,heightDp,count),rows=(count+columns-1)/columns;
+            // The wide board target is aligned to the actual height of its cards.
+            return Math.max(112,Math.min(248,rows*(shapeTileHeight(widthDp,heightDp,count)+8)));
+        }
+        return Math.max(100,Math.min(168,Math.round(heightDp*.205f)));
+    }
     public static int margin(int requestedDp) {
         return Math.max(2, Math.min(9, Math.round(requestedDp * .62f)));
     }
