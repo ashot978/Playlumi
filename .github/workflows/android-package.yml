@@ -37,7 +37,7 @@ jobs:
               exit 1
             fi
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600730'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600740'"
           done
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
