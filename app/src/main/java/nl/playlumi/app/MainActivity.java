@@ -673,7 +673,8 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),\n                page==HOME?0:dp(side),page==HOME?0:dp(12));
+        root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),
+                page==HOME?0:dp(side),page==HOME?0:dp(12));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
