@@ -272,6 +272,14 @@ public class MainActivity extends Activity {
             }
             if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
         }
+        // Debug-only test entrance: emulator can capture the real village directly.
+        // This is unavailable in a signed production release.
+        if((getApplicationInfo().flags &
+                android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 &&
+                getIntent()!=null && getIntent().getBooleanExtra("playlumi_ci_home",false)) {
+            age=Math.max(0,age);
+            page=HOME;
+        }
         showPage();
     }
     @Override protected void onDestroy() {
@@ -834,6 +842,7 @@ public class MainActivity extends Activity {
                     move(AVATAR);
                     break;
                 case PlaylumiVillageView.PARENTS:
+                case PlaylumiVillageView.SETTINGS:
                     move(HOME_OPTIONS);
                     break;
                 case PlaylumiVillageView.MISSIONS:
@@ -854,8 +863,11 @@ public class MainActivity extends Activity {
                     break;
                 default:break;
             }
-        },activeProfile);
-        root.addView(village,new LinearLayout.LayoutParams(-1,-2));
+        },activeProfile,wardrobe==null?0:wardrobe.stars());
+        // The world takes the complete usable screen; no ScrollView, blank strip,
+        // clipped bottom buttons, or duplicate white space below the illustration.
+        stage.removeView(scroller);
+        stage.addView(village,new FrameLayout.LayoutParams(-1,-1));
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
