@@ -6,6 +6,11 @@ mkdir -p build/visual/screenshots
 package=nl.playlumi.app
 activity="$package/.MainActivity"
 adb wait-for-device
+# On software-rendered GitHub emulators the disposable Android home launcher
+# may freeze and display its own ANR dialog over Playlumi, swallowing taps.
+# Disable it ONLY on this temporary test emulator; never on a user's device.
+adb shell pm disable-user --user 0 com.android.launcher3 || true
+adb shell am force-stop com.android.launcher3 || true
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 device_size=$(adb shell wm size | tr -d '\r' | grep -E 'Physical size|Override size' | tail -1 | sed -nE 's/.*: ([0-9]+x[0-9]+).*/\1/p')
 IFS=x read -r screenW screenH <<< "$device_size"
