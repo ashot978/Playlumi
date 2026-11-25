@@ -105,6 +105,9 @@ public class MainActivity extends Activity {
     private long activeSince;
     private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
     private int activeProfile;
+    // Tracks which village building started a screen, so Back returns logically.
+    private int villageLaunch=-1;
+    private boolean quickCategoryPlay;
     private boolean parentAllowed;
     private PlaylumiStories stories;
     private PlaylumiDrawingView drawing;
@@ -197,6 +200,8 @@ public class MainActivity extends Activity {
             adultA=state.getInt("adultA",adultA);
             adultB=state.getInt("adultB",adultB);
             parentAllowed=state.getBoolean("parentAllowed",false);
+            villageLaunch=state.getInt("villageLaunch",-1);
+            quickCategoryPlay=state.getBoolean("quickCategoryPlay",false);
             breakReturn=state.getInt("breakReturn",HOME);
         }
         stories=new PlaylumiStories();
@@ -348,6 +353,8 @@ public class MainActivity extends Activity {
         out.putInt("adultA",adultA);
         out.putInt("adultB",adultB);
         out.putBoolean("parentAllowed",parentAllowed);
+        out.putInt("villageLaunch",villageLaunch);
+        out.putBoolean("quickCategoryPlay",quickCategoryPlay);
         out.putInt("breakReturn",breakReturn);
         out.putInt("roomPage",roomPage);
         out.putInt("roomItemPage",roomItemPage);
@@ -365,20 +372,24 @@ public class MainActivity extends Activity {
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
-        if(page==SHOP) {move(CLOSET);return;}
+        if(page==SHOP) {move(villageLaunch==PlaylumiVillageView.REWARDS?HOME:CLOSET);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
         if(page==GARDEN_MENU) {move(ROOM);return;}
         if(page==GARDEN_PLANT) {move(GARDEN_MENU);return;}
-        if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY || page==STAR_CATCH) {move(MINI_MENU);return;}
+        if(page==MINI_PLAY || page==BUBBLE_PLAY || page==MUSIC_PLAY || page==STAR_CATCH) {
+            boolean launchedDirectly=(villageLaunch==PlaylumiVillageView.SHAPES&&page==MINI_PLAY)||
+                    (villageLaunch==PlaylumiVillageView.MUSIC&&page==MUSIC_PLAY);
+            move(launchedDirectly?HOME:MINI_MENU);return;
+        }
         if(page==MINI_MENU) {move(HOME);return;}
-        if(page==WORLD_HUB) {move(WORLD_PICKER);return;}
-        if(page==ADVENTURE_MAP) {move(WORLD_HUB);return;}
+        if(page==WORLD_HUB) {move(villageLaunch==PlaylumiVillageView.BOOKS?HOME:WORLD_PICKER);return;}
+        if(page==ADVENTURE_MAP) {move(villageLaunch==PlaylumiVillageView.MISSIONS?HOME:WORLD_HUB);return;}
         if(page==STAR_STAGE) {move(AVATAR);return;}
         if(page==ROOM) {move(AVATAR);return;}
         if(page==ROOM_CATS) {move(ROOM);return;}
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
-        if(page==TROPHY_WORLDS) {move(AVATAR);return;}
+        if(page==TROPHY_WORLDS) {move(villageLaunch==PlaylumiVillageView.COLLECTION?HOME:AVATAR);return;}
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
         if(page==STORY_LIBRARY) {move(WORLD_HUB);return;}
         if(page==STORY_PLAY || page==STORY_REACTION || page==STORY_END) {move(STORY_LIBRARY);return;}
@@ -393,6 +404,10 @@ public class MainActivity extends Activity {
         if(page==PROFILES) {move(HOME);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
+        if(page==PLAY && quickCategoryPlay) {move(DETAIL);return;}
+        if(page==DETAIL && (villageLaunch==PlaylumiVillageView.ROCKET ||
+                villageLaunch==PlaylumiVillageView.BOOKS ||
+                villageLaunch==PlaylumiVillageView.COLORS)) {move(HOME);return;}
         int back=page==CATEGORIES?WORLD_HUB:page==DETAIL?CATEGORIES:page==LEVEL?DETAIL:
                 page==VARIANTS?LEVEL:page==PLAY?VARIANTS:DETAIL;
         move(back);
@@ -848,13 +863,14 @@ public class MainActivity extends Activity {
     /** Picture-driven village hub. Every building goes to a real existing game. */
     private void showHome() {
         PlaylumiVillageView village=new PlaylumiVillageView(this,place->{
+            villageLaunch=place;
+            quickCategoryPlay=false;
             switch(place) {
                 case PlaylumiVillageView.ROCKET:
                     selectCategory(LearningGame.COUNT);
                     break;
                 case PlaylumiVillageView.BOOKS:
-                    world=1;storyPage=Math.min(2,adventures.progress(world)/2);
-                    move(WORLD_HUB);
+                    selectCategory(LearningGame.LETTERS);
                     break;
                 case PlaylumiVillageView.SHAPES:
                     miniKind=PlaylumiMiniChallenge.DRAG;
@@ -877,6 +893,11 @@ public class MainActivity extends Activity {
                     move(AVATAR);
                     break;
                 case PlaylumiVillageView.PARENTS:
+                    parentAllowed=false;
+                    adultA=10+new Random().nextInt(8);
+                    adultB=8+new Random().nextInt(8);
+                    move(PARENT_GATE);
+                    break;
                 case PlaylumiVillageView.SETTINGS:
                     move(HOME_OPTIONS);
                     break;
@@ -964,6 +985,7 @@ public class MainActivity extends Activity {
     }
     private void selectCategory(int category) {
         storyStage=-1;
+        quickCategoryPlay=false;
         game.configure(category,0,Math.max(0,age));
         difficulty=Math.max(0,age);
         prefs().edit().putInt("game_mode",category).apply();
@@ -1054,6 +1076,7 @@ public class MainActivity extends Activity {
                         .putInt("last_played_category",game.mode())
                         .putInt("last_played_variant",selection).apply();
                 storyStage=-1;
+                quickCategoryPlay=false;
                 sessionSolved=0;sessionAttempts=0;feedback="";
                 pendingBadges.clear();
                 move(PLAY);
