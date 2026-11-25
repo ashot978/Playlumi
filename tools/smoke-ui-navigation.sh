@@ -53,8 +53,8 @@ capture() {
   test -s "$OUT/$1.png"
 }
 # Emulator snapshots may retain a previous age choice.
-if ! adb shell dumpsys package nl.playlumi.app | grep -Fq "versionName=0.67.0"; then
-  echo "FAIL: emulator is not running Playlumi 0.67.0"
+if ! adb shell dumpsys package nl.playlumi.app | grep -Fq "versionName=0.68.0"; then
+  echo "FAIL: emulator is not running Playlumi 0.68.0"
   exit 1
 fi
 ui_dump
