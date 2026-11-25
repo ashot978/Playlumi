@@ -26,7 +26,7 @@ public final class PlaylumiStarWorld extends View {
     };
     private static final String[] SYMBOLS={"🚀","🌈","🎪","🎵","🌱","⭐"};
     private static final String[] LABELS={
-            "REK RAKET","ONTDEK","SPEELPLEIN","MUZIEKMAAN","STERRENTUIN","STERVRIEND"
+            "REKENRAKET","ONTDEK","SPEELPLEIN","MUZIEKMAAN","STERRENTUIN","STERVRIEND"
     };
     private static final String[] SPEECH={
             "Vlieg op avontuur","Ontdek de werelden","Speel met je handen",
