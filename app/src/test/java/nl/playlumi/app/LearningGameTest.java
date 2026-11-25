@@ -37,6 +37,33 @@ public class LearningGameTest {
                     }
                 }
     }
+    @Test public void numbersUseDifferentRepresentationsAndAtMostSixChoices(){
+        LearningGame game=new LearningGame(new Random(108));
+        for(int level=0;level<3;level++)for(int variant=0;variant<3;variant++){
+            game.configure(LearningGame.NUMBERS,variant,level);
+            for(int i=0;i<150;i++){
+                LearningGame.Round round=game.round();
+                String answer=round.answers.get(round.correctIndex);
+                assertEquals(level==0?3:level==1?4:6,round.answers.size());
+                assertEquals(round.answers.size(),new java.util.HashSet<>(round.answers).size());
+                assertNotEquals(round.display,answer);
+                if(variant==0){
+                    assertEquals(Integer.parseInt(answer),round.fingerCount);
+                    assertTrue(round.fingerCount>=1&&round.fingerCount<=(level==0?3:level==1?5:10));
+                }else if(variant==1){
+                    assertEquals(0,round.fingerCount);
+                    assertEquals(LearningGame.numberWord(Integer.parseInt(round.display)),answer);
+                }else{
+                    assertEquals(0,round.fingerCount);
+                    assertEquals(LearningGame.numberWord(Integer.parseInt(answer)),round.display);
+                }
+                for(int j=0;j<round.answers.size();j++)if(j!=round.correctIndex)assertFalse(round.choose(j));
+                assertTrue(round.choose(round.correctIndex));
+                assertFalse(round.choose(round.correctIndex));
+                game.nextRound();
+            }
+        }
+    }
     @Test public void wordPuzzlesAlwaysHaveOneMissingLetterAndCorrectChoice() {
         LearningGame game = new LearningGame(new Random(23));
         for (int level = 0; level < 3; level++) {

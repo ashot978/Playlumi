@@ -280,6 +280,71 @@ adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
 grep -q "$target / $target" build/qa/ui.xml
 grep -q "Volgende ronde" build/qa/ui.xml
 screenshot game-stars-solved
+# Verify every number representation and automatic advancement using live controls.
+numberRound() {
+  local label="$1" menu="$2" mode="$3"
+  home
+  tapVillage 280 395
+  assertScreen 43
+  tapText "$menu"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local reserved
+  reserved=$(adb logcat -d -s PlaylumiQA:I | grep 'gameReservedBottom=' | tail -1 | sed -nE 's/.*gameReservedBottom=([0-9]+).*/\1/p')
+  test "$reserved" -gt 0
+  local coordinates
+  coordinates=$(python3 - "$mode" "$screenH" "$reserved" <<'PY'
+import re,sys,xml.etree.ElementTree as E
+mode,h,reserved=sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
+words=['één','twee','drie','vier','vijf','zes','zeven','acht','negen','tien']
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+if mode=='hands':
+    node=next(n for n in nodes if n.get('content-desc','').startswith('Aantal opgestoken vingers: '))
+    answer=node.get('content-desc').split(': ')[1]
+    assert not any(n.get('text','').startswith('hand:') for n in nodes)
+elif mode=='word':
+    node=next(n for n in nodes if n.get('content-desc','') in [str(i) for i in range(1,11)] and n.get('clickable')=='false')
+    answer=words[int(node.get('content-desc'))-1]
+else:
+    node=next(n for n in nodes if n.get('content-desc','') in words and n.get('clickable')=='false')
+    answer=str(words.index(node.get('content-desc'))+1)
+choices=[]
+for n in nodes:
+    d=n.get('content-desc','')
+    if n.get('clickable')=='true' and d in ([str(i) for i in range(1,11)] if mode!='word' else words):
+        b=list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+        assert len(b)==4 and b[3]<=h-reserved and b[3]>b[1], 'Answer outside safe viewport: '+str(b)
+        choices.append((d,(b[0]+b[2])//2,(b[1]+b[3])//2))
+assert 3<=len(choices)<=6
+assert not any('Volgende' in n.get('content-desc','') for n in nodes)
+good=next(c for c in choices if c[0]==answer)
+bad=next(c for c in choices if c[0]!=answer)
+print(bad[1],bad[2],good[1],good[2])
+PY
+)
+  screenshot "game-number-$label"
+  local bx by gx gy
+  read -r bx by gx gy <<< "$coordinates"
+  adb shell input tap "$bx" "$by"
+  sleep 2
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "Probeer nog eens" build/qa/ui.xml
+  grep -q "0/8" build/qa/ui.xml
+  adb shell input tap "$gx" "$gy"
+  sleep 3
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "1/8" build/qa/ui.xml
+  grep -q "Kies het juiste antwoord" build/qa/ui.xml
+  ! grep -q "Volgende" build/qa/ui.xml
+  echo "PASS: $label wrong/correct answer, automatic advance, safe answer bounds ($reserved px)"
+}
+numberRound hands "Vingers tellen" hands
+numberRound digit-to-word "Cijfer naar woord" word
+numberRound word-to-digit "Woord naar cijfer" digit
 # Exercise unfolded / tablet proportions on the same real rendered emulator.
 adb shell wm size 1600x1768
 adb shell wm density 280
@@ -301,9 +366,10 @@ do
   assertScreen "$expected"
   screenshot "fold-$label"
 done
+numberRound fold-hands "Vingers tellen" hands
 adb shell wm size reset
 adb shell wm density reset
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: real balloon quantities, heart rejection, star collection, six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"
+echo "PASS: fingers, number words, auto advance, safe answer bounds, real balloon quantities, heart rejection, star collection, six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"

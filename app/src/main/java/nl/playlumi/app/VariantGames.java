@@ -16,7 +16,7 @@ public final class VariantGames {
         {"Kleur bij het woord","Kleurenreeks","Kleurherinnering"},
         {"Welke beginletter?","Volgende letter","Vorige letter"},
         {"Noem de vorm","Tel de vormen","Vorm bij het woord"},
-        {"Getal ervoor","Getal ertussen","Tel met sprongen"},
+        {"Woord naar cijfer","Getal ertussen","Tel met sprongen"},
         {"Vormenpatroon","Getallenpatroon","Drie-kleurenpatroon"},
         {"Eerste letter weg","Laatste letter weg","Wisselende letter"},
         {"Spellingcontrole","Verschil ontdekken","Woord herstellen"},
@@ -157,6 +157,7 @@ public final class VariantGames {
             v==0?SHAPE_ICONS[selected]:SHAPES[selected],correct,options,r);
     }
     private static LearningGame.Round numbers(int v,int level,Random r) {
+        if(v==0)return LearningGame.numberRound(2,level,r);
         int limit=max(level), n=v==1?1+rand(r,limit-2):v==0?2+rand(r,limit-1):1+rand(r,limit-2);
         int correct=v==0?n-1:v==1?n+1:n+2;
         String display=v==0?"?  →  "+n:v==1?n+"  →  ?  →  "+(n+2):n+"  →  ?  (sprong van 2)";
