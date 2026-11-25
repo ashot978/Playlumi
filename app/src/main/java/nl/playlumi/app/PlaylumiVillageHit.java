@@ -14,7 +14,7 @@ public final class PlaylumiVillageHit {
             {0,1467,177,1672},{179,1467,365,1672},
             {366,1434,574,1672},{575,1467,759,1672},
             {761,1467,941,1672},{850,0,941,101},
-            {322,0,505,101},{506,0,685,101},{0,105,313,222}
+            {322,0,505,101},{506,0,685,101},{0,93,325,238}
     };
     private PlaylumiVillageHit() {}
     /** Aspect fill for phones; letterboxed artwork on wide tablets/foldables. */

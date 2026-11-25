@@ -43,7 +43,7 @@ public final class PlaylumiVillageView extends View {
             "Rekenraket","Letterhuis","Vormkasteel","Muziekstudio",
             "Speelplein","Kleurentuin","Stervriend","Ouderzone",
             "Missies","Beloningen","Home","Collectie","Profiel","Instellingen",
-            "Sterren","Ontdekte gebouwen","Speler"
+            "Sterren","Ontdekte gebouwen","Maatje"
     };
     private static final float[][] DISCOVERED_AT={
             {384,459},{851,464},{291,775},{856,778},{327,1119},{838,1124}
@@ -55,6 +55,7 @@ public final class PlaylumiVillageView extends View {
     private final Bitmap village;
     private final int profileNumber;
     private final int starBalance;
+    private final int avatar;
     private int discovered;
     private int pressed=-1;
     private float downX,downY;
@@ -64,11 +65,12 @@ public final class PlaylumiVillageView extends View {
     private long celebratedAt;
     private final long created=SystemClock.uptimeMillis();
 
-    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars) {
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar) {
         super(context);
         this.listener=listener;
         this.profileNumber=Math.max(0,profile);
         this.starBalance=Math.max(0,stars);
+        this.avatar=PlaylumiWorldStyle.safeAvatar(avatar);
         this.discoveryPrefs=context.getSharedPreferences("playlumi-village-"+profileNumber,
                 Context.MODE_PRIVATE);
         this.discovered=PlaylumiVillageProgress.sanitize(discoveryPrefs.getInt("visited",0));
@@ -120,10 +122,17 @@ public final class PlaylumiVillageView extends View {
         text(c,"★ "+Math.min(99999,starBalance),418,65,
                 starBalance>=10000?27:35,0xffffe6a2);
         text(c,"⚑ "+PlaylumiVillageProgress.visitedCount(discovered)+"/6",596,65,33,0xffffe6a2);
-        text(c,"P"+(profileNumber+1),764,65,32,Color.WHITE);
-        // Cover the complete original level meter, not only its number.
-        rounded(c,112,150,313,222,0xff48267c);
-        text(c,"Speler "+(profileNumber+1),212,196,29,Color.WHITE);
+        text(c,"Maatje",764,65,26,Color.WHITE);
+        // Replace the baked-in boy and level meter with the chosen, real character.
+        paintColor(0xff48267c);
+        c.drawRoundRect(0,93,325,238,38,38,pen);
+        paintColor(0xffffdf96);
+        c.drawRoundRect(4,97,321,234,34,34,pen);
+        paintColor(0xff6740a4);
+        c.drawRoundRect(8,101,317,230,32,32,pen);
+        PlaylumiAvatar.draw(c,12,103,126,avatar);
+        text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
+        text(c,"Kies je maatje",225,192,21,Color.WHITE);
     }
     private void drawDiscovered(Canvas c) {
         for(int i=0;i<PlaylumiVillageProgress.BUILDINGS;i++) {

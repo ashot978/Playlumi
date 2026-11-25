@@ -53,7 +53,7 @@ tapVillage() {
 assertScreen() {
   local expected="$1"
   adb shell pidof "$app" >/dev/null
-  adb logcat -d -s PlaylumiQA:I | grep -Eq "screen=${expected}( |$)" || {
+  adb logcat -d -s PlaylumiQA:I | grep 'screen=' | tail -1 | grep -Eq "screen=${expected}( |$)" || {
     echo "Expected screen ${expected}; actual navigation logs:" >&2
     adb logcat -d -s PlaylumiQA:I >&2
     exit 1
@@ -71,12 +71,12 @@ screenshot() {
 home
 screenshot home
 for entry in \
-  "rekenraket:280:395:3" \
-  "letterhuis:740:398:3" \
-  "vormkasteel:185:690:13" \
-  "muziekstudio:770:699:37" \
-  "speelplein:185:1040:12" \
-  "kleurentuin:785:1050:3" \
+  "rekenraket:280:395:43" \
+  "letterhuis:740:398:43" \
+  "vormkasteel:185:690:43" \
+  "muziekstudio:770:699:43" \
+  "speelplein:185:1040:43" \
+  "kleurentuin:785:1050:43" \
   "missies:84:1550:15" \
   "beloningen:261:1540:11" \
   "collectie:670:1540:19" \
@@ -95,7 +95,55 @@ do
   echo "Passed navigation: $label -> $expected -> village"
 done
 
+# Exercise real menu buttons and their individual game screens.
+tapText() {
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local xy
+  xy=$(python3 - "$1" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+for n in ET.parse('build/qa/ui.xml').iter('node'):
+    if n.get('content-desc','').startswith(sys.argv[1]) and n.get('clickable')=='true':
+        a=list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+        if len(a)==4 and a[2]>a[0] and a[3]>a[1]:
+            print((a[0]+a[2])//2,(a[1]+a[3])//2)
+            sys.exit(0)
+sys.exit('Missing clickable menu item: '+sys.argv[1])
+PY
+)
+  adb shell input tap $xy
+  sleep 2
+}
+for entry in \
+  "rocket:280:395:Voorwerpen tellen:6" \
+  "letters:740:398:Kleine letters:6" \
+  "shapes:185:690:Sleep de vormen:13" \
+  "music:770:699:Speel het deuntje:37" \
+  "playground:185:1040:Dierenmemory:13" \
+  "colors:785:1050:Kleuren herkennen:6"
+do
+  IFS=: read -r label x y button expected <<< "$entry"
+  home
+  tapVillage "$x" "$y"
+  assertScreen 43
+  tapText "$button"
+  assertScreen "$expected"
+  screenshot "game-$label"
+  adb shell input keyevent KEYCODE_BACK
+  sleep 2
+  assertScreen 43
+done
+home
+tapVillage 70 158
+assertScreen 32
+screenshot characters
+tapText "Fenna"
+screenshot character-selected
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+assertScreen 1
+screenshot home-character
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: 12 real clickable targets + back navigation + actual safe insets"
+echo "PASS: 12 village routes, six world menus and real games, character selection, back navigation and actual safe insets"
