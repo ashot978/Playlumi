@@ -106,7 +106,7 @@ public final class ExtraGames {
             case PICTURES: return pictures(variant, level, random);
             case RHYMES: return rhymes(variant, level, random);
             case COMPARE: return compare(variant, level, random);
-            case MATH: return math(variant, level, random);
+            case MATH: return PlaylumiMathPractice.next(variant,level,random);
             case SEQUENCES: return sequences(variant, level, random);
             case OPPOSITES: return opposites(variant, level, random);
             case CATEGORIES: return categories(variant, level, random);

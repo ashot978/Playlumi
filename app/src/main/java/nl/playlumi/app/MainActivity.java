@@ -571,7 +571,10 @@ public class MainActivity extends Activity {
     }
     private Drawable gameTileBackground(int color) {
         int theme=worldTheme();
-        if(theme>=0)return PlaylumiMagicArt.pastel(this,PlaylumiMagicArt.nearestPastel(color));
+        if(theme>=0){
+            int index=PlaylumiMagicArt.nearestPastel(color);
+            return landscapeScreen()?PlaylumiMagicArt.gemButton(this,index):PlaylumiMagicArt.pastel(this,index);
+        }
         GradientDrawable b=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{mix(color,Color.WHITE,.40f),color,mix(color,0xffb299d7,.20f)});
         b.setCornerRadius(dp(21));
@@ -583,12 +586,13 @@ public class MainActivity extends Activity {
             int width=getResources().getConfiguration().screenWidthDp;
             int available=getResources().getConfiguration().screenHeightDp;
             int height=PlaylumiLayout.magicHeroHeight(width,available,page==VILLAGE_MENU);
-            if(page==PLAY && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?105:110);
+            if(page==PLAY && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?120:110);
+            if(page==VILLAGE_MENU && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?160:118);
             if(page==MINI_PLAY && miniKind==PlaylumiMiniChallenge.DRAG)
                 height=PlaylumiLayout.shapeHeroHeight(available);
             View art=PlaylumiMagicArt.hero(this,place);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
-            p.setMargins(0,0,0,dp(6));root.addView(art,p);
+            p.setMargins(0,0,0,dp(landscapeScreen()?10:6));root.addView(art,p);
         } else {
             PlaylumiPortalView art=new PlaylumiPortalView(this,place,title);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(heightDp));
@@ -602,7 +606,7 @@ public class MainActivity extends Activity {
         t.setPadding(dp(20),dp(8),dp(20),dp(4));
         t.setMinHeight(dp(56));
         t.setMaxLines(3);
-        t.setBackground(PlaylumiMagicArt.ribbon(this));
+        t.setBackground(landscapeScreen()?PlaylumiMagicArt.silkRibbon(this):PlaylumiMagicArt.ribbon(this));
         t.setShadowLayer(dp(1),0,dp(1),0xff301449);
         return t;
     }
@@ -623,7 +627,7 @@ public class MainActivity extends Activity {
         root.addView(row,p);
     }
     private int portalForMode(int mode) {
-        if(mode==LearningGame.COUNT || mode==LearningGame.NUMBERS)
+        if(PlaylumiRocketCurriculum.isMathMode(mode))
             return PlaylumiVillageView.ROCKET;
         if(mode==LearningGame.LETTERS || mode==LearningGame.WORDS)
             return PlaylumiVillageView.BOOKS;
@@ -921,7 +925,7 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        if(magicScreen)side=Math.max(8,side/2);
+        if(magicScreen)side=PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
         root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),
                 page==HOME?0:dp(side),page==HOME?0:dp(16));
         scroller.addView(root);
@@ -1170,7 +1174,9 @@ public class MainActivity extends Activity {
     private void startWorldQuiz(int mode,int variant) {
         storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;
         pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();
-        difficulty=adaptive.level(mode,Math.max(0,age));
+        boolean rocket=villageLaunch==PlaylumiVillageHit.ROCKET && PlaylumiRocketCurriculum.isMathMode(mode);
+        if(rocket)smartDifficulty=false;
+        difficulty=rocket?PlaylumiRocketCurriculum.level(age):adaptive.level(mode,Math.max(0,age));
         game.configure(mode,variant,difficulty);
         prefs().edit().putInt("game_mode",mode).putInt("game_variant",variant)
                 .putInt("last_played_category",mode).putInt("last_played_variant",variant).apply();
@@ -1189,11 +1195,12 @@ public class MainActivity extends Activity {
         addWidget(magicRibbon(PlaylumiWorldStyle.SUBTITLES[w],20),0,5);
         switch(w) {
             case PlaylumiVillageHit.ROCKET:
-                worldChoice("Voorwerpen tellen","Tel de schatten en sterren",COLORS[0],()->startWorldQuiz(LearningGame.COUNT,0));
-                worldChoice("Vingers tellen","Hoeveel vingers zie je?",COLORS[1],()->startWorldQuiz(LearningGame.NUMBERS,0));
-                worldChoice("Cijfer naar woord","Koppel bijvoorbeeld 5 aan vijf",COLORS[2],()->startWorldQuiz(LearningGame.NUMBERS,1));
-                worldChoice("Woord naar cijfer","Koppel bijvoorbeeld vijf aan 5",COLORS[3],()->startWorldQuiz(LearningGame.NUMBERS,2));
-                worldChoice("Meer rekenmissies","Kies niveau, spelvorm en badges",COLORS[2],()->selectCategory(LearningGame.COUNT));
+                addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ✦",16,PlaylumiMagicArt.CREAM,1,4);
+                int missionColor=0;
+                for(PlaylumiRocketCurriculum.Mission mission:PlaylumiRocketCurriculum.missions(age)){
+                    worldChoice(mission.title,mission.description,COLORS[missionColor++%COLORS.length],
+                            ()->startWorldQuiz(mission.mode,mission.variant));
+                }
                 break;
             case PlaylumiVillageHit.BOOKS:
                 worldChoice("Kleine letters","Vind de kleine letter",COLORS[0],()->startWorldQuiz(LearningGame.LETTERS,0));
@@ -1425,12 +1432,25 @@ public class MainActivity extends Activity {
         if(sessionSolved>=sessionGoal()) {showCompleted();return;}
         LearningGame.Round round=game.round();
         boolean wide=landscapeScreen();
+        int width=getResources().getConfiguration().screenWidthDp;
+        int height=getResources().getConfiguration().screenHeightDp;
+        boolean centered=PlaylumiLayout.centeredMagicQuiz(width,height);
+        boolean split=wide&&!centered;
         int theme=worldTheme();
         header(PlaylumiWorldStyle.NAMES[theme],sessionSolved+"/"+sessionGoal());
         addIllustratedPortal(theme,LearningGame.GAME_NAMES[mode],118);
         addMagicProgress(sessionSolved,sessionGoal(),true);
         LinearLayout questions=root,answers=root;
-        if(wide) {
+        if(centered) {
+            LinearLayout canvas=new LinearLayout(this);
+            canvas.setOrientation(LinearLayout.VERTICAL);
+            canvas.setGravity(Gravity.CENTER_HORIZONTAL);
+            canvas.setPadding(dp(12),dp(8),dp(12),dp(10));
+            canvas.setBackground(PlaylumiMagicArt.softPanel(this));
+            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
+            cp.setMargins(dp(4),dp(5),dp(4),dp(8));root.addView(canvas,cp);
+            questions=canvas;answers=canvas;
+        }else if(split) {
             LinearLayout columns=new LinearLayout(this);
             columns.setOrientation(LinearLayout.HORIZONTAL);
             columns.setGravity(Gravity.TOP);
@@ -1439,18 +1459,20 @@ public class MainActivity extends Activity {
             answers=new LinearLayout(this);answers.setOrientation(LinearLayout.VERTICAL);
             LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1f);
             LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1f);
-            left.setMargins(0,0,dp(5),0);right.setMargins(dp(5),0,0,0);
+            left.setMargins(0,0,dp(8),0);right.setMargins(dp(8),0,0,0);
+            questions.setPadding(dp(6),dp(6),dp(6),dp(6));
+            answers.setPadding(dp(6),dp(6),dp(6),dp(6));
+            questions.setBackground(PlaylumiMagicArt.softPanel(this));
+            answers.setBackground(PlaylumiMagicArt.softPanel(this));
             columns.addView(questions,left);columns.addView(answers,right);
         }
         TextView prompt=magicRibbon(round.prompt,wide?20:19);
         addWidgetIn(questions,prompt,0,dp(5));
         boolean shortDisplay=round.display.codePointCount(0,round.display.length())<=3;
-        int width=getResources().getConfiguration().screenWidthDp;
-        int height=getResources().getConfiguration().screenHeightDp;
-        int questionH=PlaylumiLayout.magicQuestionHeight(width,height,wide);
+        int questionH=centered?PlaylumiLayout.centeredQuestionHeight(height):PlaylumiLayout.magicQuestionHeight(width,height,wide);
         if(round.fingerCount>0){
             PlaylumiNumberHands hands=new PlaylumiNumberHands(this,round.fingerCount);
-            hands.setBackground(PlaylumiMagicArt.question(this,false));
+            hands.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,false));
             hands.setMinimumHeight(dp(wide?Math.min(210,questionH):Math.max(145,questionH)));
             addWidgetIn(questions,hands,0,dp(3));
         } else if(mode==LearningGame.COLORS && "●".equals(round.display)) {
@@ -1458,12 +1480,13 @@ public class MainActivity extends Activity {
             swatch.setMinimumHeight(dp(questionH));
             addWidgetIn(questions,swatch,0,dp(3));
         } else {
-            int glyphSize=shortDisplay?(wide?76:58):
+            int glyphSize=shortDisplay?(wide?70:58):
+                    mode==ExtraGames.MATH&&game.variant()!=4?(wide?48:36):
                     round.display.length()>22?25:round.display.length()>12?31:40;
             TextView picture=text(round.visibleDisplay(),glyphSize,PlaylumiMagicArt.INK);
             questionPicture=picture;
             picture.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
-            picture.setBackground(PlaylumiMagicArt.question(this,!wide && shortDisplay));
+            picture.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,!wide && shortDisplay));
             picture.setMinHeight(dp(questionH));
             picture.setPadding(dp(12),dp(5),dp(12),dp(5));
             picture.setMaxLines(4);
@@ -1477,17 +1500,18 @@ public class MainActivity extends Activity {
         addWidgetIn(answers,feedbackText,0,dp(2));
         answerButtons.clear();
         answerLocked=round.isSolved();
-        int rowHeight=PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
-        if(autoAdvanceQuiz() && wide)rowHeight=Math.min(rowHeight,64);
-        for(int i=0;i<round.answers.size();i+=2) {
+        int columns=centered?PlaylumiLayout.centeredAnswerColumns(round.answers.size()):2;
+        int rowHeight=centered?PlaylumiLayout.centeredAnswerHeight(height,round.answers.size()):PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
+        if(autoAdvanceQuiz() && split)rowHeight=Math.min(rowHeight,64);
+        for(int i=0;i<round.answers.size();i+=columns) {
             LinearLayout row=new LinearLayout(this);
             row.setGravity(Gravity.CENTER);
-            for(int j=i;j<Math.min(i+2,round.answers.size());j++) {
+            for(int j=i;j<Math.min(i+columns,round.answers.size());j++) {
                 final int answer=j;
                 String value=round.answers.get(j);
                 Button button=tile(value,"",COLORS[j%COLORS.length],rowHeight);
                 button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),
-                        PlaylumiMagicArt.pastel(this,(j+2)%6),null));
+                        wide?PlaylumiMagicArt.gemButton(this,(j+2)%6):PlaylumiMagicArt.pastel(this,(j+2)%6),null));
                 button.setTextColor(PlaylumiMagicArt.INK);
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:value.length()>=6?21:29);
                 button.setPadding(dp(6),dp(4),dp(6),dp(4));button.setMaxLines(3);
@@ -1502,13 +1526,21 @@ public class MainActivity extends Activity {
                 }
                 if(round.isSolved() && j==round.correctIndex){
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                            PlaylumiMagicArt.pastel(this,3),null));
+                            wide?PlaylumiMagicArt.gemButton(this,3):PlaylumiMagicArt.pastel(this,3),null));
                     button.setTextColor(0xff174f36);
                 }
                 LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(rowHeight),1f);
-                cell.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(button,cell);
+                int gap=centered?6:3;
+                cell.setMargins(dp(gap),dp(gap),dp(gap),dp(gap));row.addView(button,cell);
                 answerButtons.add(button);
                 button.setOnClickListener(v->choose(answer,button));
+            }
+            if(centered){
+                for(int j=Math.min(i+columns,round.answers.size());j<i+columns;j++){
+                    View spacer=new View(this);
+                    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(rowHeight),1f);
+                    p.setMargins(dp(6),dp(6),dp(6),dp(6));row.addView(spacer,p);
+                }
             }
             answers.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
@@ -1524,6 +1556,8 @@ public class MainActivity extends Activity {
     private void updateQuestionPicture(LearningGame.Round round){
         if(questionPicture==null)return;
         String shown=round.visibleDisplay();
+        if(game.mode()==ExtraGames.MATH && game.variant()!=4 && round.isSolved())
+            shown=shown.replace("?",round.answers.get(round.correctIndex));
         int blank=round.letterBlank();
         if(round.isSolved() && blank>=0){
             int end=blank+round.answers.get(round.correctIndex).length();
@@ -1547,7 +1581,7 @@ public class MainActivity extends Activity {
         root.addView(widget,p);
     }
     private boolean autoAdvanceQuiz(){
-        return game!=null && (game.mode()==LearningGame.COUNT || game.mode()==LearningGame.NUMBERS);
+        return game!=null && PlaylumiRocketCurriculum.isMathMode(game.mode());
     }
     private void scheduleAutoAdvance(){
         if(!autoAdvanceQuiz()||page!=PLAY||!game.round().isSolved())return;
@@ -1571,7 +1605,7 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             answerLocked=true;sessionSolved++;lifetimeCount++;
-            if(game.round().letterBlank()>=0){
+            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH){
                 updateQuestionPicture(game.round());
                 if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
             }
@@ -1586,7 +1620,7 @@ public class MainActivity extends Activity {
             sound.good();
             if(playPal!=null)playPal.dance();
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                    PlaylumiMagicArt.pastel(this,3),null));
+                    landscapeScreen()?PlaylumiMagicArt.gemButton(this,3):PlaylumiMagicArt.pastel(this,3),null));
             touched.setTextColor(0xff174f36);
             for(Button b:answerButtons)b.setEnabled(false);
             feedbackText.setText(feedback);

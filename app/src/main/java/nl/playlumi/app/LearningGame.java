@@ -102,6 +102,7 @@ public final class LearningGame {
     }
     private void generateRound() {
         if (mode >= NewWorldGames.FIRST) { current = NewWorldGames.next(mode, variant, level, random); return; }
+        if(mode==ExtraGames.MATH){current=PlaylumiMathPractice.next(variant,level,random);return;}
         if(mode==NUMBERS && variant<=2) {current=numberRound(variant,level,random);return;}
         if (variant >= 2) { current = VariantGames.next(mode, variant, level, random); return; }
         switch (mode) {

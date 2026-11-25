@@ -42,9 +42,27 @@ public final class PlaylumiLayout {
         return heightDp < 690 ? 225 : heightDp < 830 ? 265 : 310;
     }
 
+    public static int magicSidePadding(int widthDp){
+        if(widthDp<600)return 8;
+        return Math.max(20,(widthDp-760)/2);
+    }
+    public static boolean centeredMagicQuiz(int widthDp,int heightDp){
+        return widthDp>=600&&heightDp>=620;
+    }
+    public static int centeredQuestionHeight(int heightDp){
+        return Math.max(112,Math.min(170,Math.round(heightDp*.19f)));
+    }
+    public static int centeredAnswerColumns(int count){
+        return count>=5?3:2;
+    }
+    public static int centeredAnswerHeight(int heightDp,int count){
+        int rows=(count+centeredAnswerColumns(count)-1)/centeredAnswerColumns(count);
+        int available=heightDp-56-120-42-64-centeredQuestionHeight(heightDp)-106;
+        return Math.max(50,Math.min(76,(available-rows*12)/rows));
+    }
     public static int magicHeroHeight(int widthDp,int heightDp,boolean menu){
         int max=menu?220:heightDp<680?104:148;
-        if(widthDp>=600)max=menu?236:176;
+        if(widthDp>=600)max=menu?190:heightDp<690?92:120;
         return Math.max(menu?138:85,Math.min(max,Math.round(widthDp*(menu?.39f:.30f))));
     }
     public static int magicQuestionHeight(int widthDp,int heightDp,boolean wide){
