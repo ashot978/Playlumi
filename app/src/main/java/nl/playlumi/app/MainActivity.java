@@ -815,47 +815,37 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     private void showHome() {
-        header("✦ PLAYLUMI", "Spring in jouw magische spelwereld!");
-        addText("JOUW EIGEN AVONTUUR",15,0xff235a86,7,2);
-        characterHero(174);
-        addText("★  "+wardrobe.stars()+" STERREN  ★",22,0xff75501b,1,5);
+        header("✦ PLAYLUMI", "Welkom in jouw magische spelwereld!");
+        addText("⭐  "+wardrobe.stars()+"  SPEELSTERREN",20,0xff74501d,0,4);
+        characterHero(120);
 
         Button quick=tile("▶  START AVONTUUR",
-                "Begin direct aan een nieuwe speelronde",0xff8af2b7,126);
-        quick.setContentDescription("Start een speelronde van acht vragen");
-        addTile(quick,7);
+                "Begin direct met een nieuwe speelronde",0xff8af2b7,120);
+        quick.setContentDescription("Start direct een speelronde van acht vragen");
+        addTile(quick,4);
         quick.setOnClickListener(v->startEasyPlay());
         PlaylumiDelight.invite(quick);
 
-        addText("KIES JOUW WERELD",19,0xff224c74,10,3);
-        Button worlds=tile("🌈  VERKEN DE WERELDEN",
-                "Leer, ontdek en verzamel sterren",0xff93d9fb,118);
-        worlds.setOnClickListener(v->move(WORLD_PICKER));
-        addTile(worlds,5);
+        PlaylumiWorldMapView map=new PlaylumiWorldMapView(this,destination->{
+            switch(destination) {
+                case PlaylumiWorldMapView.LEARN: move(WORLD_PICKER);break;
+                case PlaylumiWorldMapView.MINI: move(MINI_MENU);break;
+                case PlaylumiWorldMapView.FRIEND: move(AVATAR);break;
+                case PlaylumiWorldMapView.HOME: move(ROOM);break;
+                default: break;
+            }
+        });
+        LinearLayout.LayoutParams mapParams=new LinearLayout.LayoutParams(-1,dp(365));
+        mapParams.setMargins(dp(2),dp(5),dp(2),dp(10));
+        root.addView(map,mapParams);
 
-        Button play=tile("🎮  SPEELPLEIN",
-                "Minigames en verrassingen",0xffffca82,117);
-        play.setOnClickListener(v->move(MINI_MENU));
-        addTile(play,5);
-
-        addText("JOUW MAGISCHE PLEK",19,0xff224c74,10,2);
-        Button friend=tile("⭐  STERVRIEND",
-                "Kleed je held aan",0xffc9b6ff,109);
-        friend.setOnClickListener(v->move(AVATAR));
-
-        Button roomButton=tile("🏡  MIJN HUIS",
-                "Kamer en tuin",0xffffb6cf,109);
-        roomButton.setOnClickListener(v->move(ROOM));
-        addTwo(friend,roomButton,109);
-
-        Button trophies=tile("🏆  SCHATKAMER","Jouw prijzen en badges",
-                0xffffe49a,96);
+        Button trophies=tile("🏆  SCHATKAMER","Bekijk je prijzen en badges",
+                0xffffe49a,103);
         trophies.setOnClickListener(v->move(TROPHY_WORLDS));
-
         Button settings=tile("⚙  INSTELLINGEN","Spelers, geluid en ouders",
-                0xffb7e9f4,96);
+                0xffb7e9f4,103);
         settings.setOnClickListener(v->move(HOME_OPTIONS));
-        addTwo(trophies,settings,96);
+        addTwo(trophies,settings,103);
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
