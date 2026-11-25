@@ -55,6 +55,7 @@ jobs:
           disable-animations: true
           script: bash tools/smoke-android.sh && bash tools/smoke-ui-navigation.sh
       - name: Publish first-launch emulator screenshot for visual review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playlumi-first-launch-visual-review
