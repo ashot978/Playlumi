@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -104,6 +104,7 @@ public class MainActivity extends Activity {
     private PlaylumiUsage usage;
     private long activeSince;
     private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
+    // Keep the last-used legacy storage slot; changing a character never switches data.
     private int activeProfile;
     // Tracks which village building started a screen, so Back returns logically.
     private int villageLaunch=-1;
@@ -368,6 +369,13 @@ public class MainActivity extends Activity {
             return;
         }
         if(page==HOME) {super.onBackPressed();return;}
+        if(page==VILLAGE_MENU) {move(HOME);return;}
+        if(storyStage<0 && PlaylumiWorldStyle.valid(villageLaunch) &&
+                (page==PLAY || page==DETAIL || page==MINI_PLAY || page==BUBBLE_PLAY ||
+                 page==STAR_CATCH || page==MUSIC_PLAY || page==MINI_MENU || page==DRAW)) {
+            if(page==DRAW && drawing!=null)drawing.save();
+            move(VILLAGE_MENU);return;
+        }
         if(page==WORLD_PICKER || page==HOME_OPTIONS) {move(HOME);return;}
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
@@ -499,7 +507,29 @@ public class MainActivity extends Activity {
                 Math.round(Color.blue(a)*(1-t)+Color.blue(b)*t));
     }
     /** A playful glossy 3D-like card, matching the purple-and-gold village. */
+    private int worldTheme() {
+        if(page==VILLAGE_MENU || page==PLAY || page==DETAIL || page==LEVEL || page==VARIANTS ||
+                page==MINI_MENU || page==MINI_PLAY || page==MUSIC_PLAY || page==BUBBLE_PLAY ||
+                page==STAR_CATCH || page==DRAW || page==BADGES) {
+            if(PlaylumiWorldStyle.valid(villageLaunch))return villageLaunch;
+            if(page==MUSIC_PLAY)return PlaylumiVillageHit.MUSIC;
+            if(page==MINI_MENU || page==MINI_PLAY || page==BUBBLE_PLAY || page==STAR_CATCH)
+                return PlaylumiVillageHit.PLAYGROUND;
+            if(page==DRAW)return PlaylumiVillageHit.COLORS;
+            if(game!=null)return portalForMode(game.mode());
+        }
+        return -1;
+    }
+    private int chosenAvatar() {return PlaylumiWorldStyle.safeAvatar(prefs().getInt("chosen_avatar",0));}
+    private GradientDrawable worldPlate(int world,int color) {
+        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{mix(PlaylumiWorldStyle.accent(world),color,.23f),
+                        PlaylumiWorldStyle.accent(world),PlaylumiWorldStyle.deep(world)});
+        d.setCornerRadius(dp(19));d.setStroke(dp(2),0xffffdfa0);return d;
+    }
     private GradientDrawable gameTileBackground(int color) {
+        int theme=worldTheme();
+        if(theme>=0)return worldPlate(theme,color);
         GradientDrawable b=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{mix(color,Color.WHITE,.40f),color,mix(color,0xffb299d7,.20f)});
         b.setCornerRadius(dp(21));
@@ -552,7 +582,7 @@ public class MainActivity extends Activity {
         Button b=new Button(this);
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
-        b.setTextColor(TEXT);
+        b.setTextColor(worldTheme()>=0?0xfffff5dc:TEXT);
         b.setTextSize(description.isEmpty()?18:16);
         b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         b.setLineSpacing(dp(1),1.0f);
@@ -562,7 +592,7 @@ public class MainActivity extends Activity {
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55ffffff),
                 gameTileBackground(color),null));
-        b.setElevation(dp(5));
+        b.setElevation(dp(worldTheme()>=0?7:5));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -669,6 +699,7 @@ public class MainActivity extends Activity {
      */
     private void header(String heading,String subtitle) {
         boolean gameHeader=gameScreen();
+        int theme=worldTheme();
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(8),dp(4),dp(8),dp(4));
@@ -676,7 +707,7 @@ public class MainActivity extends Activity {
                 new int[]{0xff8056bf,0xff58368e,0xff442879});
         barBg.setCornerRadius(dp(20));
         barBg.setStroke(dp(2),0xffd4b3f2);
-        row.setBackground(barBg);
+        row.setBackground(theme>=0?worldPlate(theme,PlaylumiWorldStyle.accent(theme)):barBg);
         row.setElevation(dp(5));
         if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
             TextView back=text("❮",22,0xffffe6a7);
@@ -690,7 +721,7 @@ public class MainActivity extends Activity {
             row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        TextView title=text(heading,gameHeader?18:21,Color.WHITE);
+        TextView title=text(heading,gameHeader?17:20,Color.WHITE);
         title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
         title.setMaxLines(1);
         title.setSingleLine(true);
@@ -766,7 +797,10 @@ public class MainActivity extends Activity {
                 villageScreen?new int[]{0xff50308c,0xff5b3b96,0xff50308c}:
                         new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
-        if(page==WORLD_PICKER || page==WORLD_HUB ||
+        int theme=worldTheme();
+        if(theme>=0) {
+            stage.addView(new PlaylumiWorldBackdrop(this,theme),new FrameLayout.LayoutParams(-1,-1));
+        } else if(page==WORLD_PICKER || page==WORLD_HUB ||
                 page==AVATAR || page==CLOSET || page==ROOM ||
                 page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
                 page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
@@ -828,6 +862,7 @@ public class MainActivity extends Activity {
             case HOME: showHome();break;
             case WORLD_PICKER: showWorldPicker();break;
             case HOME_OPTIONS: showHomeOptions();break;
+            case VILLAGE_MENU: showVillageMenu();break;
             case CATEGORIES: showCategories();break;
             case DETAIL: showDetail();break;
             case LEVEL: showLevel();break;
@@ -938,27 +973,13 @@ public class MainActivity extends Activity {
             quickCategoryPlay=false;
             switch(place) {
                 case PlaylumiVillageView.ROCKET:
-                    selectCategory(LearningGame.COUNT);
-                    break;
                 case PlaylumiVillageView.BOOKS:
-                    selectCategory(LearningGame.LETTERS);
-                    break;
                 case PlaylumiVillageView.SHAPES:
-                    miniKind=PlaylumiMiniChallenge.DRAG;
-                    miniRound=0;miniSolved=false;pendingBadges.clear();
-                    mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
-                    move(MINI_PLAY);
-                    break;
                 case PlaylumiVillageView.MUSIC:
-                    melodyRound=0;melodySolved=false;pendingBadges.clear();
-                    melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
-                    move(MUSIC_PLAY);
-                    break;
                 case PlaylumiVillageView.PLAYGROUND:
-                    move(MINI_MENU);
-                    break;
                 case PlaylumiVillageView.COLORS:
-                    selectCategory(LearningGame.COLORS);
+                    storyStage=-1;
+                    move(VILLAGE_MENU);
                     break;
                 case PlaylumiVillageView.FRIEND:
                     move(AVATAR);
@@ -1010,11 +1031,82 @@ public class MainActivity extends Activity {
                     break;
                 default:break;
             }
-        },activeProfile,wardrobe==null?0:wardrobe.stars());
+        },activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar());
         // The world takes the complete usable screen; no ScrollView, blank strip,
         // clipped bottom buttons, or duplicate white space below the illustration.
         stage.removeView(scroller);
         stage.addView(village,new FrameLayout.LayoutParams(-1,-1));
+    }
+    private void worldChoice(String title,String description,int color,Runnable action) {
+        Button b=tile(title,description,color,88);
+        b.setTextSize(18);
+        addTile(b,5);
+        b.setOnClickListener(v->action.run());
+    }
+    private void startWorldQuiz(int mode,int variant) {
+        storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;
+        pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();
+        difficulty=adaptive.level(mode,Math.max(0,age));
+        game.configure(mode,variant,difficulty);
+        prefs().edit().putInt("game_mode",mode).putInt("game_variant",variant)
+                .putInt("last_played_category",mode).putInt("last_played_variant",variant).apply();
+        saveRecent();move(PLAY);
+    }
+    private void startWorldMini(int kind) {
+        miniKind=kind;miniRound=0;miniSolved=false;pendingBadges.clear();
+        mini=PlaylumiMiniChallenge.generate(kind,Math.max(0,age),new Random());
+        move(MINI_PLAY);
+    }
+    private void showVillageMenu() {
+        if(!PlaylumiWorldStyle.valid(villageLaunch)) {villageLaunch=PlaylumiVillageHit.ROCKET;}
+        int w=villageLaunch;
+        header(PlaylumiWorldStyle.NAMES[w],"");
+        addIllustratedPortal(w,PlaylumiWorldStyle.NAMES[w],landscapeScreen()?154:211);
+        addText(PlaylumiWorldStyle.SUBTITLES[w],19,PlaylumiWorldStyle.deep(w),2,5);
+        switch(w) {
+            case PlaylumiVillageHit.ROCKET:
+                worldChoice("Voorwerpen tellen","Tel de schatten en sterren",COLORS[0],()->startWorldQuiz(LearningGame.COUNT,0));
+                worldChoice("Cijfers ontdekken","Herken de magische cijfers",COLORS[1],()->startWorldQuiz(LearningGame.NUMBERS,0));
+                worldChoice("Meer rekenmissies","Kies niveau, spelvorm en badges",COLORS[2],()->selectCategory(LearningGame.COUNT));
+                break;
+            case PlaylumiVillageHit.BOOKS:
+                worldChoice("Kleine letters","Vind de kleine letter",COLORS[0],()->startWorldQuiz(LearningGame.LETTERS,0));
+                worldChoice("Hoofdletters","Vind de grote letter",COLORS[1],()->startWorldQuiz(LearningGame.LETTERS,1));
+                worldChoice("Woorden maken","Vul de ontbrekende letter in",COLORS[2],()->startWorldQuiz(LearningGame.WORDS,0));
+                worldChoice("Meer lettermissies","Kies niveau, spelvorm en badges",COLORS[3],()->selectCategory(LearningGame.LETTERS));
+                break;
+            case PlaylumiVillageHit.SHAPES:
+                worldChoice("Sleep de vormen","Breng vormen naar hun huisje",COLORS[0],()->startWorldMini(PlaylumiMiniChallenge.DRAG));
+                worldChoice("Vormen zoeken","Vind dezelfde vorm",COLORS[1],()->startWorldQuiz(LearningGame.SHAPES,0));
+                worldChoice("Vormen benoemen","Herken de vorm",COLORS[2],()->startWorldQuiz(LearningGame.SHAPES,1));
+                break;
+            case PlaylumiVillageHit.MUSIC:
+                worldChoice("Speel het deuntje","Luister en speel de melodie na",COLORS[0],()->{
+                    melodyRound=0;melodySolved=false;pendingBadges.clear();
+                    melody=PlaylumiMelody.generate(Math.max(0,age),new Random());move(MUSIC_PLAY);
+                });
+                addText("Vier dierenvriendjes maken elk een eigen toon. Luister goed en speel in dezelfde volgorde.",16,PlaylumiWorldStyle.deep(w),4,8);
+                break;
+            case PlaylumiVillageHit.PLAYGROUND:
+                worldChoice("Dierenmemory","Zoek bij elkaar passende dieren",COLORS[0],()->startWorldMini(PlaylumiMiniChallenge.MEMORY));
+                worldChoice("Tik de ballon","Vind de juiste ballon",COLORS[1],()->startWorldMini(PlaylumiMiniChallenge.BALLOONS));
+                worldChoice("Bellenfeest","Laat zeepbellen knappen",COLORS[2],()->{
+                    bubbleRound=0;bubbleSolved=false;pendingBadges.clear();
+                    bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());move(BUBBLE_PLAY);
+                });
+                worldChoice("Vang de sterren","Verzamel de gevraagde sterren",COLORS[3],()->{
+                    starCatchRound=0;starCatchSolved=false;
+                    starCatch=PlaylumiStarCatch.generate(Math.max(0,age),new Random());move(STAR_CATCH);
+                });
+                break;
+            case PlaylumiVillageHit.COLORS:
+                worldChoice("Kleuren herkennen","Welke kleur zie je?",COLORS[0],()->startWorldQuiz(LearningGame.COLORS,0));
+                worldChoice("Kleuren zoeken","Vind de gevraagde kleur",COLORS[1],()->startWorldQuiz(LearningGame.COLORS,1));
+                worldChoice("Mijn kunstwerk","Teken en kleur vrij",COLORS[2],()->move(DRAW));
+                worldChoice("Meer kleurmissies","Kies niveau, spelvorm en badges",COLORS[3],()->selectCategory(LearningGame.COLORS));
+                break;
+            default:break;
+        }
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
@@ -1036,7 +1128,7 @@ public class MainActivity extends Activity {
         Button ageButton=tile("🎂 Leeftijd: "+AGES[age],"Kies je leeftijd",0xfff1e9ff,91);
         addTile(ageButton,6);
         ageButton.setOnClickListener(v->move(AGE));
-        Button profile=tile("👧 Speler "+(activeProfile+1),"Wissel van speler",0xffdeeeff,91);
+        Button profile=tile("✦ Mijn maatje","Verander je karakter",0xffdeeeff,91);
         addTile(profile,6);
         profile.setOnClickListener(v->move(PROFILES));
         Button soundButton=tile(sound.isEnabled()?"🔊 Geluid aan":"🔇 Geluid uit",
@@ -1225,13 +1317,17 @@ public class MainActivity extends Activity {
         LearningGame.Round round=game.round();
         boolean narrateQuestion=game.allowsQuestionNarration();
         boolean wide=landscapeScreen();
-        header(ICONS[mode]+" "+LearningGame.GAME_NAMES[mode],"");
-        addIllustratedPortal(portalForMode(mode),LearningGame.GAME_NAMES[mode],102);
+        int theme=worldTheme();
+        header(PlaylumiWorldStyle.NAMES[theme],""+(sessionSolved+1)+"/"+sessionGoal());
+        addIllustratedPortal(theme,LearningGame.GAME_NAMES[mode],landscapeScreen()?80:118);
 
         LinearLayout progressRow=new LinearLayout(this);
         progressRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView counter=text("⭐ "+sessionSolved+" / "+sessionGoal(),15,0xff2c886f);
         counter.setGravity(Gravity.CENTER_VERTICAL);
+        progressRow.setPadding(dp(9),dp(2),dp(9),dp(2));
+        progressRow.setBackground(rounded(0xfffdf5df,16));
+        counter.setTextColor(PlaylumiWorldStyle.deep(theme));
         progressRow.addView(counter,new LinearLayout.LayoutParams(-2,dp(25)));
         roundStars=new PlaylumiStarTrail(this,sessionGoal(),sessionSolved);
         LinearLayout.LayoutParams bar=new LinearLayout.LayoutParams(0,dp(30),1f);
@@ -1274,6 +1370,7 @@ public class MainActivity extends Activity {
         question.setBackground(promptBg);
         question.setMinHeight(dp(wide?80:68));
         question.setMaxLines(4);
+        question.setBackground(worldPlate(theme,PlaylumiWorldStyle.accent(theme)));
         promptLine.addView(question,new LinearLayout.LayoutParams(0,-2,1f));
         if(narrateQuestion && sound.isEnabled()) {
             Button listen=tile("🔊","",0xffe7e3ff,46);
@@ -1296,11 +1393,11 @@ public class MainActivity extends Activity {
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.WHITE,0xfff2ecff,0xfffff5e5});
         pictureBg.setCornerRadius(dp(22));
-        pictureBg.setStroke(dp(2),0xffd4a8e9);
+        pictureBg.setStroke(dp(3),PlaylumiWorldStyle.accent(theme));
         picture.setBackground(pictureBg);
         picture.setMinHeight(dp(wide?150:112));
         picture.setMaxLines(4);
-        picture.setElevation(dp(2));
+        picture.setElevation(dp(6));
         if(narrateQuestion && sound.isEnabled()) {
             picture.setContentDescription("Tik op het plaatje om de vraag te horen");
             picture.setClickable(true);
@@ -1315,7 +1412,7 @@ public class MainActivity extends Activity {
         }
         addWidgetIn(questions,picture,0,dp(wide?3:8));
 
-        feedbackText=text("👇 Kies het juiste antwoord",wide?15:16,SUB);
+        feedbackText=text("Kies het juiste antwoord",wide?15:16,PlaylumiWorldStyle.deep(theme));
         feedbackText.setMinHeight(dp(28));
         addWidgetIn(answers,feedbackText,0,dp(3));
         answerButtons.clear();
@@ -1379,6 +1476,7 @@ public class MainActivity extends Activity {
             if(playPal!=null)playPal.dance();
             touched.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                     rounded(0xffb9f5d1,25),null));
+            touched.setTextColor(0xff174f36);
             for(Button b:answerButtons)b.setEnabled(false);
             feedbackText.setText(feedback);
             feedbackText.setTextColor(0xff21836e);
@@ -1476,7 +1574,7 @@ public class MainActivity extends Activity {
         });
         Button home=tile("🌈 Ander spelletje","",0xffeadbff,82);
         addTile(home,6);
-        home.setOnClickListener(v->move(CATEGORIES));
+        home.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:CATEGORIES));
     }
     private void showBadges() {
         PlaylumiScores.Score score=scores.get(game.mode());
@@ -1714,7 +1812,7 @@ public class MainActivity extends Activity {
         if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         header(PlaylumiMiniChallenge.ICONS[miniKind]+" "+PlaylumiMiniChallenge.NAMES[miniKind],
                 "Uitdaging "+Math.min(miniRound+1,20)+" / 20");
-        addIllustratedPortal(PlaylumiVillageView.SHAPES,"Speelplein",100);
+        addIllustratedPortal(worldTheme(),PlaylumiWorldStyle.NAMES[worldTheme()],116);
         if(miniRound>=20) {
             characterHero(150);
             addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
@@ -1726,7 +1824,7 @@ public class MainActivity extends Activity {
                 move(MINI_PLAY);
             });
             Button back=tile("🎪 Andere minigame","",0xffe8dfff,86);
-            addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
+            addTile(back,8);back.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:MINI_MENU));
             return;
         }
         if(sound.isEnabled()) {
@@ -2354,30 +2452,44 @@ public class MainActivity extends Activity {
 
 
     private void showProfiles() {
-        header("👧 Kies jouw speler","Iedere speler heeft een eigen wereld.");
-        String[] images=PlaylumiProfiles.ICONS;
-        for(int i=0;i<PlaylumiProfiles.COUNT;i++) {
-            final int slot=i;
-            SharedPreferences player=i==0?getPreferences(MODE_PRIVATE):
-                    getSharedPreferences(PlaylumiProfiles.preferences(i),MODE_PRIVATE);
-            int selectedAge=player.getInt("chosen_age",-1);
-            String ageNote=selectedAge<0?"Nog niet begonnen":AGES[Math.min(2,selectedAge)];
-            String subtitle=(i==activeProfile?"✅ Nu aan het spelen  •  ":"")+
-                    ageNote+"  •  ⭐ "+player.getInt("completed_all",0)+" goed";
-            Button b=tile(images[i]+"  Speler "+(i+1),subtitle,
-                    i==activeProfile?0xffcbf3dc:COLORS[i],118);
-            addTile(b,10);
-            b.setOnClickListener(v->{
-                if(slot==activeProfile){move(HOME);return;}
-                saveUsage();
-                if(page==DRAW && drawing!=null)drawing.save();
-                getSharedPreferences("playlumi-global",MODE_PRIVATE).edit()
-                        .putInt("active_profile",slot).apply();
-                recreate();
-            });
+        header("Mijn maatje","Kies wie je meeneemt op avontuur.");
+        int current=chosenAvatar();
+        PlaylumiAvatar preview=new PlaylumiAvatar(this,current);
+        LinearLayout.LayoutParams hero=new LinearLayout.LayoutParams(dp(162),dp(162));
+        hero.gravity=Gravity.CENTER;hero.setMargins(0,dp(4),0,dp(4));
+        root.addView(preview,hero);
+        addText(PlaylumiWorldStyle.AVATAR_NAMES[current],24,0xff57308c,1,5);
+        addText("Je sterren, badges en voortgang blijven bij jou.",15,SUB,0,7);
+        for(int i=0;i<PlaylumiWorldStyle.AVATAR_NAMES.length;i+=2) {
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
+            for(int j=i;j<Math.min(i+2,PlaylumiWorldStyle.AVATAR_NAMES.length);j++) {
+                final int choice=j;
+                LinearLayout card=new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
+                card.setPadding(dp(8),dp(8),dp(8),dp(8));
+                card.setBackground(gameTileBackground(choice==current?0xffc6edd8:0xfff0dfff));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1);
+                cp.setMargins(dp(4),dp(4),dp(4),dp(4));
+                row.addView(card,cp);
+                PlaylumiAvatar icon=new PlaylumiAvatar(this,choice);
+                card.addView(icon,new LinearLayout.LayoutParams(dp(92),dp(92)));
+                TextView name=text(PlaylumiWorldStyle.AVATAR_NAMES[choice],18,TEXT);
+                card.addView(name,new LinearLayout.LayoutParams(-1,-2));
+                TextView hint=text(choice==current?"Gekozen":"Kies",13,SUB);
+                card.addView(hint,new LinearLayout.LayoutParams(-1,-2));
+                card.setContentDescription(PlaylumiWorldStyle.AVATAR_NAMES[choice]+(choice==current?", gekozen":", kies maatje"));
+                card.setFocusable(true);card.setClickable(true);
+                card.setOnClickListener(v->{
+                    prefs().edit().putInt("chosen_avatar",choice).apply();
+                    if(sound!=null)sound.tap();
+                    showPage();
+                });
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
+        Button done=tile("Verder spelen","Terug naar het magische dorp",0xffd9f2d8,82);
+        addTile(done,8);done.setOnClickListener(v->move(HOME));
     }
-
 
     /** A toy stage: children choose a single funny movement at a time. */
     private void showStarStage() {
@@ -2460,7 +2572,7 @@ public class MainActivity extends Activity {
             addTile(again,8);
             again.setOnClickListener(v->{starCatchRound=0;starCatchSolved=false;starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());move(STAR_CATCH);});
             Button back=tile("🎪 Andere spelletjes","",0xffe8dfff,80);
-            addTile(back,7);back.setOnClickListener(v->move(MINI_MENU));return;
+            addTile(back,7);back.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:MINI_MENU));return;
         }
         if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
         final PlaylumiStarCatch round=starCatch;
@@ -2510,7 +2622,7 @@ public class MainActivity extends Activity {
                 move(BUBBLE_PLAY);
             });
             Button back=tile("🎪 Een ander spel","",0xffe8deff,89);
-            addTile(back,8);back.setOnClickListener(v->move(MINI_MENU));
+            addTile(back,8);back.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:MINI_MENU));
             return;
         }
         // The small star in the navigation row replaces the oversized character panel.
@@ -2686,7 +2798,7 @@ public class MainActivity extends Activity {
         if(melody==null)melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
         header("🎵 Het Muziekatelier","Melodie "+Math.min(melodyRound+1,PlaylumiMelody.ROUNDS)+
                 " / "+PlaylumiMelody.ROUNDS);
-        addIllustratedPortal(PlaylumiVillageView.MUSIC,"Muziekstudio",105);
+        addIllustratedPortal(PlaylumiVillageView.MUSIC,"Muziekstudio",116);
         if(melodyRound>=PlaylumiMelody.ROUNDS) {
             characterHero(170);
             addText("🏆 Wat een muzikale ster!",26,0xff61418f,10,14);
@@ -2698,7 +2810,7 @@ public class MainActivity extends Activity {
                 move(MUSIC_PLAY);
             });
             Button other=tile("🎪 Ander spelletje","",0xffe9deff,80);
-            addTile(other,7);other.setOnClickListener(v->move(MINI_MENU));
+            addTile(other,7);other.setOnClickListener(v->move(PlaylumiWorldStyle.valid(villageLaunch)?VILLAGE_MENU:MINI_MENU));
             return;
         }
         // Only the actual melody preview and playable animal buttons are shown.
@@ -2706,7 +2818,7 @@ public class MainActivity extends Activity {
                 "👂 Luister en speel het deuntje na.":"👀 Bekijk de plaatjes en tik ze na.",
                 20,0xff65418f);
         melodyStatus.setPadding(dp(9),dp(14),dp(9),dp(14));
-        melodyStatus.setBackground(rounded(0xfff1e5ff,23));
+        melodyStatus.setBackground(rounded(0xfffff4d9,23));
         addWidget(melodyStatus,5,11);
         Button replay=tile(sound.isEnabled()?"🔊 Speel de melodie af":"👀 Bekijk de melodie",
                 "",0xffd5f0ff,87);

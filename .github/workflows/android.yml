@@ -1,4 +1,4 @@
-name: Android Playlumi 0.76 UI acceptance
+name: Android Playlumi 0.77 UI acceptance
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600760" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600770" >> "$GITHUB_ENV"
       - name: Test, lint and build both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
 
@@ -37,8 +37,8 @@ jobs:
               exit 1
             fi
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600760'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.76.0'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600770'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.77.0'"
           done
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
@@ -87,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playlumi-076-screen-qa
+          name: playlumi-077-screen-qa
           path: build/qa/screenshots/
           if-no-files-found: warn
           retention-days: 30
@@ -95,7 +95,7 @@ jobs:
       - name: Upload validated debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-076-debug-apk
+          name: playlumi-077-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             build-debug-sha256.txt
@@ -105,7 +105,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-076-unsigned-release
+          name: playlumi-077-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -115,7 +115,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-076-offline-signing-tools
+          name: playlumi-077-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
