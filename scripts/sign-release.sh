@@ -14,7 +14,7 @@ TOOLS=$3
 EXPECTED=d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef
 [[ -s "$UNSIGNED" ]] || { echo "Unsigned APK is missing"; exit 1; }
 [[ -s "$PLAYLUMI_KEYSTORE" ]] || { echo "Private keystore is missing"; exit 1; }
-[[ -x "$TOOLS/zipalign" && -x "$TOOLS/apksigner" ]] || { echo "SDK signing tools not available"; exit 1; }
+[[ -x "$TOOLS/apksigner" ]] || { echo "Official apksigner not available"; exit 1; }
 keytool -list -v -storetype PKCS12 -keystore "$PLAYLUMI_KEYSTORE" \
     -storepass:env PLAYLUMI_SIGNING_PASSWORD > /tmp/playlumi-release-certinfo.txt
 fingerprint=$(grep 'SHA256:' /tmp/playlumi-release-certinfo.txt | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
@@ -22,7 +22,8 @@ rm -f /tmp/playlumi-release-certinfo.txt
 [[ "$fingerprint" == "$EXPECTED" ]] || { echo "WRONG PRIVATE KEY; release blocked"; exit 1; }
 TEMP=$(mktemp --suffix=.apk)
 trap 'rm -f "$TEMP"' EXIT
-"$TOOLS/zipalign" -p -f 4 "$UNSIGNED" "$TEMP"
+python3 "$(dirname "$0")/check-zipalignment.py" "$UNSIGNED"
+cp "$UNSIGNED" "$TEMP"
 "$TOOLS/apksigner" sign \
     --ks "$PLAYLUMI_KEYSTORE" \
     --ks-type PKCS12 \
@@ -35,6 +36,6 @@ trap 'rm -f "$TEMP"' EXIT
 grep -i "Signer #1 certificate SHA-256 digest: $EXPECTED" "${FINAL}.verification.txt" || {
     echo "Final APK certificate mismatch"; exit 1;
 }
-"$TOOLS/zipalign" -c -p 4 "$FINAL"
+python3 "$(dirname "$0")/check-zipalignment.py" "$FINAL"
 sha256sum "$FINAL" | tee "${FINAL}.sha256"
 echo "Validated Playlumi release: $FINAL"
