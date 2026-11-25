@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.79: full Android rendering, real controls and regression tests.
+# Playlumi 0.80: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
@@ -219,6 +219,69 @@ adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
 grep -q "Mijn beloningen" build/qa/ui.xml
 ! grep -q "Sterkleur" build/qa/ui.xml
 screenshot rewards
+# Count actual balloons and verify that the number is separate from the balloon itself.
+home
+tapVillage 185 1040
+assertScreen 43
+tapText "Ballonnen tellen"
+assertScreen 13
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+balloon_count=$(python3 - <<'PY'
+import xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+balloons=[n for n in nodes if n.get('content-desc')=='Ballon']
+assert 1<=len(balloons)<=10, 'No actual balloons to count'
+assert all(n.get('text')=='🎈' for n in balloons), 'Number printed on balloon'
+answers=[n.get('content-desc') for n in nodes if n.get('content-desc','').startswith('Antwoord ')]
+assert 'Antwoord '+str(len(balloons)) in answers, 'Correct quantity is missing'
+print(len(balloons))
+PY
+)
+tapText "Ballon"
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q 'content-desc="Geprikte ballon"' build/qa/ui.xml
+tapText "Antwoord $balloon_count"
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q 'Verder spelen' build/qa/ui.xml
+screenshot game-balloon-count-solved
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+assertScreen 43
+
+# Distractors must remain visible and never contribute to progress.
+home
+tapVillage 185 1040
+assertScreen 43
+tapText "Vang de sterren"
+assertScreen 42
+tapText "Hartje "
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+star_count=$(python3 - <<'PY'
+import xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+stars=[n for n in nodes if n.get('content-desc','').startswith('Ster ')]
+assert 3<=len(stars)<=5, 'Incorrect number of actual stars'
+assert any(n.get('content-desc','').startswith('Hartje ') for n in nodes), 'Missing hearts'
+assert any('0 / '+str(len(stars)) in n.get('text','') for n in nodes), 'Heart changed progress'
+print(len(stars))
+PY
+)
+tapText "Ster "
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "1 / $star_count" build/qa/ui.xml
+for ((i=1;i<star_count;i++)); do tapText "Ster "; done
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "Volgende ronde" build/qa/ui.xml
+screenshot game-star-catch-solved
+adb shell input keyevent KEYCODE_BACK
+sleep 2
+assertScreen 43
 # Exercise unfolded / tablet proportions on the same real rendered emulator.
 adb shell wm size 1600x1768
 adb shell wm density 280
@@ -245,4 +308,4 @@ adb shell wm density reset
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"
+echo "PASS: six real game routes, approved graphics, letter answer, sound pad, memory flip, balloon quantity, rejected hearts, fold screenshots, companion, rewards, color swatch, no narration and safe insets"

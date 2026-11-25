@@ -32,6 +32,26 @@ public class PlaylumiMiniChallengeTest {
                     }
                 }
     }
+    @Test public void balloonQuantityMatchesTheOnlyCorrectAnswerAndPopsOnce() {
+        Random r=new Random(107);
+        for(int level=0;level<3;level++)for(int i=0;i<200;i++){
+            PlaylumiMiniChallenge game=PlaylumiMiniChallenge.generate(PlaylumiMiniChallenge.BALLOONS,level,r);
+            int quantity=game.balloonCount();
+            assertEquals("Hoeveel ballonnen zie je?",game.question);
+            assertTrue(quantity>= (level==0?1:level==1?2:4));
+            assertTrue(quantity<= (level==0?3:level==1?6:10));
+            for(int choice=0;choice<game.choices.size();choice++)
+                assertEquals(Integer.parseInt(game.choices.get(choice))==quantity,game.choose(choice));
+            for(int n=0;n<quantity;n++){
+                assertFalse(game.balloonPopped(n));
+                assertTrue(game.popBalloon(n));
+                assertFalse(game.popBalloon(n));
+                assertEquals(n+1,game.poppedBalloonCount());
+            }
+            assertEquals(quantity,game.poppedBalloonCount());
+            assertTrue(game.choose(game.correctIndex));
+        }
+    }
     @Test(expected=IllegalStateException.class)
     public void tappingAShapeCannotCompleteADragChallenge() {
         PlaylumiMiniChallenge drag=PlaylumiMiniChallenge.generate(
