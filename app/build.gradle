@@ -17,8 +17,8 @@ android {
         minSdk 23
         targetSdk 35
         // GitHub Actions uses a monotonically increasing run number for each release.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 10
-        versionName '0.72.0'
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 600730
+        versionName '0.73.0'
     }
 
     signingConfigs {
@@ -44,3 +44,42 @@ android {
     }
 }
 dependencies { testImplementation 'junit:junit:4.13.2' }
+
+// The illustrated game world is embedded as text source to support GitHub's
+// text-only integration. The official build recreates the exact WebP binary
+// and checks its SHA-256. The original private signing key is never involved.
+def villageSourceParts = (1..10).collect { n ->
+    file("src/main/village-art/village_${String.format('%02d', n)}.b64")
+}
+def generatedVillageDir = file("$buildDir/generated/playlumi-village-assets")
+def villageAsset = file("$buildDir/generated/playlumi-village-assets/playlumi_village.webp")
+tasks.register('prepareVillageArt') {
+    inputs.files(villageSourceParts)
+    outputs.file(villageAsset)
+    doLast {
+        villageSourceParts.each { part ->
+            if (!part.isFile()) throw new GradleException("Missing village artwork part: ${part.name}")
+        }
+        String encoded = villageSourceParts.collect {
+            it.getText('UTF-8').replaceAll('\\s', '')
+        }.join('')
+        byte[] bytes = java.util.Base64.decoder.decode(encoded)
+        if (bytes.length != 342996) {
+            throw new GradleException("Wrong village art size: ${bytes.length}")
+        }
+        String sha = java.security.MessageDigest.getInstance('SHA-256')
+            .digest(bytes).encodeHex().toString()
+        if (sha != 'bc39c748fb82a101e0280d16d6d3de1cd3e44d39453f87bb6d30870e155f5804') {
+            throw new GradleException("Village artwork SHA-256 mismatch: ${sha}")
+        }
+        generatedVillageDir.mkdirs()
+        villageAsset.bytes = bytes
+    }
+}
+android.sourceSets.main.assets.srcDirs += [generatedVillageDir]
+tasks.configureEach {
+    if (name == 'mergeDebugAssets' || name == 'mergeReleaseAssets') {
+        dependsOn(tasks.named('prepareVillageArt'))
+    }
+}
+
