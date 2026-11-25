@@ -16,6 +16,16 @@ public final class PlaylumiAvatar extends View {
         super(context);this.avatar=PlaylumiWorldStyle.safeAvatar(avatar);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
+    public void react(int kind) {
+        if(PlaylumiMotion.isReduced())return;
+        switch(kind){case 1:PlaylumiDelight.hop(this);break;case 2:PlaylumiDelight.wiggle(this);break;
+            case 3:PlaylumiDelight.wiggle(this);break;case 4:PlaylumiMotion.pop(this);break;
+            case 5:PlaylumiDelight.spin(this);break;default:PlaylumiMotion.pop(this);}
+    }
+    public void dance(){react(1);}
+    public void wave(){react(3);}
+    public void surprised(){react(4);}
+    public void twirl(){react(5);}
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);float size=Math.min(getWidth(),getHeight());
         draw(canvas,(getWidth()-size)/2,(getHeight()-size)/2,size,avatar);
@@ -41,17 +51,6 @@ public final class PlaylumiAvatar extends View {
             polygon(c,p,0x99fff1c5,sx,sy-4,sx+1,sy-1,sx+4,sy,sx+1,sy+1,sx,sy+4,sx-1,sy+1,sx-4,sy,sx-1,sy-1);
         }
         switch(choice) {
-            case 0:
-                Path star=new Path();
-                for(int i=0;i<10;i++){
-                    double a=-Math.PI/2+i*Math.PI/5;float r=i%2==0?36:18;
-                    float px=50+(float)Math.cos(a)*r,py=50+(float)Math.sin(a)*r;
-                    if(i==0)star.moveTo(px,py);else star.lineTo(px,py);
-                }
-                star.close();p.setColor(0xffe69b35);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);p.setStrokeJoin(Paint.Join.ROUND);c.drawPath(star,p);p.setStyle(Paint.Style.FILL);
-                p.setShader(new LinearGradient(0,15,0,88,0xfffff3a5,0xffffb532,Shader.TileMode.CLAMP));
-                c.drawPath(star,p);p.setShader(null);
-                break;
             case 1:
                 polygon(c,p,0xffa44a37,22,45,19,16,40,32);
                 polygon(c,p,0xffa44a37,78,45,81,16,60,32);

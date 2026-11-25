@@ -129,6 +129,21 @@ do
   tapText "$button"
   assertScreen "$expected"
   screenshot "game-$label"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  python3 - "$label" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse('build/qa/ui.xml').iter('node'))
+for n in nodes:
+    text=n.get('text','')+' '+n.get('content-desc','')
+    for forbidden in ('Luister naar de opdracht','Lees de vraag voor','Tik op het plaatje om de vraag te horen'):
+        assert forbidden not in text, 'Synthetic narration control: '+text
+if sys.argv[1]=='colors':
+    swatch=next((n for n in nodes if n.get('content-desc')=='Groot kleurvlak'),None)
+    assert swatch is not None, 'Missing real color swatch'
+    bounds=list(map(int,re.findall(r'\d+',swatch.get('bounds',''))))
+    assert len(bounds)==4 and bounds[3]-bounds[1]>=100, 'Color swatch too small'
+PY
   adb shell input keyevent KEYCODE_BACK
   sleep 2
   assertScreen 43
@@ -137,13 +152,26 @@ home
 tapVillage 70 158
 assertScreen 32
 screenshot characters
-tapText "Fenna"
+tapText "Milo"
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "Milo, gekozen" build/qa/ui.xml
+! grep -q "Lumi, kies maatje" build/qa/ui.xml
 screenshot character-selected
 adb shell input keyevent KEYCODE_BACK
 sleep 2
 assertScreen 1
 screenshot home-character
+# The star balance must lead to real rewards, not a separate star wardrobe.
+home
+tapVillage 417 52
+assertScreen 11
+adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+grep -q "Mijn beloningen" build/qa/ui.xml
+! grep -q "Sterkleur" build/qa/ui.xml
+screenshot rewards
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: 12 village routes, six world menus and real games, character selection, back navigation and actual safe insets"
+echo "PASS: village and six real game routes, chosen companion, rewards, visual color swatch, no narration controls, back navigation and safe insets"

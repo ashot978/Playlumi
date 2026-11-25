@@ -41,7 +41,7 @@ public final class PlaylumiVillageView extends View {
             PLAYER=PlaylumiVillageHit.PLAYER;
     private static final String[] NAMES={
             "Rekenraket","Letterhuis","Vormkasteel","Muziekstudio",
-            "Speelplein","Kleurentuin","Stervriend","Ouderzone",
+            "Speelplein","Kleurentuin","Maatje","Ouderzone",
             "Missies","Beloningen","Home","Collectie","Profiel","Instellingen",
             "Sterren","Ontdekte gebouwen","Maatje"
     };

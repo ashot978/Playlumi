@@ -93,7 +93,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     private void show() {
         removeAllViews();
         cards.clear();
-        status=caption("",16,0xff77688c);
+        status=caption("",16,0xff234e58);
         if(question.kind==PlaylumiMiniChallenge.DRAG) {
             status.setText("👆 Sleep de vorm naar het huisje");
             addView(status,new LayoutParams(-1,dp(landscape()?36:42)));
@@ -253,7 +253,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             LinearLayout row=new LinearLayout(getContext());
             for(int idx=start;idx<Math.min(start+columns,question.choices.size());idx++) {
                 final int index=idx;
-                Button b=tile("❔",idx,28);
+                Button b=tile("?",idx,32);
                 LayoutParams p=new LayoutParams(0,dp(74),1);
                 p.setMargins(dp(5),dp(7),dp(5),dp(7));
                 row.addView(b,p);
@@ -293,9 +293,12 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         for(int i=0;i<cards.size();i++) {
             Button b=cards.get(i);
             boolean revealed=question.visible(i);
-            b.setText(revealed?question.choices.get(i):"❔");
-            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
-                    bg(question.matched(i)?0xffc7f5d5:revealed?0xffffedbc:pastel[i%pastel.length]),null));
+            b.setText(revealed?question.choices.get(i):"?");
+            b.setTextColor(revealed?0xff3f3166:0xffffebbf);
+            GradientDrawable card=bg(question.matched(i)?0xffc7f5d5:revealed?0xffffedbc:0xff215665);
+            card.setStroke(dp(2),revealed?0xff74a58b:0xffffdfa0);
+            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),card,null));
+            b.setContentDescription(revealed?question.choices.get(i):"Gesloten kaart "+(i+1));
             b.setEnabled(!question.matched(i) && !solved);
         }
         if(!solved)status.setText("🃏 "+question.matchedPairs()+" van "+question.pairCount()+" paar gevonden");
