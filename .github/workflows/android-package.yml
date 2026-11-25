@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600730" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600740" >> "$GITHUB_ENV"
       - name: Test, lint and build both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
 
