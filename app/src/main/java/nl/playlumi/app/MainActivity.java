@@ -40,9 +40,9 @@ public class MainActivity extends Activity {
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
             WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
-    private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
-    private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
-            0xffd5f5df,0xffffdded,0xfffff1b6};
+    private static final int TEXT=0xff172c4d, SUB=0xff355a75;
+    private static final int[] COLORS={0xff98e6f6,0xffffd88c,0xffc9b5ff,
+            0xff96edba,0xffffaaca,0xffffec97};
     private static final String[] ICONS={"⭐","🎨","🔤","🔷","🔢","🧩","🐾",
             "✏️","🔠","🖼️","🎶","⚖️","➕","🔢","↔️","🧠",
             "🕒","🌦️","🧭","🏠","🥕","🦁","📏","💡"};
@@ -468,6 +468,26 @@ public class MainActivity extends Activity {
         GradientDrawable b=new GradientDrawable();
         b.setColor(color);b.setCornerRadius(dp(radius));return b;
     }
+    /** Punchy illustrated game cards with tactile color, outline and depth. */
+    private GradientDrawable gameCard(int color) {
+        int top=lighten(color,0.16f);
+        int bottom=darken(color,0.08f);
+        GradientDrawable b=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{top,color,bottom});
+        b.setCornerRadius(dp(27));
+        b.setStroke(dp(2),0xfff9ffff);
+        return b;
+    }
+    private int lighten(int color,float amount) {
+        return Color.rgb(Math.min(255,(int)(Color.red(color)+(255-Color.red(color))*amount)),
+                Math.min(255,(int)(Color.green(color)+(255-Color.green(color))*amount)),
+                Math.min(255,(int)(Color.blue(color)+(255-Color.blue(color))*amount)));
+    }
+    private int darken(int color,float amount) {
+        return Color.rgb((int)(Color.red(color)*(1-amount)),
+                (int)(Color.green(color)*(1-amount)),
+                (int)(Color.blue(color)*(1-amount)));
+    }
     private TextView text(String value,int size,int color) {
         TextView t=new TextView(this);
         t.setText(value);t.setTextSize(size);t.setTextColor(color);
@@ -486,16 +506,16 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setText(PlaylumiType.tileText(title,description));
         b.setTextColor(TEXT);
-        b.setTextSize(description.isEmpty()?18:16);
+        b.setTextSize(description.isEmpty()?20:17);
         b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         b.setLineSpacing(dp(1),1.0f);
         b.setGravity(Gravity.CENTER);
         b.setMaxLines(4);
-        b.setPadding(dp(10),dp(9),dp(10),dp(9));
+        b.setPadding(dp(11),dp(12),dp(11),dp(12));
         b.setMinHeight(dp(PlaylumiLayout.tileHeight(minHeight,gameScreen())));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
-                rounded(color,20),null));
-        b.setElevation(dp(2));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66ffffff),
+                gameCard(color),null));
+        b.setElevation(dp(8));
         b.setContentDescription((title+" "+description).trim());
         PlaylumiMotion.tactile(b);
         return b;
@@ -503,7 +523,7 @@ public class MainActivity extends Activity {
     private void addTile(Button button,int margin) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
         int gap=PlaylumiLayout.margin(margin);
-        p.setMargins(dp(3),dp(gap),dp(3),dp(gap));
+        p.setMargins(dp(5),dp(gap+2),dp(5),dp(gap+2));
         root.addView(button,p);
     }
     private void addTwo(Button one,Button two,int height) {
@@ -511,8 +531,8 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,-2,1);
         LinearLayout.LayoutParams p2=new LinearLayout.LayoutParams(0,-2,1);
-        p1.setMargins(dp(3),dp(4),dp(3),dp(4));
-        p2.setMargins(dp(3),dp(4),dp(3),dp(4));
+        p1.setMargins(dp(5),dp(6),dp(5),dp(6));
+        p2.setMargins(dp(5),dp(6),dp(5),dp(6));
         one.setMinHeight(dp(PlaylumiLayout.tileHeight(height,gameScreen())));
         two.setMinHeight(dp(PlaylumiLayout.tileHeight(height,gameScreen())));
         row.addView(one,p1);row.addView(two,p2);
@@ -605,10 +625,10 @@ public class MainActivity extends Activity {
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
-            TextView back=text("←",27,0xff60448e);
+            TextView back=text("‹",32,0xffffffff);
             back.setGravity(Gravity.CENTER);
             back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
-                    rounded(0xffeee4ff,16),null));
+                    rounded(0xff4264a1,19),null));
             back.setContentDescription("Terug naar het vorige scherm");
             back.setClickable(true);back.setFocusable(true);
             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(42),dp(42));
@@ -616,7 +636,7 @@ public class MainActivity extends Activity {
             row.addView(back,bp);
             back.setOnClickListener(v->onBackPressed());
         }
-        TextView title=text(heading,gameHeader?19:22,0xff52378b);
+        TextView title=text(heading,gameHeader?20:23,0xff173d64);
         title.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
         title.setMaxLines(1);
         title.setSingleLine(true);
@@ -645,7 +665,7 @@ public class MainActivity extends Activity {
             row.addView(star,iconParams);
         }
         LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(50));
-        rowp.setMargins(0,0,0,dp(gameHeader?4:5));
+        rowp.setMargins(dp(5),dp(3),dp(5),dp(gameHeader?6:8));
         root.addView(row,rowp);
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
@@ -656,24 +676,17 @@ public class MainActivity extends Activity {
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;
         stage=new FrameLayout(this);
-        GradientDrawable bg=new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
-        stage.setBackground(bg);
-        if(page==HOME || page==WORLD_PICKER || page==WORLD_HUB ||
-                page==AVATAR || page==CLOSET || page==ROOM ||
-                page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
-                page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
-            stage.addView(new PlaylumiSkyView(this),
-                    new FrameLayout.LayoutParams(-1,-1));
-        }
+        // The same world wraps every activity; the controls remain native Android views.
+        stage.setBackgroundColor(0xffc4eff7);
+        stage.addView(new PlaylumiGameWorldView(this,gameScreen()),
+                new FrameLayout.LayoutParams(-1,-1));
         scroller=new ScrollView(this);scroller.setFillViewport(true);
         scroller.setClipToPadding(true);
         scroller.setVerticalScrollBarEnabled(false);
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        root.setPadding(dp(side),dp(5),dp(side),dp(12));
+        root.setPadding(dp(side),dp(8),dp(side),dp(16));
         scroller.addView(root);
         stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
@@ -802,30 +815,37 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     private void showHome() {
-        header("🌟 Playlumi","Kies een plaatje om te beginnen.");
-        characterHero(118);
-        addText("🌟 "+wardrobe.stars()+" sterren",17,0xffa77933,0,3);
+        header("✦ PLAYLUMI", "Welkom in jouw magische spelwereld!");
+        addText("⭐  "+wardrobe.stars()+"  SPEELSTERREN",20,0xff74501d,0,4);
+        characterHero(120);
 
-        Button quick=tile("▶ Speel meteen","",0xffccf2db,112);
-        quick.setContentDescription("Speel meteen een korte ronde van acht vragen");
-        addTile(quick,6);
+        Button quick=tile("▶  START AVONTUUR",
+                "Begin direct met een nieuwe speelronde",0xff8af2b7,120);
+        quick.setContentDescription("Start direct een speelronde van acht vragen");
+        addTile(quick,4);
         quick.setOnClickListener(v->startEasyPlay());
         PlaylumiDelight.invite(quick);
 
-        Button worlds=tile("🌈 Ontdekken","Leren en spelen",0xffdceeff,107);
-        worlds.setOnClickListener(v->move(WORLD_PICKER));
+        PlaylumiWorldMapView map=new PlaylumiWorldMapView(this,destination->{
+            switch(destination) {
+                case PlaylumiWorldMapView.LEARN: move(WORLD_PICKER);break;
+                case PlaylumiWorldMapView.MINI: move(MINI_MENU);break;
+                case PlaylumiWorldMapView.FRIEND: move(AVATAR);break;
+                case PlaylumiWorldMapView.HOME: move(ROOM);break;
+                default: break;
+            }
+        });
+        LinearLayout.LayoutParams mapParams=new LinearLayout.LayoutParams(-1,dp(365));
+        mapParams.setMargins(dp(2),dp(5),dp(2),dp(10));
+        root.addView(map,mapParams);
 
-        Button play=tile("🎪 Spelletjes","Tikken en bewegen",0xffd7f3e4,107);
-        play.setOnClickListener(v->move(MINI_MENU));
-        addTwo(worlds,play,107);
-
-        Button friend=tile("⭐ Mijn stervriend","Kleden en versieren",0xffffe7bb,86);
-        addTile(friend,4);
-        friend.setOnClickListener(v->move(AVATAR));
-
-        Button options=tile("⚙️ Leeftijd en instellingen","",0xffece5ff,64);
-        addTile(options,8);
-        options.setOnClickListener(v->move(HOME_OPTIONS));
+        Button trophies=tile("🏆  SCHATKAMER","Bekijk je prijzen en badges",
+                0xffffe49a,103);
+        trophies.setOnClickListener(v->move(TROPHY_WORLDS));
+        Button settings=tile("⚙  INSTELLINGEN","Spelers, geluid en ouders",
+                0xffb7e9f4,103);
+        settings.setOnClickListener(v->move(HOME_OPTIONS));
+        addTwo(trophies,settings,103);
     }
     private void showWorldPicker() {
         header("🌍 Kies een leerwereld","Elke wereld zit vol avonturen.");
