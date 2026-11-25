@@ -25,12 +25,15 @@ public final class LearningGame {
 
     public static final class Round {
         public final String prompt, display;
-        public final int displayColor, correctIndex;
+        public final int displayColor, correctIndex, fingerCount;
         public final List<String> answers;
         public final List<Integer> answerColors;
         private boolean solved;
         Round(String prompt, String display, int displayColor, List<String> answers, List<Integer> answerColors, int correctIndex) {
-            this.prompt = prompt; this.display = display; this.displayColor = displayColor;
+            this(prompt,display,displayColor,answers,answerColors,correctIndex,0);
+        }
+        Round(String prompt,String display,int displayColor,List<String> answers,List<Integer> answerColors,int correctIndex,int fingerCount) {
+            this.prompt = prompt; this.display = display; this.displayColor = displayColor;this.fingerCount=fingerCount;
             this.answers = Collections.unmodifiableList(new ArrayList<>(answers));
             this.answerColors = Collections.unmodifiableList(new ArrayList<>(answerColors));
             this.correctIndex = correctIndex;
@@ -75,13 +78,14 @@ public final class LearningGame {
     }
     private void generateRound() {
         if (mode >= NewWorldGames.FIRST) { current = NewWorldGames.next(mode, variant, level, random); return; }
+        if(mode==NUMBERS && variant<=2) {current=numberRound(variant,level,random);return;}
         if (variant >= 2) { current = VariantGames.next(mode, variant, level, random); return; }
         switch (mode) {
             case COUNT: makeCount(); break;
             case COLORS: makeColors(); break;
             case LETTERS: makeLetters(); break;
             case SHAPES: makeShapes(); break;
-            case NUMBERS: makeNumbers(); break;
+            case NUMBERS: current=numberRound(variant,level,random); break;
             case PATTERNS: makePatterns(); break;
             case WORDS: makeWords(); break;
             case ExtraGames.SPELLING: case ExtraGames.FIRST_LAST: case ExtraGames.PICTURES:
@@ -146,16 +150,34 @@ public final class LearningGame {
         make(variant == 0 ? "Zoek dezelfde vorm" : "Welke vorm is dit?",
                 SHAPE_SYMBOLS[correct], 0xffbc5c95, answers, clearColors(answers.size()), answer);
     }
-    private void makeNumbers() {
-        int count = pool(10);
-        int correct = variant == 0 ? 1 + pick(count) : 1 + pick(Math.max(1, count - 1));
-        int actual = variant == 0 ? correct : correct + 1;
-        String[] all = new String[count];
-        for (int i = 0; i < count; i++) all[i] = "" + (i + 1);
-        List<String> answers = shuffled(all, count);
-        make(variant == 0 ? "Welk cijfer zie je?" : "Welk getal komt na " + correct + "?",
-                variant == 0 ? "" + correct : correct + "  →  ?", 0xff237c88,
-                answers, clearColors(answers.size()), "" + actual);
+    private static final String[] NUMBER_WORDS={"één","twee","drie","vier","vijf","zes","zeven","acht","negen","tien"};
+    public static String numberWord(int number) {
+        if(number<1||number>10)throw new IllegalArgumentException("number");
+        return NUMBER_WORDS[number-1];
+    }
+    /** Match different representations of the same number, never identical text. */
+    static Round numberRound(int variant,int level,Random r) {
+        if(variant<0||variant>2||level<0||level>2)throw new IllegalArgumentException("number game");
+        int limit=level==0?3:level==1?5:10;
+        int correct=1+r.nextInt(limit);
+        int count=level==0?3:level==1?4:6;
+        List<Integer> candidates=new ArrayList<>();
+        for(int i=1;i<=limit;i++)if(i!=correct)candidates.add(i);
+        Collections.shuffle(candidates,r);
+        List<String> answers=new ArrayList<>();
+        String answer=variant==1?numberWord(correct):Integer.toString(correct);
+        answers.add(answer);
+        for(int i=0;i<count-1;i++){
+            int n=candidates.get(i);
+            answers.add(variant==1?numberWord(n):Integer.toString(n));
+        }
+        Collections.shuffle(answers,r);
+        List<Integer> colors=new ArrayList<>();
+        for(int i=0;i<answers.size();i++)colors.add(0xff263b40);
+        String prompt=variant==0?"Hoeveel vingers zie je?":variant==1?"Welk woord hoort bij dit getal?":"Welk getal hoort bij dit woord?";
+        // The finger marker is internal (history); Android draws the actual hands.
+        String display=variant==0?"hand:"+correct:variant==1?Integer.toString(correct):numberWord(correct);
+        return new Round(prompt,display,0xff237c88,answers,colors,answers.indexOf(answer),variant==0?correct:0);
     }
     private void makePatterns() {
         int count = pool(COLOR_NAMES.length), first = pick(count), second = (first + 1 + pick(count - 1)) % count;

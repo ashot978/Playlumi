@@ -298,6 +298,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         activeSince=SystemClock.elapsedRealtime();
+        if(page==PLAY&&game!=null&&game.round().isSolved())scheduleAutoAdvance();
     }
     @Override protected void onPause() {
         if(page==DRAW && drawing!=null)drawing.save();
@@ -543,6 +544,7 @@ public class MainActivity extends Activity {
             int width=getResources().getConfiguration().screenWidthDp;
             int available=getResources().getConfiguration().screenHeightDp;
             int height=PlaylumiLayout.magicHeroHeight(width,available,page==VILLAGE_MENU);
+            if(page==PLAY && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?105:110);
             View art=PlaylumiMagicArt.hero(this,place);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
             p.setMargins(0,0,0,dp(6));root.addView(art,p);
@@ -846,7 +848,7 @@ public class MainActivity extends Activity {
         stage=new FrameLayout(this);
         GradientDrawable bg=new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                villageScreen?new int[]{0xff50308c,0xff5b3b96,0xff50308c}:
+                darkBars?new int[]{0xff30194f,0xff50308c,0xff30194f}:
                         new int[]{0xffeaf7ff,0xfffff3fb,0xfffff8e6});
         stage.setBackground(bg);
         int theme=worldTheme();
@@ -903,8 +905,23 @@ public class MainActivity extends Activity {
                         android.util.Log.i("PlaylumiQA","safeTop="+Math.max(0,top)+
                                 " safeBottom="+Math.max(0,bottom));
                 } else {
-                    stage.setPadding(0,0,0,0);
-                    currentScroller.setPadding(0,top+dp(3),0,bottom+dp(20));
+                    int left=0,right=0;
+                    if(Build.VERSION.SDK_INT>=30){
+                        android.graphics.Insets stable=insets.getInsetsIgnoringVisibility(
+                                android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());
+                        android.graphics.Insets interactive=insets.getInsets(
+                                android.view.WindowInsets.Type.tappableElement()|android.view.WindowInsets.Type.mandatorySystemGestures());
+                        top=Math.max(top,stable.top);
+                        bottom=Math.max(bottom,Math.max(stable.bottom,interactive.bottom));
+                        left=stable.left;right=stable.right;
+                    }
+                    // Some foldable taskbars and emulators report zero during transitions.
+                    // Reserve a conservative minimum only on non-village screens.
+                    int safeBottom=Math.max(bottom,dp(landscapeScreen()?56:24));
+                    stage.setPadding(left,Math.max(0,top),right,safeBottom);
+                    currentScroller.setPadding(0,dp(3),0,dp(12));
+                    if((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
+                        android.util.Log.i("PlaylumiQA","gameBottomInset="+bottom+" gameReservedBottom="+safeBottom);
                 }
             }
             return insets;
@@ -1119,7 +1136,9 @@ public class MainActivity extends Activity {
         switch(w) {
             case PlaylumiVillageHit.ROCKET:
                 worldChoice("Voorwerpen tellen","Tel de schatten en sterren",COLORS[0],()->startWorldQuiz(LearningGame.COUNT,0));
-                worldChoice("Cijfers ontdekken","Herken de magische cijfers",COLORS[1],()->startWorldQuiz(LearningGame.NUMBERS,0));
+                worldChoice("Vingers tellen","Hoeveel vingers zie je?",COLORS[1],()->startWorldQuiz(LearningGame.NUMBERS,0));
+                worldChoice("Cijfer naar woord","Koppel bijvoorbeeld 5 aan vijf",COLORS[2],()->startWorldQuiz(LearningGame.NUMBERS,1));
+                worldChoice("Woord naar cijfer","Koppel bijvoorbeeld vijf aan 5",COLORS[3],()->startWorldQuiz(LearningGame.NUMBERS,2));
                 worldChoice("Meer rekenmissies","Kies niveau, spelvorm en badges",COLORS[2],()->selectCategory(LearningGame.COUNT));
                 break;
             case PlaylumiVillageHit.BOOKS:
@@ -1298,7 +1317,7 @@ public class MainActivity extends Activity {
                 case LearningGame.COLORS:first=new String[]{"Welke kleur?","Zoek de kleur"};break;
                 case LearningGame.LETTERS:first=new String[]{"Zoek klein","Zoek groot"};break;
                 case LearningGame.SHAPES:first=new String[]{"Zoek dezelfde vorm","Noem de vorm"};break;
-                case LearningGame.NUMBERS:first=new String[]{"Herken het cijfer","Volgende cijfer"};break;
+                case LearningGame.NUMBERS:first=new String[]{"Vingers tellen","Cijfer naar woord"};break;
                 case LearningGame.PATTERNS:first=new String[]{"Om-en-om","Dubbel patroon"};break;
                 default:first=new String[]{"Spel 1","Spel 2"};break;
             }
@@ -1375,7 +1394,12 @@ public class MainActivity extends Activity {
         int width=getResources().getConfiguration().screenWidthDp;
         int height=getResources().getConfiguration().screenHeightDp;
         int questionH=PlaylumiLayout.magicQuestionHeight(width,height,wide);
-        if(mode==LearningGame.COLORS && "●".equals(round.display)) {
+        if(round.fingerCount>0){
+            PlaylumiNumberHands hands=new PlaylumiNumberHands(this,round.fingerCount);
+            hands.setBackground(PlaylumiMagicArt.question(this,false));
+            hands.setMinimumHeight(dp(wide?Math.min(210,questionH):Math.max(145,questionH)));
+            addWidgetIn(questions,hands,0,dp(3));
+        } else if(mode==LearningGame.COLORS && "●".equals(round.display)) {
             PlaylumiColorSwatch swatch=new PlaylumiColorSwatch(this,round.displayColor,!wide);
             swatch.setMinimumHeight(dp(questionH));
             addWidgetIn(questions,swatch,0,dp(3));
@@ -1399,6 +1423,7 @@ public class MainActivity extends Activity {
         answerButtons.clear();
         answerLocked=round.isSolved();
         int rowHeight=PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
+        if(autoAdvanceQuiz() && wide)rowHeight=Math.min(rowHeight,64);
         for(int i=0;i<round.answers.size();i+=2) {
             LinearLayout row=new LinearLayout(this);
             row.setGravity(Gravity.CENTER);
@@ -1427,11 +1452,14 @@ public class MainActivity extends Activity {
             }
             answers.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
-        nextButton=tile("🌟 Volgende","",0xffcff4dd,66);
-        LinearLayout.LayoutParams nextParams=new LinearLayout.LayoutParams(-1,dp(52));
-        nextParams.setMargins(dp(12),dp(6),dp(12),dp(5));answers.addView(nextButton,nextParams);
-        nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
-        nextButton.setOnClickListener(v->continueAfterAnswer());
+        nextButton=null;
+        if(!autoAdvanceQuiz()){
+            nextButton=tile("🌟 Volgende","",0xffcff4dd,66);
+            LinearLayout.LayoutParams nextParams=new LinearLayout.LayoutParams(-1,dp(52));
+            nextParams.setMargins(dp(12),dp(6),dp(12),dp(5));answers.addView(nextButton,nextParams);
+            nextButton.setVisibility(answerLocked?View.VISIBLE:View.GONE);
+            nextButton.setOnClickListener(v->continueAfterAnswer());
+        }
     }
     private void addWidgetIn(LinearLayout parent,View widget,int top,int bottom) {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
@@ -1442,6 +1470,22 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
         p.setMargins(dp(4),dp(top),dp(4),dp(bottom));
         root.addView(widget,p);
+    }
+    private boolean autoAdvanceQuiz(){
+        return game!=null && (game.mode()==LearningGame.COUNT || game.mode()==LearningGame.NUMBERS);
+    }
+    private void scheduleAutoAdvance(){
+        if(!autoAdvanceQuiz()||page!=PLAY||!game.round().isSolved())return;
+        final LearningGame.Round solved=game.round();
+        final FrameLayout screen=stage;
+        screen.postDelayed(()->{
+            if(!isFinishing()&&!isDestroyed()&&activeSince>0&&stage==screen&&
+                    page==PLAY&&!moving&&game.round()==solved&&solved.isSolved()){
+                // Badges are already persisted. Keep the counting flow uninterrupted.
+                pendingBadges.clear();
+                continueAfterAnswer();
+            }
+        },950);
     }
     private void choose(int index,Button touched) {
         if(answerLocked || game.round().isSolved())return;
@@ -1490,11 +1534,21 @@ public class MainActivity extends Activity {
             wardrobe.earnBadges(newBadges.size());
             saveWardrobe();
             pendingBadges.addAll(newBadges);
-            nextButton.setVisibility(View.VISIBLE);
-            nextButton.setAlpha(0f);
-            nextButton.setTranslationY(dp(20));
-            nextButton.animate().alpha(1f).translationY(0f).setDuration(380).start();
-            scroller.post(()->scroller.smoothScrollTo(0,Math.max(0,root.getHeight()-scroller.getHeight())));
+            if(autoAdvanceQuiz()) {
+                if(!newBadges.isEmpty())feedbackText.setText(feedback+"  🏅");
+                scheduleAutoAdvance();
+            } else if(nextButton!=null) {
+                final Button next=nextButton;
+                next.setVisibility(View.VISIBLE);
+                next.setAlpha(0f);
+                next.setTranslationY(dp(20));
+                next.animate().alpha(1f).translationY(0f).setDuration(380).start();
+                // Scroll the actual control into the inset-safe viewport, including padding.
+                next.postDelayed(()->{
+                    if(nextButton==next && next.isShown())
+                        next.requestRectangleOnScreen(new android.graphics.Rect(0,0,next.getWidth(),next.getHeight()+dp(8)),false);
+                },400);
+            }
             feedbackText.announceForAccessibility(feedback);
         } else {
             feedback="💛 Probeer nog eens!";
