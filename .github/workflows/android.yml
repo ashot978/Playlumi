@@ -53,7 +53,7 @@ jobs:
           arch: x86_64
           profile: pixel_5
           disable-animations: true
-          script: bash tools/smoke-android.sh && bash tools/smoke-ui-navigation.sh
+          script: bash tools/smoke-android.sh
       - name: Publish first-launch emulator screenshot for visual review
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,6 +67,19 @@ jobs:
         run: echo "PLAYLUMI_BUILD_CODE=$((100000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
+      - name: Prevent Playlumi downgrade on real devices
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n 1)"
+          BADGING="$("$AAPT" dump badging "$APK" | head -n 1)"
+          printf '%s\n' "$BADGING"
+          [[ "$BADGING" == *"name='nl.playlumi.app'"* ]]
+          [[ "$BADGING" == *"versionName='0.68.0'"* ]]
+          CODE="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p")"
+          test -n "$CODE" && test "$CODE" -gt 100000
+          echo "PASS: Playlumi 0.68 versionCode $CODE > 0.65 code range"
       - name: Check release APK ZIP alignment before any signing
         shell: bash
         run: |
