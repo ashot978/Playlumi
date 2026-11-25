@@ -854,7 +854,7 @@ public class MainActivity extends Activity {
                     break;
                 default:break;
             }
-        });
+        },activeProfile);
         root.addView(village,new LinearLayout.LayoutParams(-1,-2));
     }
     private void showWorldPicker() {
