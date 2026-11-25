@@ -27,10 +27,12 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         void onSolved();
         void onMistake();
         void onMatch();
+        default void onPop() {}
     }
     private final PlaylumiMiniChallenge question;
     private final Listener listener;
     private final List<Button> cards=new ArrayList<>();
+    private final List<Button> balloonTiles=new ArrayList<>();
     private final List<ObjectAnimator> floating=new ArrayList<>();
     private TextView status;
     private boolean solved,waiting;
@@ -93,6 +95,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     private void show() {
         removeAllViews();
         cards.clear();
+        balloonTiles.clear();
         status=caption("",16,PlaylumiMagicArt.INK);
         status.setBackground(PlaylumiMagicArt.creamPlate(getContext()));
         if(question.kind==PlaylumiMiniChallenge.DRAG) {
@@ -146,9 +149,10 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             board.addView(choices,choiceParams);
             addChoices(choices,false);
         } else if(question.kind==PlaylumiMiniChallenge.BALLOONS) {
-            status.setText("🎈 "+question.question);
+            // The ribbon above asks the question. The board provides the actual objects.
+            status.setText("Prik de ballonnen een voor een");
             addView(status,new LayoutParams(-1,dp(45)));
-            addChoices(this,true);
+            addBalloonCount();
         } else {
             status.setText("🃏 Zoek twee dezelfde kaartjes");
             addView(status,new LayoutParams(-1,dp(45)));
@@ -167,6 +171,48 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         if(started)status.setText("🏡 Laat de vorm los in het groene huisje");
         return started;
     }
+    private void addBalloonCount() {
+        LinearLayout tray=new LinearLayout(getContext());
+        tray.setOrientation(VERTICAL);
+        tray.setGravity(Gravity.CENTER);
+        tray.setPadding(dp(6),dp(8),dp(6),dp(8));
+        GradientDrawable trayBg=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff563383,0xff35205d});
+        trayBg.setCornerRadius(dp(22));trayBg.setStroke(dp(2),0xffffd98b);
+        tray.setBackground(trayBg);
+        int total=question.balloonCount();
+        int columns=total<=3?total:total<=6?3:5;
+        int tileHeight=landscape()?66:total>6?56:70;
+        for(int start=0;start<total;start+=columns) {
+            LinearLayout row=new LinearLayout(getContext());
+            row.setGravity(Gravity.CENTER);
+            for(int i=start;i<Math.min(total,start+columns);i++) {
+                final int index=i;
+                Button b=tile(question.balloonPopped(index)?"✓":"🎈",index,total>6?30:36);
+                b.setContentDescription(question.balloonPopped(index)?"Geprikte ballon":"Ballon");
+                b.setEnabled(!question.balloonPopped(index));
+                LayoutParams p=new LayoutParams(0,dp(tileHeight),1);
+                p.setMargins(dp(3),dp(3),dp(3),dp(3));
+                row.addView(b,p);balloonTiles.add(b);
+                b.setOnClickListener(v->{
+                    if(solved || !question.popBalloon(index))return;
+                    b.setText("✓");b.setTextColor(0xff236044);
+                    b.setContentDescription("Geprikte ballon");
+                    b.setEnabled(false);
+                    listener.onPop();PlaylumiMotion.pop(b);
+                    if(question.poppedBalloonCount()==total)
+                        status.setText("Hoeveel heb je er geprikt?");
+                });
+            }
+            tray.addView(row,new LayoutParams(-1,-2));
+        }
+        LayoutParams trayParams=new LayoutParams(-1,-2);
+        trayParams.setMargins(0,dp(5),0,dp(7));addView(tray,trayParams);
+        TextView choose=caption("Kies het aantal",17,PlaylumiMagicArt.INK);
+        choose.setBackground(PlaylumiMagicArt.creamPlate(getContext()));
+        addView(choose,new LayoutParams(-1,dp(40)));
+        addChoices(this,true);
+    }
     private void addChoices(LinearLayout parent,boolean balloon) {
         int count=question.choices.size();
         int columns=count==3 || count>4?3:2;
@@ -175,15 +221,15 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             row.setGravity(Gravity.CENTER);
             for(int idx=start;idx<Math.min(start+columns,count);idx++) {
                 final int answer=idx;
-                String content=balloon?"🎈\n"+question.choices.get(idx):question.choices.get(idx);
+                String content=question.choices.get(idx);
                 Button b=tile(content,idx,balloon?28:landscape()?31:36);
-                LayoutParams p=new LayoutParams(0,dp(balloon?96:76),1f);
+                LayoutParams p=new LayoutParams(0,dp(balloon?58:76),1f);
                 p.setMargins(dp(4),dp(4),dp(4),dp(4));
                 row.addView(b,p);
                 cards.add(b);
                 if(balloon) {
+                    b.setContentDescription("Antwoord "+content);
                     b.setOnClickListener(v->checkAnswer(answer,false));
-                    floatBalloon(b,idx);
                 } else {
                     // Tap provides guidance only; a real ACTION_DROP is necessary to score.
                     b.setOnClickListener(v->status.setText("👆 Houd de vorm vast en sleep naar het huisje"));
@@ -240,10 +286,11 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             status.setText("🌟 Joepie! Goed gedaan!");
             status.setTextColor(0xff32886b);
             for(Button b:cards)b.setEnabled(false);
+            for(Button b:balloonTiles)b.setEnabled(false);
             if(index<cards.size())PlaylumiMotion.pop(cards.get(index));
             listener.onSolved();
         } else {
-            status.setText("💛 Probeer eens een andere!");
+            status.setText(question.kind==PlaylumiMiniChallenge.BALLOONS?"Tel nog eens rustig!":"💛 Probeer eens een andere!");
             if(index<cards.size())PlaylumiDelight.wiggle(cards.get(index));
             listener.onMistake();
         }

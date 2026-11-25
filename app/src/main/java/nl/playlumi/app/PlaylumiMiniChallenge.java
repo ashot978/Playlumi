@@ -8,7 +8,7 @@ import java.util.Random;
 /** Independently testable rules for three hands-on preschool minigames. */
 public final class PlaylumiMiniChallenge {
     public static final int DRAG=0, BALLOONS=1, MEMORY=2;
-    public static final String[] NAMES={"Sleep de vormen","Tik de ballon","Memory"};
+    public static final String[] NAMES={"Sleep de vormen","Ballonnen tellen","Memory"};
     public static final String[] ICONS={"🔷","🎈","🃏"};
     public final int kind,level;
     public final String question,target;
@@ -16,6 +16,7 @@ public final class PlaylumiMiniChallenge {
     public final int correctIndex;
     private final boolean[] matched;
     private int first=-1,second=-1,matchedPairs;
+    private int poppedBalloonMask;
     private static final String[] SHAPES={"⭐","🔺","🔵","🟩","💜","🔶","❤️","⬛","🔷","🔸","🟢","⬜"};
     private static final String[] SHAPE_NAMES={"ster","driehoek","cirkel","vierkant","hart",
             "ruit","hart","vierkant","ruit","ruit","cirkel","vierkant"};
@@ -43,11 +44,13 @@ public final class PlaylumiMiniChallenge {
                     options.get(answer),options,answer);
         }
         if(kind==BALLOONS) {
-            int maximum=level==0?9:level==1?20:50;
-            List<Integer> nums=uniqueIndices(random,count,maximum);
-            for(int number:nums)options.add(""+(number+1));
+            // Quantity recognition: the child counts actual objects, not duplicate printed digits.
+            int minimum=level==0?1:level==1?2:4;
+            int maximum=level==0?3:level==1?6:10;
+            List<Integer> nums=uniqueIndices(random,count,maximum-minimum+1);
+            for(int number:nums)options.add(""+(number+minimum));
             int answer=random.nextInt(options.size());
-            return new PlaylumiMiniChallenge(kind,level,"Tik op de ballon met "+options.get(answer),
+            return new PlaylumiMiniChallenge(kind,level,"Hoeveel ballonnen zie je?",
                     options.get(answer),options,answer);
         }
         int pairs=level==0?3:level==1?4:6;
@@ -70,6 +73,21 @@ public final class PlaylumiMiniChallenge {
         check(index);
         return correctIndex==index;
     }
+    public int balloonCount() {
+        if(kind!=BALLOONS)throw new IllegalStateException("not a counting game");
+        return Integer.parseInt(target);
+    }
+    public boolean balloonPopped(int index) {
+        if(index<0 || index>=balloonCount())throw new IllegalArgumentException("balloon");
+        return (poppedBalloonMask&(1<<index))!=0;
+    }
+    /** An individual balloon can be marked exactly once, as a counting aid. */
+    public boolean popBalloon(int index) {
+        if(balloonPopped(index))return false;
+        poppedBalloonMask|=1<<index;
+        return true;
+    }
+    public int poppedBalloonCount() {return Integer.bitCount(poppedBalloonMask);}
     public boolean drop(int index) {
         if(kind!=DRAG)throw new IllegalStateException("only shapes can be dropped");
         check(index);

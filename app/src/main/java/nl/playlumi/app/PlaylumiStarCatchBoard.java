@@ -19,8 +19,8 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
     public interface Listener {
         void onStar(int collected);
         void onFinished();
+        default void onMistake() {}
     }
-    private static final String[] ICONS={"⭐","🌟","💛","✨","💜","⭐","🌟","💛"};
     private static final int[] COLORS={0xffffedab,0xffd6eafa,0xffffd5e6,
             0xffd7f5de,0xffe8ddff,0xffffe6c6};
     private final ArrayList<Button> stars=new ArrayList<>();
@@ -34,20 +34,21 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
         setClipChildren(false);setClipToPadding(false);
         GradientDrawable backdrop=new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xffe5f6ff,0xfff6eaff,0xffe7fae8});
+                new int[]{0xff634398,0xff4c307f,0xff35205d});
         backdrop.setCornerRadius(dp(24));
+        backdrop.setStroke(dp(2),0xffffdc88);
         setBackground(backdrop);
         setContentDescription("Vang de sterren door ze aan te raken");
         for(int i=0;i<game.total();i++){
             final int index=i;
             Button star=new Button(context);
             star.setAllCaps(false);
-            star.setText(ICONS[i%ICONS.length]);
+            star.setText(game.isStar(index)?"⭐":(index%2==0?"💛":"💜"));
             star.setTextSize(32);
             star.setGravity(Gravity.CENTER);
             star.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
             star.setPadding(0,0,0,0);
-            star.setContentDescription("Vang ster "+(index+1));
+            star.setContentDescription((game.isStar(index)?"Ster ":"Hartje ")+(index+1));
             GradientDrawable shape=new GradientDrawable();
             shape.setShape(GradientDrawable.OVAL);
             shape.setColor(COLORS[i%COLORS.length]);
@@ -82,7 +83,10 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
         return (int)(getResources().getDisplayMetrics().density*val+.5f);
     }
     private void catchStar(Button star,int index) {
-        if(!game.catchStar(index))return;
+        if(game.finished() || game.caught(index))return;
+        if(!game.catchStar(index)) {
+            listener.onMistake();PlaylumiDelight.wiggle(star);return;
+        }
         ObjectAnimator floating=motions.get(index);
         if(floating!=null)floating.cancel();
         star.setEnabled(false);
