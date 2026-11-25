@@ -5,6 +5,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 
@@ -33,9 +35,14 @@ public final class PlaylumiStarTrail extends View {
             if(k==0)path.moveTo(px,py);else path.lineTo(px,py);
         }
         path.close();
-        paint.setColor(fill);
         paint.setStyle(Paint.Style.FILL);
-        c.drawPath(path,paint);
+        paint.setShader(new LinearGradient(0,y-radius,0,y+radius,
+                fill==0xfff2b942?0xfffff7a2:fill,fill==0xfff2b942?0xffffa323:fill,Shader.TileMode.CLAMP));
+        c.drawPath(path,paint);paint.setShader(null);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(Math.max(1f,radius*.085f));paint.setStrokeJoin(Paint.Join.ROUND);
+        paint.setColor(fill==0xfff2b942?0xffd88624:0xffbb91d7);c.drawPath(path,paint);
+        paint.setStyle(Paint.Style.FILL);
     }
     public void showProgress(int value) {
         int newValue=Math.max(0,Math.min(total,value));
@@ -63,16 +70,14 @@ public final class PlaylumiStarTrail extends View {
         if(getWidth()==0 || getHeight()==0)return;
         float step=(float)getWidth()/total;
         float centerY=getHeight()/2f;
-        float radius=Math.min(step*.33f,getHeight()*.40f);
+        float radius=Math.min(step*.41f,getHeight()*.43f);
         for(int i=0;i<total;i++) {
             float x=(i+.5f)*step;
             float scale=i==lastAdded?1f+bounce*.28f:1f;
             if(i<done) {
-                star(canvas,x,centerY,radius*scale*1.16f,0xfffff0b0);
                 star(canvas,x,centerY,radius*scale,0xfff2b942);
             } else {
-                star(canvas,x,centerY,radius*.95f,0xffcbb9de);
-                star(canvas,x,centerY,radius*.70f,0xffeee8f5);
+                star(canvas,x,centerY,radius*.94f,0xfff1dcfa);
             }
         }
     }
