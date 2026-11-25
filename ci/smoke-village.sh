@@ -46,8 +46,20 @@ home() {
 tapVillage() {
   local artX="$1" artY="$2"
   local usableH=$((screenH-safeTop-safeBottom))
-  local x=$((screenW*artX/941))
-  local y=$((safeTop+usableH*artY/1672))
+  # Mirror PlaylumiVillageHit.destination: wide screens center the artwork.
+  # The raw display width is not the width of the village on an unfolded device.
+  local x y
+  read -r x y < <(python3 - "$screenW" "$usableH" "$safeTop" "$artX" "$artY" <<'PY'
+import sys
+w,h,top,ax,ay=map(float,sys.argv[1:])
+if w/h <= .72:
+    dw,dh=w,h
+else:
+    factor=min(w/941,h/1672)
+    dw,dh=941*factor,1672*factor
+print(round((w-dw)/2+ax*dw/941),round(top+(h-dh)/2+ay*dh/1672))
+PY
+)
   adb shell input tap "$x" "$y"
   sleep 2
 }
@@ -210,8 +222,10 @@ screenshot rewards
 # Exercise unfolded / tablet proportions on the same real rendered emulator.
 adb shell wm size 1600x1768
 adb shell wm density 280
-screenW=1600; screenH=1768
 sleep 3
+device_size=$(adb shell wm size | tr -d '\r' | grep -E 'Physical size|Override size' | tail -1 | sed -nE 's/.*: ([0-9]+x[0-9]+).*/\1/p')
+IFS=x read -r screenW screenH <<< "$device_size"
+echo "Unfolded emulator screen: ${screenW}x${screenH}"
 for entry in \
   "letters:740:398:Kleine letters:6" \
   "colors:785:1050:Kleuren herkennen:6" \
