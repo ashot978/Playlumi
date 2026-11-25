@@ -22,7 +22,7 @@ jobs:
           gradle-version: '8.9'
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=30670" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((100000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Test existing games and flight math, lint, compile Android
         run: gradle testDebugUnitTest lintDebug assembleDebug
   emulator-launch:
@@ -64,7 +64,7 @@ jobs:
           retention-days: 7
       - name: Use increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=30670" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((100000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build unsigned release for local private signing
         run: gradle assembleRelease
       - name: Check release APK ZIP alignment before any signing
