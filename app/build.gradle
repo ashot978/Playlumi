@@ -17,8 +17,8 @@ android {
         minSdk 23
         targetSdk 35
         // GitHub Actions uses a monotonically increasing run number for each release.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 600780
-        versionName '0.78.0'
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 600790
+        versionName '0.79.0'
     }
 
     signingConfigs {
@@ -84,3 +84,24 @@ tasks.configureEach {
         dependsOn(tasks.named('prepareVillageArt'))
     }
 }
+
+// The approved illustrations are real APK assets, not external URLs.
+// Reject a missing, altered, or incomplete reference before any app build.
+def magicHashes = [
+    'colors.webp':'0f4e75126f1837234049742116f76bec0b800a67a98647661c9d42c8c098351e',
+    'letters.webp':'45beccb5df3be63c21965e04c31b43d24d71a378b42a20f40a70b719284d2484',
+    'memory.webp':'f3b8b045a44c75e1bac2d76a2ae886b5d02642ebfa2376f5a7a50b7eee8d61df',
+    'music.webp':'9ccf7ef1ec5d705c88f350a5f84bab3610a200d3ac3d802f5788219fec99df78'
+]
+tasks.register('verifyMagicArt') {
+    inputs.files(magicHashes.keySet().collect { file("src/main/assets/magic/${it}") })
+    doLast {
+        magicHashes.each { name, expected ->
+            def art = file("src/main/assets/magic/${name}")
+            if (!art.isFile()) throw new GradleException("Missing approved game art: ${name}")
+            String actual = java.security.MessageDigest.getInstance('SHA-256').digest(art.bytes).encodeHex().toString()
+            if (actual != expected) throw new GradleException("Wrong approved game art: ${name}")
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn(tasks.named('verifyMagicArt')) }

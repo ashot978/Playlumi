@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Playlumi 0.74: real emulator visual/navigation regression test.
+# Playlumi 0.79: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
 activity="$app/.MainActivity"
 apk=app/build/outputs/apk/debug/app-debug.apk
 adb wait-for-device
+adb shell pm disable-user --user 0 com.android.launcher3 || true
+adb shell am force-stop com.android.launcher3 || true
 adb install -r "$apk"
 
 device_size=$(adb shell wm size | tr -d '\r' | grep -E 'Physical size|Override size' | tail -1 | sed -nE 's/.*: ([0-9]+x[0-9]+).*/\1/p')
@@ -17,7 +19,7 @@ home() {
   adb shell am force-stop "$app" >/dev/null || true
   adb logcat -c
   adb shell am start -n "$activity" --ez playlumi_ci_home true >/dev/null
-  sleep 3
+  sleep 4
   adb shell pidof "$app" >/dev/null
   adb logcat -d -s PlaylumiQA:I | grep -q 'screen=1' || {
     echo "Playlumi did not open the village home screen" >&2
@@ -44,8 +46,20 @@ home() {
 tapVillage() {
   local artX="$1" artY="$2"
   local usableH=$((screenH-safeTop-safeBottom))
-  local x=$((screenW*artX/941))
-  local y=$((safeTop+usableH*artY/1672))
+  # Mirror PlaylumiVillageHit.destination: wide screens center the artwork.
+  # The raw display width is not the width of the village on an unfolded device.
+  local x y
+  read -r x y < <(python3 - "$screenW" "$usableH" "$safeTop" "$artX" "$artY" <<'PY'
+import sys
+w,h,top,ax,ay=map(float,sys.argv[1:])
+if w/h <= .72:
+    dw,dh=w,h
+else:
+    factor=min(w/941,h/1672)
+    dw,dh=941*factor,1672*factor
+print(round((w-dw)/2+ax*dw/941),round(top+(h-dh)/2+ay*dh/1672))
+PY
+)
   adb shell input tap "$x" "$y"
   sleep 2
 }
@@ -65,6 +79,10 @@ screenshot() {
   adb shell screencap -p "/sdcard/playlumi-${name}.png"
   adb pull "/sdcard/playlumi-${name}.png" "build/qa/screenshots/${name}.png" >/dev/null
   test -s "build/qa/screenshots/${name}.png"
+  case "$name" in home|game-*|letterhuis|kleurentuin|muziekstudio|speelplein|fold-*)
+    bytes=$(stat -c%s "build/qa/screenshots/${name}.png")
+    if (( bytes < 50000 )); then echo "BLOCK RELEASE: blank/too small rendered screenshot $name ($bytes bytes)" >&2; exit 1; fi;;
+  esac
 }
 
 # Every page has two obligations: open the intended game and go back logically.
@@ -144,6 +162,36 @@ if sys.argv[1]=='colors':
     bounds=list(map(int,re.findall(r'\d+',swatch.get('bounds',''))))
     assert len(bounds)==4 and bounds[3]-bounds[1]>=100, 'Color swatch too small'
 PY
+  # Actual approved illustration is exposed as a native non-clickable view.
+  grep -q "Geillustreerde spelwereld" build/qa/ui.xml
+  if [[ "$label" == "letters" ]]; then
+    choice=$(python3 - <<'PY'
+import xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+for n in nodes:
+    d=n.get('content-desc','')
+    if d in ('A','B','M','S','O','P','K','T','L','R') and n.get('clickable')=='false':
+        print(d.lower());break
+else: raise SystemExit('Missing live uppercase letter')
+PY
+)
+    tapText "$choice"
+    adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+    adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+    grep -q "Volgende" build/qa/ui.xml
+    screenshot game-letters-solved
+  elif [[ "$label" == "music" ]]; then
+    tapText "▶  Speel de melodie af"
+    sleep 5
+    tapText "Kikker"
+    screenshot game-music-played
+  elif [[ "$label" == "playground" ]]; then
+    tapText "Gesloten kaart 1"
+    adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+    adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+    if grep -q 'content-desc="Gesloten kaart 1"' build/qa/ui.xml; then echo "Memory card did not flip" >&2; exit 1; fi
+    screenshot game-playground-flipped
+  fi
   adb shell input keyevent KEYCODE_BACK
   sleep 2
   assertScreen 43
@@ -171,7 +219,30 @@ adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
 grep -q "Mijn beloningen" build/qa/ui.xml
 ! grep -q "Sterkleur" build/qa/ui.xml
 screenshot rewards
+# Exercise unfolded / tablet proportions on the same real rendered emulator.
+adb shell wm size 1600x1768
+adb shell wm density 280
+sleep 3
+device_size=$(adb shell wm size | tr -d '\r' | grep -E 'Physical size|Override size' | tail -1 | sed -nE 's/.*: ([0-9]+x[0-9]+).*/\1/p')
+IFS=x read -r screenW screenH <<< "$device_size"
+echo "Unfolded emulator screen: ${screenW}x${screenH}"
+for entry in \
+  "letters:740:398:Kleine letters:6" \
+  "colors:785:1050:Kleuren herkennen:6" \
+  "music:770:699:Speel het deuntje:37" \
+  "memory:185:1040:Dierenmemory:13"
+do
+  IFS=: read -r label x y button expected <<< "$entry"
+  home
+  tapVillage "$x" "$y"
+  assertScreen 43
+  tapText "$button"
+  assertScreen "$expected"
+  screenshot "fold-$label"
+done
+adb shell wm size reset
+adb shell wm density reset
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi
-echo "PASS: village and six real game routes, chosen companion, rewards, visual color swatch, no narration controls, back navigation and safe insets"
+echo "PASS: six real game routes, approved graphics, letter answer, sound pad, memory flip, fold screenshots, companion, rewards, color swatch, no narration and safe insets"

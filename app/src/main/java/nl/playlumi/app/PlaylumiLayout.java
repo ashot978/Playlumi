@@ -42,6 +42,23 @@ public final class PlaylumiLayout {
         return heightDp < 690 ? 225 : heightDp < 830 ? 265 : 310;
     }
 
+    public static int magicHeroHeight(int widthDp,int heightDp,boolean menu){
+        int max=menu?220:heightDp<680?104:148;
+        if(widthDp>=600)max=menu?236:176;
+        return Math.max(menu?138:85,Math.min(max,Math.round(widthDp*(menu?.39f:.30f))));
+    }
+    public static int magicQuestionHeight(int widthDp,int heightDp,boolean wide){
+        if(wide)return Math.max(145,Math.min(252,Math.round(widthDp*.28f)));
+        return Math.max(108,Math.min(heightDp<700?120:150,Math.round(widthDp*.34f)));
+    }
+    public static int magicAnswerHeight(int heightDp,int choices,boolean wide){
+        if(wide)return Math.max(52,Math.min(74,(heightDp-220)/Math.max(4,(choices+1)/2+1)));
+        return heightDp<710 || choices>8?52:60;
+    }
+    public static int magicAnimalHeight(int widthDp,int heightDp){
+        int cap=widthDp>=600?192:heightDp<700?112:152;
+        return Math.max(102,Math.min(cap,Math.round((widthDp-28)*.37f)));
+    }
     public static int margin(int requestedDp) {
         return Math.max(2, Math.min(9, Math.round(requestedDp * .62f)));
     }

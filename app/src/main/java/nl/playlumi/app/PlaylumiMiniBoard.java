@@ -75,12 +75,12 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         b.setAllCaps(false);
         b.setText(value);
         b.setTextSize(size);
-        b.setTextColor(0xff3f3166);
+        b.setTextColor(PlaylumiMagicArt.INK);
         b.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         b.setGravity(Gravity.CENTER);
         b.setPadding(dp(4),dp(8),dp(4),dp(8));
         b.setMinHeight(dp(60));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55ffffff),bg(pastel[index%pastel.length]),null));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),PlaylumiMagicArt.pastel(getContext(),index),null));
         b.setElevation(dp(4));
         b.setContentDescription(value);
         return b;
@@ -93,7 +93,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     private void show() {
         removeAllViews();
         cards.clear();
-        status=caption("",16,0xff234e58);
+        status=caption("",16,PlaylumiMagicArt.INK);
+        status.setBackground(PlaylumiMagicArt.creamPlate(getContext()));
         if(question.kind==PlaylumiMiniChallenge.DRAG) {
             status.setText("👆 Sleep de vorm naar het huisje");
             addView(status,new LayoutParams(-1,dp(landscape()?36:42)));
@@ -248,14 +249,16 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         }
     }
     private void addMemory() {
-        int columns=question.choices.size()>8?4:3;
+        int columns=landscape() && question.choices.size()>8?4:3;
+        int h=getResources().getConfiguration().screenHeightDp;
+        int cardHeight=landscape()?Math.max(74,Math.min(128,h/8)):h<700?60:78;
         for(int start=0;start<question.choices.size();start+=columns) {
             LinearLayout row=new LinearLayout(getContext());
             for(int idx=start;idx<Math.min(start+columns,question.choices.size());idx++) {
                 final int index=idx;
-                Button b=tile("?",idx,32);
-                LayoutParams p=new LayoutParams(0,dp(74),1);
-                p.setMargins(dp(5),dp(7),dp(5),dp(7));
+                Button b=tile("",idx,36);
+                LayoutParams p=new LayoutParams(0,dp(cardHeight),1);
+                p.setMargins(dp(3),dp(4),dp(3),dp(4));
                 row.addView(b,p);
                 cards.add(b);
                 b.setOnClickListener(v->flip(index));
@@ -293,11 +296,10 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         for(int i=0;i<cards.size();i++) {
             Button b=cards.get(i);
             boolean revealed=question.visible(i);
-            b.setText(revealed?question.choices.get(i):"?");
-            b.setTextColor(revealed?0xff3f3166:0xffffebbf);
-            GradientDrawable card=bg(question.matched(i)?0xffc7f5d5:revealed?0xffffedbc:0xff215665);
-            card.setStroke(dp(2),revealed?0xff74a58b:0xffffdfa0);
-            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),card,null));
+            b.setText(revealed?question.choices.get(i):"");
+            b.setTextColor(PlaylumiMagicArt.INK);
+            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),
+                    PlaylumiMagicArt.memory(getContext(),i,revealed,question.matched(i)),null));
             b.setContentDescription(revealed?question.choices.get(i):"Gesloten kaart "+(i+1));
             b.setEnabled(!question.matched(i) && !solved);
         }
