@@ -21,7 +21,7 @@ jobs:
 
       - name: Prepare automatically increasing Android version code
         shell: bash
-        run: echo "PLAYLUMI_BUILD_CODE=$((30000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=$((50000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
       - name: Test all games, lint and compile both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
