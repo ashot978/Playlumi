@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.105 / build 601006. Test build, not a production launch. Future builds use 0.106, 0.107, etc., and strictly increasing Android version codes.
+Status: 0.106 / build 601007. Test build, not a production launch. Future builds use 0.107, 0.108, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -116,7 +116,15 @@ Status: 0.105 / build 601006. Test build, not a production launch. Future builds
 - [x] Debug-only library entry to isolate quiz interactions from emulator home navigation; production releases cannot use it.
 - [x] Exercise real quiz cards and answers, restart at 0/8, restart after a wrong answer, and restart after a manual correct answer. Assert saved question, rejected answer, scores, stars and continuation.
 - [ ] Emulator tests have not yet completed; production navigation and real physical device acceptance remain open.
-- [ ] Verify full 0.105 CI and signing.
+- [x] 0.105 APK, full unit tests and lint succeeded on Actions run 45909514573. Offline signature and APK payload/alignment verified.
+- [x] Phone emulator opened the real vegetable quiz; diagnostic screenshot showed six answer buttons with no hints or speech control. Acceptance script then failed because it expected village-only safe-area log fields (run 45909514604).
+
+## 0.106: correct native quiz safe-area acceptance
+- [x] Report actual quiz safe-area padding in debug logs without changing release layout.
+- [x] Read only the quiz-specific insets; wait for the actual inset event.
+- [x] Verify the zero-answer snapshot has been persisted before force-stop, and compare saved questions and choices after reopening.
+- [x] Keep all existing learning, wallet, rejection and continuation checks.
+- [ ] Full 0.106 release CI, signature and independent phone/Fold acceptance.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.

@@ -1259,7 +1259,8 @@ public class MainActivity extends Activity {
                     stage.setPadding(left,Math.max(0,top),right,safeBottom);
                     currentScroller.setPadding(0,dp(3),0,dp(12));
                     if((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
-                        android.util.Log.i("PlaylumiQA","gameBottomInset="+bottom+" gameReservedBottom="+safeBottom);
+                        android.util.Log.i("PlaylumiQA","gameBottomInset="+bottom+" gameReservedBottom="+safeBottom+
+                                " gameSafeTop="+Math.max(0,top)+" gamePage="+page);
                 }
             }
             return insets;

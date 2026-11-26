@@ -74,10 +74,11 @@ def persisted_quiz(count, attempts, balance):
             root = ET.fromstring(raw)
             values = {node.get("name"): node for node in root}
             snaps = [json.loads(node.text) for key,node in values.items()
-                     if key.startswith("library_resume_v2_2_") and node.tag=="string"]
+                     if key and key.startswith("library_resume_v2_2_") and node.tag=="string"]
+            good = int(values["score_20_good"].get("value")) if "score_20_good" in values else 0
+            tries = int(values["score_20_tries"].get("value")) if "score_20_tries" in values else 0
             if (len(snaps)==1 and snaps[0]["count"]==count and snaps[0]["attempts"]==attempts
-                    and int(values["score_20_good"].get("value"))==count
-                    and int(values["score_20_tries"].get("value"))==attempts
+                    and good==count and tries==attempts
                     and int(values["wardrobe_stars"].get("value"))==balance):
                 return snaps[0]
         except (ET.ParseError, ValueError, KeyError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -106,6 +107,19 @@ def open_quiz(label, resume):
         time.sleep(.8)
     raise AssertionError("Groente herkennen not found: "+prefix)
 
+def quiz_insets():
+    # Non-village screens reserve their own bottom interaction area. Read
+    # only the quiz screen's actual padding, not a stale home/library event.
+    for _ in range(12):
+        logs = shell("logcat -d -s PlaylumiQA:I")
+        safe = re.findall(r"gameReservedBottom=(\d+) gameSafeTop=(\d+) gamePage=6\b", logs)
+        if safe:
+            bottom,top = map(int,safe[-1])
+            if top>=0 and bottom>0:
+                return top,bottom
+        time.sleep(.5)
+    raise AssertionError("Missing quiz-specific Android safe-area log: "+logs[-1500:])
+
 def question_identity(nodes):
     image = next((emoji for emoji in VEG if exact(nodes,emoji)), None)
     assert image, "No recognized vegetable illustration"
@@ -125,10 +139,7 @@ def test(viewport, manual):
     shell(f"run-as {APP} sh -c 'mkdir -p shared_prefs; cat > shared_prefs/MainActivity.xml'", xml.encode())
     open_quiz(viewport+"-fresh", False)
     w,h = map(int, re.findall(r"(\d+)x(\d+)", shell("wm size"))[-1])
-    logs = shell("logcat -d -s PlaylumiQA:I")
-    safe = re.findall(r"safeTop=(\d+).*?safeBottom=(\d+)", logs)
-    assert safe, "Missing Android insets"
-    top,bottom = map(int,safe[-1])
+    top,bottom = quiz_insets()
     nodes = ui(viewport+"-question")
     assert exact(nodes,"Welke groente is dit?"), "Question missing"
     no_help(nodes)
@@ -143,12 +154,17 @@ def test(viewport, manual):
         assert a[3] <= h-bottom and a[1]>=top and a[3]>a[1], "Answer outside safe area"
     screenshot(viewport+"-question")
     first_question = question_identity(nodes)
-    # A quiz with zero answers must survive a full process restart.
+    # Confirm the zero-answer snapshot reached disk before killing the process.
+    zero_snapshot = persisted_quiz(0,0,18)
     open_quiz(viewport+"-resume-zero", True)
     nodes = ui(viewport+"-resumed-zero")
     no_help(nodes)
     assert question_identity(nodes)==first_question, "Unanswered question changed after restart"
     assert any("0/8" in s for n in nodes for s in labels(n)), "Initial progress changed"
+    restored_zero = persisted_quiz(0,0,18)
+    for key in ("display","answers","correct","rejected"):
+        assert zero_snapshot[key]==restored_zero[key], "Initial question snapshot changed: "+key
+    print("PASS:", viewport, "unanswered question survives full restart", flush=True)
     opts = choices(nodes)
     wrong = next(name for name in opts if name!=answer)
     click(opts[wrong])
@@ -167,6 +183,7 @@ def test(viewport, manual):
     restored_snapshot = persisted_quiz(0,1,18)
     for key in ("display","answers","correct","rejected"):
         assert wrong_snapshot[key]==restored_snapshot[key], "Saved question changed: "+key
+    print("PASS:", viewport, "incorrect answer and wallet survive full restart", flush=True)
     click(choices(nodes)[answer])
     persisted_quiz(1,2,33)
     if manual:
