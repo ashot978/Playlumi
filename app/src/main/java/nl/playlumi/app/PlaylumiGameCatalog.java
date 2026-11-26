@@ -105,8 +105,11 @@ public final class PlaylumiGameCatalog {
         g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein","Bouw een woord met lettertegels","🚂");
         g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
         g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
-        list.sort(java.util.Comparator.comparingInt(e->e.world));
-        return Collections.unmodifiableList(list);
+        // Stable world order, including Android 6 (API 23).
+        ArrayList<Entry> grouped=new ArrayList<>();
+        for(int world=0;world<6;world++)
+            for(Entry entry:list)if(entry.world==world)grouped.add(entry);
+        return Collections.unmodifiableList(grouped);
     }
     public static Entry find(int age,String id){
         if(id==null)return null;
