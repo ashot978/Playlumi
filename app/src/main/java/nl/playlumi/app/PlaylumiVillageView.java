@@ -56,6 +56,7 @@ public final class PlaylumiVillageView extends View {
     private final int profileNumber;
     private final int starBalance;
     private final int avatar;
+    private final int[] outfit;
     private int discovered;
     private int pressed=-1;
     private float downX,downY;
@@ -65,8 +66,9 @@ public final class PlaylumiVillageView extends View {
     private long celebratedAt;
     private final long created=SystemClock.uptimeMillis();
 
-    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar) {
-        super(context);
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar){this(context,listener,profile,stars,avatar,null);}
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit) {
+        super(context);this.outfit=outfit==null?null:outfit.clone();
         this.listener=listener;
         this.profileNumber=Math.max(0,profile);
         this.starBalance=Math.max(0,stars);
@@ -130,7 +132,7 @@ public final class PlaylumiVillageView extends View {
         c.drawRoundRect(4,97,321,234,34,34,pen);
         paintColor(0xff6740a4);
         c.drawRoundRect(8,101,317,230,32,32,pen);
-        PlaylumiAvatar.draw(c,12,103,126,avatar);
+        PlaylumiAvatar.draw(c,12,103,126,avatar,outfit);
         text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
         text(c,"Kies je maatje",225,192,21,Color.WHITE);
     }
