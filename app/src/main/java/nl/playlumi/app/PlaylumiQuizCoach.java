@@ -25,6 +25,8 @@ public final class PlaylumiQuizCoach {
         String right=round.answers.get(round.correctIndex);
         if(mode==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display))
             return PlaylumiSpellingPractice.explanation(round.display,right);
+        if(mode==ExtraGames.MATH&&variant>=PlaylumiAdvancedMath.TABLES)
+            return PlaylumiAdvancedMath.explain(variant,round.display,right);
         if(mode==ExtraGames.MATH){
             Matcher digits=Pattern.compile("\\d+").matcher(round.display);
             if(digits.find()){int a=Integer.parseInt(digits.group());if(digits.find()){

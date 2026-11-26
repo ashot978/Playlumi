@@ -38,6 +38,9 @@ public final class PlaylumiGameCatalog {
             q(list,0,16,1,"Een uur later","Reken een uur verder, ook met minuten","◷");
             q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
+            q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TABLES,"Tafels oefenen","Vermenigvuldig met 2, 3, 4, 5 en 10","×");
+            q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.SHARING,"Eerlijk verdelen","Deel in gelijke groepjes zonder rest","÷");
+            q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TO_HUNDRED,"Rekenen tot 100","Tel op en trek af met tientallen en eenheden","100");
             q(list,0,22,0,"Meten","Vergelijk centimeters en millimeters","↔");
             q(list,0,22,4,"Lengteverschil","Bereken hoeveel centimeter het verschil is","↔");
             q(list,0,16,2,"Een uur eerder","Reken een uur terug, ook met minuten","◷");

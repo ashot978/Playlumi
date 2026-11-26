@@ -10,7 +10,8 @@ public final class PlaylumiMathPractice {
     private PlaylumiMathPractice(){}
     public static int limit(int age){return age==0?5:age==1?10:20;}
     public static LearningGame.Round next(int variant,int age,Random r){
-        if(variant<0||variant>4||age<0||age>2)throw new IllegalArgumentException("Math configuration");
+        if(variant<0||variant>PlaylumiAdvancedMath.TO_HUNDRED||age<0||age>2)throw new IllegalArgumentException("Math configuration");
+        if(variant>=PlaylumiAdvancedMath.TABLES)return PlaylumiAdvancedMath.next(variant,age,r);
         int max=limit(age);
         int a,b,result,answer;
         String prompt,display;

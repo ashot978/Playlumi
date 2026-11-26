@@ -95,8 +95,9 @@ public final class LearningGame {
         current=restored;
     }
     public void setHistory(QuestionHistory history) { this.history = history; }
+    public static int maxVariant(int mode){return mode==ExtraGames.MATH?PlaylumiAdvancedMath.TO_HUNDRED:4;}
     public void configure(int mode, int variant, int level) {
-        if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > 4 || level < 0 || level > 2)
+        if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > maxVariant(mode) || level < 0 || level > 2)
             throw new IllegalArgumentException("Invalid game configuration");
         this.mode = mode; this.variant = variant; this.level = level;
         nextRound();

@@ -284,7 +284,7 @@ public class MainActivity extends Activity {
         game=new LearningGame(new Random());
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
-                Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
+                Math.max(0,Math.min(LearningGame.maxVariant(mode),variant)), Math.max(0,Math.min(2,difficulty)));
         final int restoredGamePage=page==BREAK_SCREEN?breakReturn:page;
         if(state!=null && restoredGamePage==PLAY && state.containsKey("roundDisplay")){
             try{
@@ -2575,7 +2575,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.4 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.5 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -2803,7 +2803,7 @@ public class MainActivity extends Activity {
             addWidgetIn(questions,swatch,0,dp(3));
         } else {
             int glyphSize=shortDisplay?(wide?70:58):
-                    mode==ExtraGames.MATH&&game.variant()!=4?(wide?48:36):
+                    mode==ExtraGames.MATH&&game.variant()!=4?(game.variant()>=PlaylumiAdvancedMath.TABLES?(wide?42:32):(wide?48:36)):
                     round.display.length()>22?25:round.display.length()>12?31:40;
             TextView picture=text(round.visibleDisplay(),glyphSize,PlaylumiMagicArt.INK);
             questionPicture=picture;

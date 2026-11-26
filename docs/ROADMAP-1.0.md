@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.4 / build 600994. Test build, not a production launch.
+Status: 0.99.5 / build 600995. Test build, not a production launch.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -48,7 +48,15 @@ Status: 0.99.4 / build 600994. Test build, not a production launch.
 - [x] Version interactive seeds so legacy unfinished rounds retain their original rules and tiles.
 - [x] Preserve final manual-pace quiz feedback across activity recreation.
 - [x] Additional 1,440 versioned interactive sessions tested by the release gate.
-- [ ] Confirm full build, signing, Android tests and real-device interaction.
+- [x] 0.99.4 build, signing, Android unit tests and lint verified, Actions run 45900454569.
+- [ ] Real-device interaction.
+
+## 0.99.5: advanced arithmetic
+- [x] Three additional 7+ routes: basic multiplication tables, exact division, and mixed addition/subtraction to 100.
+- [x] Separate route IDs retain existing arithmetic, favorites, and save slots.
+- [x] Correct quiz hints, explanations, speech operators and restored variant selection.
+- [x] Additional 3,600 advanced arithmetic regression samples.
+- [ ] Full build, signature, Android unit tests, lint and real-device acceptance.
 
 ## 0.99.x: remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
