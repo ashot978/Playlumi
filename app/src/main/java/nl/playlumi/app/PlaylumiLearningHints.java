@@ -13,7 +13,10 @@ public final class PlaylumiLearningHints {
             case LearningGame.PATTERNS:return "Zoek het groepje dat zich herhaalt.";
             case LearningGame.WORDS:return "Lees het woord langzaam.";
             case ExtraGames.SPELLING:return "Kijk naar alle letters in het woord.";
-            case ExtraGames.FIRST_LAST:return variant==1?"Luister naar het einde van het woord.":"Luister naar het begin van het woord.";
+            case ExtraGames.FIRST_LAST:
+                if(PlaylumiLetterChallenges.MATCH_LAST.equals(prompt))return "Bedenk de laatste letter. Zoek een woord dat ook zo eindigt.";
+                if(PlaylumiLetterChallenges.MATCH_FIRST.equals(prompt))return "Bedenk de eerste letter. Zoek een woord dat ook zo begint.";
+                return variant==1?"Zeg het woord zachtjes. Welke letter ontbreekt aan het einde?":"Zeg het woord zachtjes. Welke letter ontbreekt vooraan?";
             case ExtraGames.PICTURES:return "Kijk naar het dier en lees het woord.";
             case ExtraGames.RHYMES:return "Zeg de woorden zachtjes; luister naar het einde.";
             case ExtraGames.COMPARE:return "Vergelijk de hoeveelheden één voor één.";

@@ -277,11 +277,16 @@ public class MainActivity extends Activity {
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
         if(state!=null && page==PLAY && state.containsKey("roundDisplay")){
             try{
-                game.restoreRound(state.getString("roundPrompt"),state.getString("roundDisplay"),
-                        state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
-                        state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
-                        state.getInt("roundFingers"),state.getBoolean("roundSolved"));
-                feedback=state.getString("roundFeedback","");
+                if(!PlaylumiLetterChallenges.legacy(mode,variant,state.getString("roundDisplay"))){
+                    game.restoreRound(state.getString("roundPrompt"),state.getString("roundDisplay"),
+                            state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
+                            state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
+                            state.getInt("roundFingers"),state.getBoolean("roundSolved"));
+                    feedback=state.getString("roundFeedback","");
+                }else{
+                    // Keep earned points and completed round count; replace only the obsolete question.
+                    roundHadMistake=false;feedback="";
+                }
                 ArrayList<Integer> savedBadges=state.getIntegerArrayList("roundBadges");
                 if(savedBadges!=null)pendingBadges.addAll(savedBadges);
             }catch(IllegalArgumentException ignored){}
@@ -1723,7 +1728,8 @@ public class MainActivity extends Activity {
             if(level<0||level>2||count<0||count>=SESSION_ROUNDS||attempts<count)return false;
             game.configure(entry.mode,entry.variant,level);
             // Preserve points and session counters, but replace the old copy-the-time question.
-            if(!(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
+            if(!PlaylumiLetterChallenges.legacy(entry.mode,entry.variant,o.getString("display"))&&
+                    !(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
                     !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
                     !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
                     !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4))
@@ -2567,6 +2573,10 @@ public class MainActivity extends Activity {
             columns.addView(questions,left);columns.addView(answers,right);
         }
         String spoken=PlaylumiSpeechText.quiz(mode,game.variant(),round.prompt,round.display);
+        if(mode==ExtraGames.FIRST_LAST&&game.variant()<=1&&round.letterBlank()>=0){
+            String word=PlaylumiLetterChallenges.word(round.display,round.blankReplacement());
+            if(!word.isEmpty())spoken=spoken+". Het woord is "+word+".";
+        }
         addSpokenPrompt(questions,round.prompt,spoken,wide?20:19,!round.isSolved());
         boolean shortDisplay=round.display.codePointCount(0,round.display.length())<=3;
         int questionH=centered?PlaylumiLayout.centeredQuestionHeight(height):PlaylumiLayout.magicQuestionHeight(width,height,wide);
@@ -2676,7 +2686,7 @@ public class MainActivity extends Activity {
             shown=shown.replace("?",round.answers.get(round.correctIndex));
         int blank=round.letterBlank();
         if(round.isSolved() && blank>=0){
-            int end=blank+round.answers.get(round.correctIndex).length();
+            int end=blank+round.blankReplacement().length();
             android.text.SpannableString marked=new android.text.SpannableString(shown);
             marked.setSpan(new android.text.style.ForegroundColorSpan(0xff237b49),blank,end,
                     android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);

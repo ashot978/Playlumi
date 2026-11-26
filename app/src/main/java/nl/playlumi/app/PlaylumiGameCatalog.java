@@ -48,14 +48,14 @@ public final class PlaylumiGameCatalog {
         q(list,1,LearningGame.LETTERS,1,"Hoofdletters","Vind de grote letter","Aa");
         if(a>=1){
             q(list,1,LearningGame.WORDS,0,"Woorden maken","Vul de ontbrekende letter in","Ab");
-            q(list,1,ExtraGames.FIRST_LAST,0,"Beginletter","Kies de eerste letter","A");
+            q(list,1,ExtraGames.FIRST_LAST,0,"Beginletter","Vul de eerste letter in of zoek een woord met dezelfde beginletter","A");
             q(list,1,ExtraGames.PICTURES,0,"Woord en plaatje","Lees het woord bij het dier","🐾");
             q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","✦");
             q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
         }
         if(a>=2){
             q(list,1,ExtraGames.SPELLING,0,"Spelling","Kies het goed geschreven woord","Ab");
-            q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Kies de laatste letter","Z");
+            q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Vul de laatste letter in of zoek een woord met dezelfde eindletter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
             q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","✦");
             q(list,1,LearningGame.LETTERS,4,"Vorige letter","Welke letter komt hiervoor?","Aa");

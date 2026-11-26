@@ -129,11 +129,7 @@ public final class ExtraGames {
                 word[0] + "\n✏️", options, correct, random);
     }
     private static LearningGame.Round firstLast(int variant, int level, Random random) {
-        String[] word = wordAt(level, random);
-        String correct = String.valueOf(word[1].charAt(variant == 0 ? 0 : word[1].length() - 1));
-        List<String> options = distractors(correct, "abcdefghijklmnoprstuvz", bound(level), random);
-        return round(variant == 0 ? "Met welke letter begint dit woord?" : "Met welke letter eindigt dit woord?",
-                word[0] + "\n" + word[1], options, correct, random);
+        return PlaylumiLetterChallenges.next(variant==1,level,random);
     }
     private static LearningGame.Round pictures(int variant, int level, Random random) {
         int base = level * 10, index = base + random.nextInt(10);
