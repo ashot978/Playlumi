@@ -44,6 +44,21 @@ public final class PlaylumiGameCatalogTest {
             }
         }
     }
+    @Test public void eachWorldHasAgeSpecificContentAndGroupedRoutes(){
+        for(int w=0;w<6;w++){
+            int young=PlaylumiGameCatalog.filter(0,w,Collections.emptySet()).size();
+            int middle=PlaylumiGameCatalog.filter(1,w,Collections.emptySet()).size();
+            int older=PlaylumiGameCatalog.filter(2,w,Collections.emptySet()).size();
+            assertTrue("middle "+w,middle>young);assertTrue("older "+w,older>middle);
+        }
+        for(int a=0;a<3;a++){
+            int world=-1;
+            for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(a)){
+                assertTrue(e.world>=world);world=e.world;
+                if(e.kind==PlaylumiGameCatalog.MUSIC)assertTrue(e.variant<=a);
+            }
+        }
+    }
     @Test public void actualClockMatchesTheHands(){
         Random r=new Random(84);
         for(int a=1;a<3;a++)for(int i=0;i<120;i++){

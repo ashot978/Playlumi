@@ -1,4 +1,4 @@
-name: Android Playlumi 0.85.1 fast build
+name: Android Playlumi 0.87.0 fast build
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600851" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600870" >> "$GITHUB_ENV"
       - name: Test, lint and build both APK variants
         run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
 
@@ -47,8 +47,8 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600851'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.85.1'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600870'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.87.0'"
           done
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
           sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
@@ -69,7 +69,7 @@ jobs:
       - name: Upload validated debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0851-debug-apk
+          name: playlumi-087-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             build-debug-sha256.txt
@@ -79,7 +79,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0851-unsigned-release
+          name: playlumi-087-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -89,7 +89,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0851-offline-signing-tools
+          name: playlumi-087-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30

@@ -42,6 +42,14 @@ public final class PlaylumiLayout {
         return heightDp < 690 ? 225 : heightDp < 830 ? 265 : 310;
     }
 
+    /** Wide library menus use the viewport instead of the quiz's narrow cap. */
+    public static int libraryColumns(int widthDp){
+        return widthDp>=900?3:widthDp>=600?2:1;
+    }
+    public static int librarySidePadding(int widthDp){
+        if(widthDp<600)return 8;
+        return Math.max(12,(widthDp-1320)/2);
+    }
     public static int magicSidePadding(int widthDp){
         if(widthDp<600)return 8;
         return Math.max(20,(widthDp-760)/2);

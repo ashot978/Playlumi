@@ -19,14 +19,17 @@ public final class PlaylumiMelody {
         completed=position==notes.length;
     }
     public static PlaylumiMelody generate(int age,Random random){
-        if(age<0 || age>2)throw new IllegalArgumentException("age");
-        int count=age+2;
+        return generate(age,0,random);
+    }
+    public static PlaylumiMelody generate(int age,int variant,Random random){
+        if(age<0 || age>2||variant<0||variant>age)throw new IllegalArgumentException("age or variant");
+        int count=variant==2?6:age+2+variant;
         int[] notes=new int[count];
         for(int i=0;i<count;i++)notes[i]=random.nextInt(NOTES);
         return new PlaylumiMelody(notes,0);
     }
     public static PlaylumiMelody restore(int[] notes,int position) {
-        if(notes==null || notes.length<2 || notes.length>4 || position<0||position>notes.length)
+        if(notes==null || notes.length<2 || notes.length>6 || position<0||position>notes.length)
             throw new IllegalArgumentException("invalid melody");
         for(int n:notes)if(n<0||n>=NOTES)throw new IllegalArgumentException("note");
         return new PlaylumiMelody(notes,position);
