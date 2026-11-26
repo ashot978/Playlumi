@@ -566,25 +566,30 @@ public class MainActivity extends Activity {
                 getSharedPreferences(PlaylumiProfiles.preferences(activeProfile),MODE_PRIVATE);
     }
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
-    private void saveAdaptive(int cat) {
-        prefs().edit().putInt("learn_lvl_"+cat,adaptive.level(cat,Math.max(0,age)))
+    private void stageAdaptive(SharedPreferences.Editor edit,int cat) {
+        edit.putInt("learn_lvl_"+cat,adaptive.level(cat,Math.max(0,age)))
                 .putInt("learn_seen_"+cat,adaptive.sampleCount(cat))
-                .putInt("learn_good_"+cat,adaptive.sampleCorrect(cat)).apply();
+                .putInt("learn_good_"+cat,adaptive.sampleCorrect(cat));
     }
     private void saveScore(int mode) {
+        SharedPreferences.Editor edit=prefs().edit();
+        stageScore(edit,mode);
+        edit.apply();
+    }
+    private void stageScore(SharedPreferences.Editor edit,int mode) {
         PlaylumiScores.Score s=scores.get(mode);
         String prefix="score_"+mode+"_";
         int gained=Math.max(0,s.correct-prefs().getInt(prefix+"good",0));
-        prefs().edit().putInt(prefix+"good",s.correct).putInt(prefix+"tries",s.attempts)
+        edit.putInt(prefix+"good",s.correct).putInt(prefix+"tries",s.attempts)
                 .putInt(prefix+"best",s.bestStreak).putInt(prefix+"streak",s.currentStreak)
                 .putInt(prefix+"sessions",s.completedSessions)
-                .putInt("completed_all",lifetimeCount).apply();
+                .putInt("completed_all",lifetimeCount);
         if(gained>0){
-            recordPlayDay();
+            stagePlayDay(edit);
             int w=page==MUSIC_PLAY?3:page==DRAW?5:page==BUBBLE_PLAY||page==STAR_CATCH?4:
                     page==MINI_PLAY?(miniKind==PlaylumiMiniChallenge.DRAG?2:4):
                     PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:portalForMode(mode);
-            recordWorldProgress(w,gained);
+            stageWorldProgress(edit,w,gained);
         }
     }
     private PlaylumiPlayDays playDays(){
@@ -592,10 +597,14 @@ public class MainActivity extends Activity {
                 prefs().getInt("play_day_run",0),prefs().getInt("play_day_best",0),prefs().getInt("play_day_total",0));
     }
     private void recordPlayDay(){
+        SharedPreferences.Editor edit=prefs().edit();
+        stagePlayDay(edit);edit.apply();
+    }
+    private void stagePlayDay(SharedPreferences.Editor edit){
         PlaylumiPlayDays days=playDays();
         if(!days.record(PlaylumiPlayDays.today()))return;
-        prefs().edit().putLong("play_day_last",days.last).putInt("play_day_run",days.run)
-                .putInt("play_day_best",days.best).putInt("play_day_total",days.total).apply();
+        edit.putLong("play_day_last",days.last).putInt("play_day_run",days.run)
+                .putInt("play_day_best",days.best).putInt("play_day_total",days.total);
     }
     private int[] achievementStats(){
         int[] stats=new int[PlaylumiAchievements.METRICS];
@@ -714,11 +723,15 @@ public class MainActivity extends Activity {
         return total;
     }
     private void recordWorldProgress(int world,int gained){
+        SharedPreferences.Editor edit=prefs().edit();
+        stageWorldProgress(edit,world,gained);edit.apply();
+    }
+    private void stageWorldProgress(SharedPreferences.Editor edit,int world,int gained){
         if(!PlaylumiWorldStyle.valid(world)||gained<=0)return;
         int before=collectionProgress(world);
         int after=PlaylumiCollection.advance(before,gained);
         if(after==before)return;
-        prefs().edit().putInt("collection_world_"+world,after).apply();
+        edit.putInt("collection_world_"+world,after);
         if(PlaylumiCollection.unlocked(after)>PlaylumiCollection.unlocked(before)){
             String treasure=PlaylumiCollection.NAMES[world][PlaylumiCollection.unlocked(after)-1];
             android.widget.Toast.makeText(this,"✦ Nieuwe schat: "+treasure,android.widget.Toast.LENGTH_SHORT).show();
@@ -726,15 +739,17 @@ public class MainActivity extends Activity {
         }
     }
     private void saveWardrobe() {
-        SharedPreferences.Editor edit=prefs().edit()
-            .putBoolean("wardrobe_initialized",true)
+        SharedPreferences.Editor edit=prefs().edit();
+        stageWardrobe(edit);edit.apply();
+    }
+    private void stageWardrobe(SharedPreferences.Editor edit) {
+        edit.putBoolean("wardrobe_initialized",true)
             .putInt("wardrobe_stars",wardrobe.stars())
             .putInt("wardrobe_total_earned",wardrobe.allTimeStars());
         for(int i=0;i<PlaylumiWardrobe.SLOTS;i++) {
             edit.putInt("wardrobe_owned_"+i,wardrobe.ownedMask(i));
             edit.putInt("wardrobe_worn_"+i,wardrobe.equipped(i));
         }
-        edit.apply();
     }
     private void saveStories() {
         prefs().edit().putInt("stories_completed",stories.completionMask())
@@ -1638,10 +1653,14 @@ public class MainActivity extends Activity {
         return librarySet(PlaylumiCompletion.key(age));
     }
     private void recordCompletion(PlaylumiGameCatalog.Entry entry,int done,int total){
+        SharedPreferences.Editor edit=prefs().edit();
+        stageCompletion(edit,entry,done,total);edit.apply();
+    }
+    private void stageCompletion(SharedPreferences.Editor edit,PlaylumiGameCatalog.Entry entry,int done,int total){
         if(!libraryReturn||entry==null)return;
         java.util.Set<String> completed=completedRoutes();
         if(PlaylumiCompletion.record(completed,age,entry,done,total))
-            prefs().edit().putStringSet(PlaylumiCompletion.key(age),completed).apply();
+            edit.putStringSet(PlaylumiCompletion.key(age),completed);
     }
     private void rememberCatalog(PlaylumiGameCatalog.Entry entry){
         if(entry==null)return;
@@ -1674,16 +1693,18 @@ public class MainActivity extends Activity {
         return saved;
     }
     private void clearLibrarySnapshot(PlaylumiGameCatalog.Entry entry){
-        SharedPreferences.Editor edit=prefs().edit().remove(snapshotKey(entry));
-        String legacy=legacySnapshotKey(entry);
-        if(matchingSnapshot(legacy,entry)!=null)edit.remove(legacy);
-        edit.apply();
+        SharedPreferences.Editor edit=prefs().edit();
+        stageLibrarySnapshot(edit,entry,null);edit.apply();
     }
     private void writeLibrarySnapshot(PlaylumiGameCatalog.Entry entry,org.json.JSONObject saved){
-        SharedPreferences.Editor edit=prefs().edit().putString(snapshotKey(entry),saved.toString());
+        SharedPreferences.Editor edit=prefs().edit();
+        stageLibrarySnapshot(edit,entry,saved);edit.apply();
+    }
+    private void stageLibrarySnapshot(SharedPreferences.Editor edit,PlaylumiGameCatalog.Entry entry,org.json.JSONObject saved){
+        if(saved==null)edit.remove(snapshotKey(entry));
+        else edit.putString(snapshotKey(entry),saved.toString());
         String legacy=legacySnapshotKey(entry);
         if(matchingSnapshot(legacy,entry)!=null)edit.remove(legacy);
-        edit.apply();
     }
     private org.json.JSONObject libraryResume(PlaylumiGameCatalog.Entry entry){
         if(entry==null)return null;
@@ -1720,12 +1741,16 @@ public class MainActivity extends Activity {
         }catch(org.json.JSONException ignored){}
     }
     private void saveLibraryQuiz(){
+        SharedPreferences.Editor edit=prefs().edit();
+        stageLibraryQuiz(edit);edit.apply();
+    }
+    private void stageLibraryQuiz(SharedPreferences.Editor edit){
         if(game==null||storyStage>=0||!libraryReturn)return;
         PlaylumiGameCatalog.Entry e=PlaylumiGameCatalog.route(age,villageLaunch,
                 PlaylumiGameCatalog.QUIZ,game.mode(),game.variant());
         PlaylumiGameCatalog.Entry last=lastCatalog();
         if(e==null||last==null||!e.id.equals(last.id))return;
-        if(sessionSolved>=sessionGoal()){clearLibrarySnapshot(e);return;}
+        if(sessionSolved>=sessionGoal()){stageLibrarySnapshot(edit,e,null);return;}
         if(!PlaylumiResumeKeys.validQuizProgress(sessionSolved,sessionAttempts,game.round().isSolved(),sessionGoal()))return;
         try{
             LearningGame.Round r=game.round();
@@ -1736,7 +1761,7 @@ public class MainActivity extends Activity {
             o.put("prompt",r.prompt);o.put("display",r.display);o.put("color",r.displayColor);
             o.put("correct",r.correctIndex);o.put("fingers",r.fingerCount);
             o.put("answers",new org.json.JSONArray(r.answers));o.put("colors",new org.json.JSONArray(r.answerColors));
-            o.put("updated",System.currentTimeMillis());writeLibrarySnapshot(e,o);
+            o.put("updated",System.currentTimeMillis());stageLibrarySnapshot(edit,e,o);
         }catch(org.json.JSONException ignored){}
     }
     private boolean resumeLibraryQuiz(PlaylumiGameCatalog.Entry entry){
@@ -2443,13 +2468,13 @@ public class MainActivity extends Activity {
     private int catalogLevel(PlaylumiGameCatalog.Entry entry){
         return catalogAdaptive()?learningProfile(entry).level:PlaylumiRocketCurriculum.level(age);
     }
-    private void recordLearning(PlaylumiGameCatalog.Entry entry,boolean firstTry){
+    private void stageLearning(SharedPreferences.Editor edit,PlaylumiGameCatalog.Entry entry,boolean firstTry){
         PlaylumiLearningProfile data=learningProfile(entry);
         data.record(firstTry,catalogAdaptive());
         String key=learningKey(entry);
-        prefs().edit().putInt(key+"level",data.level).putInt(key+"bits",data.bits)
+        edit.putInt(key+"level",data.level).putInt(key+"bits",data.bits)
                 .putInt(key+"samples",data.samples).putInt(key+"total",data.total)
-                .putInt(key+"window",data.window).apply();
+                .putInt(key+"window",data.window);
     }
     private java.util.List<PlaylumiGameCatalog.Entry> learningSuggestions(){
         java.util.List<PlaylumiGameCatalog.Entry> candidates=new ArrayList<>();
@@ -3022,8 +3047,11 @@ public class MainActivity extends Activity {
     private void choose(int index,Button touched) {
         if(page!=PLAY||moving||!autoRoundVisible||answerLocked||game.round().isSolved()||game.round().isRejected(index))return;
         int mode=game.mode();
+        if(index<0||index>=game.round().answers.size())return;
+        // One preference transaction per answer: a crash must not persist the
+        // reward without also persisting the answer and its session snapshot.
+        SharedPreferences.Editor answerEdit=prefs().edit();
         sessionAttempts++;
-        int oldCorrect=scores.get(mode).correct;
         boolean correct=game.round().choose(index);
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
@@ -3039,13 +3067,13 @@ public class MainActivity extends Activity {
             feedback=explanation.isEmpty()?"⭐ Goed gedaan! +3 🌟":"⭐ "+explanation;
             PlaylumiGameCatalog.Entry learningEntry=currentLearningEntry();
             if(learningEntry!=null){
-                recordLearning(learningEntry,!roundHadMistake);
+                stageLearning(answerEdit,learningEntry,!roundHadMistake);
             }else if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
                     pendingLevel=adaptive.level(mode,Math.max(0,age));
                     feedback="🌟 Wat knap! Een nieuwe uitdaging!";
                 }
-                saveAdaptive(mode);
+                stageAdaptive(answerEdit,mode);
             }
             sound.good();
             if(playPal!=null)playPal.dance();
@@ -3070,14 +3098,14 @@ public class MainActivity extends Activity {
                     storyNewReward=adventures.complete(world,storyStage);
                     if(storyNewReward) {
                         wardrobe.earnAdventureBonus();
-                        prefs().edit().putInt("adventure_progress_"+world,adventures.progress(world)).apply();
+                        answerEdit.putInt("adventure_progress_"+world,adventures.progress(world));
                     }
                 } else newBadges.addAll(scores.finishSession(mode));
             }
             wardrobe.earnAnswer();
             wardrobe.earnBadges(newBadges.size());
-            saveWardrobe();
-            if(storyStage<0)recordCompletion(learningEntry,sessionSolved,sessionGoal());
+            stageWardrobe(answerEdit);
+            if(storyStage<0)stageCompletion(answerEdit,learningEntry,sessionSolved,sessionGoal());
             pendingBadges.addAll(newBadges);
             if(!newBadges.isEmpty())feedbackText.setText(feedback+"  🏅");
             scheduleAutoAdvance();
@@ -3092,7 +3120,7 @@ public class MainActivity extends Activity {
             PlaylumiDelight.wiggle(touched);
             touched.announceForAccessibility("Probeer een ander antwoord.");
         }
-        saveScore(mode);saveLibraryQuiz();
+        stageScore(answerEdit,mode);stageLibraryQuiz(answerEdit);answerEdit.apply();
     }
     private void advanceRegularRound() {
         PlaylumiGameCatalog.Entry entry=currentLearningEntry();

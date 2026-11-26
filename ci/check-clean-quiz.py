@@ -1,5 +1,5 @@
 """Native UI regression test; only disposable emulator data is modified."""
-import pathlib, re, subprocess, time, xml.etree.ElementTree as ET
+import json, pathlib, re, subprocess, time, xml.etree.ElementTree as ET
 
 APP = "nl.playlumi.app"
 OUT = pathlib.Path("build/clean-quiz")
@@ -64,6 +64,25 @@ def page(number):
 def choices(nodes):
     return {name:n for name in VEG.values() for n in exact(nodes, name)
             if n.get("class") == "android.widget.Button" and n.get("enabled") == "true"}
+
+def persisted_quiz(count, attempts, balance):
+    # The same preference file must contain the score, wallet and quiz snapshot.
+    for _ in range(8):
+        try:
+            raw = shell(f"run-as {APP} cat shared_prefs/MainActivity.xml")
+            root = ET.fromstring(raw)
+            values = {node.get("name"): node for node in root}
+            snaps = [json.loads(node.text) for key,node in values.items()
+                     if key.startswith("library_resume_v2_2_") and node.tag=="string"]
+            if (len(snaps)==1 and snaps[0]["count"]==count and snaps[0]["attempts"]==attempts
+                    and int(values["score_20_good"].get("value"))==count
+                    and int(values["score_20_tries"].get("value"))==attempts
+                    and int(values["wardrobe_stars"].get("value"))==balance):
+                return
+        except (ET.ParseError, ValueError, KeyError, subprocess.CalledProcessError):
+            pass
+        time.sleep(.4)
+    raise AssertionError(f"Quiz score, reward or saved state not consistent: {count}/{attempts}/{balance}")
 
 def test(viewport, manual):
     print("Testing", viewport, "manual" if manual else "automatic", flush=True)
@@ -152,7 +171,9 @@ def test(viewport, manual):
     assert not exact(nodes,"Volgende vraag"), "Continue shown after incorrect answer"
     assert wrong not in choices(nodes), "Incorrect choice not disabled"
     screenshot(viewport+"-wrong")
+    persisted_quiz(0,1,18)
     click(choices(nodes)[answer])
+    persisted_quiz(1,2,33)
     if manual:
         time.sleep(2)
         nodes = ui(viewport+"-solved")
