@@ -64,11 +64,11 @@ public final class NewWorldGames {
             "naar school gaan","lunchen","buiten spelen","avondeten","douchen","slapen"};
     private static final String[] ACT_ICONS = {"🌅","🥣","🪥","👕","🎒","🥪","⚽","🍽️","🚿","😴"};
     private static final String[][] SAFE = {
-        {"Je steekt over bij groen licht","Ja"},{"Je steekt over bij rood licht","Nee"},
-        {"Je doet een helm op bij fietsen","Ja"},{"Je kijkt eerst links en rechts","Ja"},
+        {"Je steekt pas over als het licht groen is en je hebt gekeken of de weg vrij is","Ja"},{"Je rent de straat op terwijl het licht rood is","Nee"},
+        {"Je draagt een goed passende fietshelm","Ja"},{"Je kijkt links, rechts en nog eens links voordat je oversteekt","Ja"},
         {"Je raakt een hete pan aan","Nee"},{"Je vraagt hulp als iets gevaarlijk is","Ja"},
         {"Je speelt op straat zonder op te letten","Nee"},{"Je wast je handen voor het eten","Ja"},
-        {"Je pakt een onbekende pil","Nee"},{"Je zegt het als je verdwaald bent","Ja"},
+        {"Je slikt een pil die je op straat vindt","Nee"},{"Als je verdwaald bent, vraag je een winkelmedewerker om hulp","Ja"},
         {"Je doet de gordel om in de auto","Ja"},{"Je loopt op een fietspad zonder te kijken","Nee"}
     };
     private NewWorldGames() {}
@@ -124,18 +124,8 @@ public final class NewWorldGames {
     }
     private static LearningGame.Round time(int v,int lvl,Random r) {
         int base=choose(r,lvl==0?12:24);
-        if(v==0) {
-            String correct=hour(1+choose(r,12));
-            String[] pool=new String[12];for(int i=0;i<12;i++)pool[i]=hour(i+1);
-            return make("Hoe laat is het op de wijzerklok?","clock:"+correct,correct,
-                    opts(correct,pool,choiceCount(lvl),r),r);
-        }
-        if(v==1 || v==2) {
-            String correct=hour(base+(v==1?1:-1));
-            String[] pool=new String[24];for(int i=0;i<24;i++)pool[i]=hour(i);
-            return make(v==1?"Hoe laat is het een uur later?":"Hoe laat was het een uur eerder?",
-                    "⏰ "+hour(base),correct,opts(correct,pool,choiceCount(lvl),r),r);
-        }
+        if(v==0)return PlaylumiClockPractice.analog(lvl,r);
+        if(v==1||v==2)return PlaylumiClockPractice.shift(lvl,v==1?1:-1,r);
         if(v==3) {
             // The 12-hour wording is ambiguous without a day part. Always show it,
             // and include the matching AM/PM distractor rather than random times.
@@ -157,11 +147,8 @@ public final class NewWorldGames {
             return make(v==0?"Welk seizoen zie je?":"Bij welk seizoen passen deze plaatjes?",
                     display,correct,opts(correct,SEASONS,v==0?3:4,r),r);
         }
-        String correct=v==1?WEATHER_WEAR[index]:v==2?WEATHER[index]:WEATHER_ACT[index];
-        String[] pool=v==1?WEATHER_WEAR:v==2?WEATHER:WEATHER_ACT;
-        return make(v==1?"Wat trek je aan bij dit weer?":v==2?"Hoe heet dit weer?":"Wat past bij dit weer?",
-                WEATHER_ICONS[index]+"  "+(v==2?"":WEATHER[index]),correct,
-                opts(correct,pool,choiceCount(lvl),r),r);
+        if(v==2)return make("Hoe heet dit weer?",WEATHER_ICONS[index],WEATHER[index],opts(WEATHER[index],WEATHER,choiceCount(lvl),r),r);
+        return PlaylumiWeatherPractice.next(v==1,lvl,r);
     }
     private static LearningGame.Round direction(int v,int lvl,Random r) {
         if(v<3) {
