@@ -34,9 +34,17 @@ public final class LearningGame {
         }
         Round(String prompt,String display,int displayColor,List<String> answers,List<Integer> answerColors,int correctIndex,int fingerCount) {
             this.prompt = prompt; this.display = display; this.displayColor = displayColor;this.fingerCount=fingerCount;
-            this.answers = Collections.unmodifiableList(new ArrayList<>(answers));
-            this.answerColors = Collections.unmodifiableList(new ArrayList<>(answerColors));
-            this.correctIndex = correctIndex;
+            int[] order=PlaylumiAnswerOrder.indices(answers);
+            ArrayList<String> ordered=new ArrayList<>();ArrayList<Integer> inks=new ArrayList<>();
+            int newCorrect=-1;
+            for(int i=0;i<order.length;i++){
+                ordered.add(answers.get(order[i]));inks.add(answerColors.get(order[i]));
+                if(order[i]==correctIndex)newCorrect=i;
+            }
+            if(newCorrect<0)throw new IllegalArgumentException("correct answer");
+            this.answers=Collections.unmodifiableList(ordered);
+            this.answerColors=Collections.unmodifiableList(inks);
+            this.correctIndex=newCorrect;
         }
         public boolean isSolved() { return solved; }
         public int letterBlank() {
@@ -74,7 +82,7 @@ public final class LearningGame {
                 fingers<0||fingers>10||answers.get(correct)==null||answers.get(correct).isEmpty())
             throw new IllegalArgumentException("Invalid saved round");
         Round restored=new Round(prompt,display,displayColor,answers,colors,correct,fingers);
-        if(solved)restored.choose(correct);
+        if(solved)restored.choose(restored.correctIndex);
         current=restored;
     }
     public void setHistory(QuestionHistory history) { this.history = history; }

@@ -112,7 +112,7 @@ public final class PlaylumiVillageView extends View {
         paintColor(color);
         c.drawRoundRect(l,t,r,b,24,24,pen);
     }
-    private void drawRealCounters(Canvas c) {
+    private void drawRealCounters(Canvas c,float scaleX,float scaleY) {
         // One opaque HUD covers the entire old decorative currency strip,
         // including its baked-in icons. The three live controls share one frame.
         paintColor(0xff48267c);
@@ -132,7 +132,10 @@ public final class PlaylumiVillageView extends View {
         c.drawRoundRect(4,97,321,234,34,34,pen);
         paintColor(0xff6740a4);
         c.drawRoundRect(8,101,317,230,32,32,pen);
-        PlaylumiAvatar.draw(c,12,103,126,avatar,outfit);
+        // The scenic artwork may be stretched to fill a tall phone. The mascot must never stretch with it.
+        float[] round=PlaylumiVillageHit.avatarCompensation(scaleX,scaleY);
+        c.save();c.translate(75,166);c.scale(round[0],round[1]);
+        PlaylumiAvatar.draw(c,-63,-63,126,avatar,outfit);c.restore();
         text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
         text(c,"Kies je maatje",225,192,21,Color.WHITE);
     }
@@ -197,7 +200,7 @@ public final class PlaylumiVillageView extends View {
         pen.reset();pen.setFilterBitmap(true);pen.setAntiAlias(true);
         canvas.drawBitmap(village,null,
                 new RectF(0,0,PlaylumiVillageHit.ART_W,PlaylumiVillageHit.ART_H),pen);
-        drawRealCounters(canvas);
+        drawRealCounters(canvas,dst[2]/PlaylumiVillageHit.ART_W,dst[3]/PlaylumiVillageHit.ART_H);
         drawGameTab(canvas);
         drawDiscovered(canvas);
         drawSparkles(canvas);

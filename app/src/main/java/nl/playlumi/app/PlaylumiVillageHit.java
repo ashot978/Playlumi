@@ -27,6 +27,11 @@ public final class PlaylumiVillageHit {
         float dw=ART_W*factor,dh=ART_H*factor;
         return new float[]{(screenW-dw)*.5f,(screenH-dh)*.5f,dw,dh};
     }
+    public static float[] avatarCompensation(float scaleX,float scaleY){
+        if(scaleX<=0||scaleY<=0)return new float[]{1,1};
+        float size=Math.min(scaleX,scaleY);
+        return new float[]{size/scaleX,size/scaleY};
+    }
     public static float[] artCoordinate(int screenW,int screenH,float x,float y) {
         float[] dest=destination(screenW,screenH);
         return new float[]{(x-dest[0])*ART_W/dest[2],(y-dest[1])*ART_H/dest[3]};

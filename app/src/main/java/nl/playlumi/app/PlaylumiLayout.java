@@ -88,6 +88,9 @@ public final class PlaylumiLayout {
         int available=heightDp-56-120-42-64-centeredQuestionHeight(heightDp)-106;
         return Math.max(50,Math.min(76,(available-rows*12)/rows));
     }
+    public static int fastQuizHeroHeight(int heightDp,boolean wide){
+        return heightDp<520?54:heightDp<690?72:wide?100:92;
+    }
     public static int magicHeroHeight(int widthDp,int heightDp,boolean menu){
         int max=menu?220:heightDp<680?104:148;
         if(widthDp>=600)max=menu?190:heightDp<690?92:120;
