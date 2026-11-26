@@ -17,8 +17,8 @@ android {
         minSdk 23
         targetSdk 35
         // GitHub Actions uses a monotonically increasing run number for each release.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 600950
-        versionName '0.95.0'
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 600960
+        versionName '0.96.0'
     }
 
     signingConfigs {

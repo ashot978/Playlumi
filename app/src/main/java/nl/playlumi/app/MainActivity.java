@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45, COLLECTIBLES=46;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45, COLLECTIBLES=46, ACHIEVEMENTS=47;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -115,7 +115,7 @@ public class MainActivity extends Activity {
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
     private int libraryScrollY;
-    private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR;
+    private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private TextView[] libraryTabs;
     private boolean favoriteEditMode;
     private long favoriteReadyAt;
@@ -219,6 +219,7 @@ public class MainActivity extends Activity {
             villageLaunch=state.getInt("villageLaunch",-1);
             libraryFilter=state.getInt("libraryFilter",PlaylumiGameCatalog.OVERVIEW);
             libraryScrollY=Math.max(0,state.getInt("libraryScrollY",0));
+            achievementReturn=state.getInt("achievementReturn",HOME);
             personalReturn=state.getInt("personalReturn",HOME);collectionReturn=state.getInt("collectionReturn",HOME);closetReturn=state.getInt("closetReturn",AVATAR);
             libraryReturn=state.getBoolean("libraryReturn",false);
             if(state.containsKey("interactiveKind"))interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"));
@@ -422,6 +423,7 @@ public class MainActivity extends Activity {
         out.putInt("villageLaunch",villageLaunch);
         out.putInt("libraryFilter",libraryFilter);out.putBoolean("libraryReturn",libraryReturn);
         out.putInt("libraryScrollY",page==LIBRARY&&scroller!=null?scroller.getScrollY():libraryScrollY);
+        out.putInt("achievementReturn",achievementReturn);
         out.putInt("personalReturn",personalReturn);out.putInt("collectionReturn",collectionReturn);out.putInt("closetReturn",closetReturn);
         if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());}
         out.putBoolean("quickCategoryPlay",quickCategoryPlay);
@@ -460,6 +462,7 @@ public class MainActivity extends Activity {
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(closetReturn==SHOP?SHOP:AVATAR);return;}
+        if(page==ACHIEVEMENTS){move(achievementReturn==SHOP?SHOP:achievementReturn==AVATAR?AVATAR:achievementReturn==COLLECTIBLES?COLLECTIBLES:HOME);return;}
         if(page==COLLECTIBLES) {move(collectionReturn==SHOP?SHOP:collectionReturn==AVATAR?AVATAR:HOME);return;}
         if(page==SHOP) {move(HOME);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
@@ -538,10 +541,100 @@ public class MainActivity extends Activity {
                 .putInt(prefix+"sessions",s.completedSessions)
                 .putInt("completed_all",lifetimeCount).apply();
         if(gained>0){
+            recordPlayDay();
             int w=page==MUSIC_PLAY?3:page==DRAW?5:page==BUBBLE_PLAY||page==STAR_CATCH?4:
                     page==MINI_PLAY?(miniKind==PlaylumiMiniChallenge.DRAG?2:4):
                     PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:portalForMode(mode);
             recordWorldProgress(w,gained);
+        }
+    }
+    private PlaylumiPlayDays playDays(){
+        return new PlaylumiPlayDays(prefs().getLong("play_day_last",Long.MIN_VALUE),
+                prefs().getInt("play_day_run",0),prefs().getInt("play_day_best",0),prefs().getInt("play_day_total",0));
+    }
+    private void recordPlayDay(){
+        PlaylumiPlayDays days=playDays();
+        if(!days.record(PlaylumiPlayDays.today()))return;
+        prefs().edit().putLong("play_day_last",days.last).putInt("play_day_run",days.run)
+                .putInt("play_day_best",days.best).putInt("play_day_total",days.total).apply();
+    }
+    private int[] achievementStats(){
+        int[] stats=new int[PlaylumiAchievements.METRICS];
+        long correct=0,sessions=0;int best=0;
+        for(int i=0;i<PlaylumiScores.CATEGORIES;i++){
+            PlaylumiScores.Score score=scores.get(i);correct+=score.correct;sessions+=score.completedSessions;
+            best=Math.max(best,score.bestStreak);
+        }
+        stats[0]=(int)Math.min(Integer.MAX_VALUE,correct);
+        stats[1]=(int)Math.min(Integer.MAX_VALUE,sessions);stats[2]=best;
+        stats[3]=Math.max(0,wardrobe.allTimeStars()-PlaylumiWardrobe.STARTER_STARS);
+        stats[4]=librarySet("library_played").size();
+        stats[5]=PlaylumiVillageProgress.visitedCount(getSharedPreferences("playlumi-village-"+activeProfile,MODE_PRIVATE).getInt("visited",0));
+        stats[6]=collectionTotal();stats[7]=Math.max(0,wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS);
+        stats[8]=prefs().getBoolean("drawing_saved_once",false)?1:0;
+        boolean favorite=prefs().getBoolean("achievement_favorite_ever",false)||!librarySet("library_favorites").isEmpty();
+        if(favorite&&!prefs().getBoolean("achievement_favorite_ever",false))prefs().edit().putBoolean("achievement_favorite_ever",true).apply();
+        stats[9]=favorite?1:0;
+        PlaylumiPlayDays days=playDays();stats[10]=days.total;stats[11]=days.best;
+        for(int i=0;i<6;i++)stats[12+i]=PlaylumiCollection.unlocked(collectionProgress(i));
+        return stats;
+    }
+    private long achievedMask(int[] stats){
+        long saved=prefs().getLong("achievements_v1",0L),next=PlaylumiAchievements.unlock(saved,stats);
+        if(next!=saved)prefs().edit().putLong("achievements_v1",next).apply();
+        return next;
+    }
+    private int achievementCount(){return Long.bitCount(achievedMask(achievementStats()));}
+    private void openAchievements(int from){achievementReturn=from;move(ACHIEVEMENTS);}
+    private void showAchievements(){
+        header("Mijn prestaties","Ontdek wat je allemaal al hebt geleerd.");
+        final int[] stats=achievementStats();final long mask=achievedMask(stats);
+        LinearLayout summary=personalPanel();PlaylumiPlayDays days=playDays();
+        int streak=days.current(PlaylumiPlayDays.today());
+        homeAdd(summary,text("🏆 "+Long.bitCount(mask)+" van "+PlaylumiAchievements.ALL.length+" prestaties",22,TEXT),1,5);
+        if(streak>0)homeAdd(summary,text("🔥 "+streak+(streak==1?" speeldag":" dagen op rij"),24,0xff774397),2,4);
+        else homeAdd(summary,text("Jouw speelavonturen",19,TEXT),1,3);
+        LinearLayout metrics=new LinearLayout(this);metrics.setGravity(Gravity.CENTER);
+        for(String label:new String[]{"★ "+days.total+"\nspeeldagen","🏅 "+days.best+"\nlangste reeks"}){
+            TextView metric=text(label,17,TEXT);metric.setPadding(dp(5),dp(7),dp(5),dp(7));
+            metric.setBackground(rounded(0xffffedc8,14));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+            lp.setMargins(dp(3),0,dp(3),0);metrics.addView(metric,lp);
+        }
+        summary.addView(metrics,new LinearLayout.LayoutParams(-1,-2));
+        homeAdd(summary,text("Speel wanneer je zin hebt. Je trofeeën blijven altijd van jou.",14,SUB),5,2);
+        addWidget(summary,3,7);
+        int columns=getResources().getConfiguration().screenWidthDp>=600?2:1;
+        for(int group=0;group<PlaylumiAchievements.GROUPS.length;group++){
+            addText(PlaylumiAchievements.GROUPS[group],21,TEXT,8,3);
+            ArrayList<Integer> ids=new ArrayList<>();
+            for(int i=0;i<PlaylumiAchievements.ALL.length;i++)if(PlaylumiAchievements.ALL[i].group==group)ids.add(i);
+            for(int first=0;first<ids.size();first+=columns){
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+                for(int j=0;j<columns;j++){
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(4),dp(4),dp(4),dp(4));
+                    if(first+j>=ids.size()){row.addView(new View(this),lp);continue;}
+                    int id=ids.get(first+j);
+                    PlaylumiAchievements.Milestone milestone=PlaylumiAchievements.ALL[id];
+                    boolean earned=(mask&(1L<<id))!=0;
+                    int progress=earned?milestone.goal:Math.min(milestone.goal,Math.max(0,stats[milestone.metric]));
+                    LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+                    card.setPadding(dp(10),dp(8),dp(10),dp(8));card.setMinimumHeight(dp(132));
+                    GradientDrawable bg=rounded(earned?0xffffedc5:0xfff1e5ff,18);bg.setStroke(dp(1),earned?0xffd9aa51:0xffc9afe8);card.setBackground(bg);
+                    LinearLayout title=new LinearLayout(this);title.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView icon=text(milestone.icon,29,0xff563686);title.addView(icon,new LinearLayout.LayoutParams(dp(46),dp(46)));
+                    TextView label=homeLabel(milestone.title,17,TEXT,true);title.addView(label,new LinearLayout.LayoutParams(0,-2,1f));
+                    card.addView(title);
+                    homeAdd(card,homeLabel(milestone.description,13,SUB,false),2,3);
+                    ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+                    bar.setMax(milestone.goal);bar.setProgress(progress);
+                    bar.setProgressTintList(ColorStateList.valueOf(earned?0xffa87724:0xff8555b4));
+                    card.addView(bar,new LinearLayout.LayoutParams(-1,dp(8)));
+                    homeAdd(card,homeLabel(earned?"✓ Behaald":progress+" / "+milestone.goal,13,earned?0xff37744a:SUB,true),3,0);
+                    card.setContentDescription(milestone.title+", "+milestone.description+", "+(earned?"behaald":progress+" van "+milestone.goal));
+                    row.addView(card,lp);
+                }
+                addWidget(row,0,0);
+            }
         }
     }
     private int collectionProgress(int world){
@@ -984,7 +1077,7 @@ public class MainActivity extends Activity {
         if(theme>=0) {
             stage.addView(PlaylumiMagicArt.backdrop(this,theme),new FrameLayout.LayoutParams(-1,-1));
         } else if(page==WORLD_PICKER || page==WORLD_HUB ||
-                page==AVATAR || page==CLOSET || page==ROOM || page==COLLECTIBLES || page==SHOP ||
+                page==AVATAR || page==CLOSET || page==ROOM || page==COLLECTIBLES || page==ACHIEVEMENTS || page==SHOP ||
                 page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
                 page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
             stage.addView(new PlaylumiSkyView(this),
@@ -1089,6 +1182,7 @@ public class MainActivity extends Activity {
             case ROOM_ITEMS: showRoomItems();break;
             case TROPHY_WORLDS: showTrophyWorlds();break;
             case COLLECTIBLES: showCollectibles();break;
+            case ACHIEVEMENTS: showAchievements();break;
             case TROPHY_CATS: showTrophyCats();break;
             case STORY_LIBRARY: showStoryLibrary();break;
             case STORY_PLAY: showStoryPlay();break;
@@ -1260,7 +1354,7 @@ public class MainActivity extends Activity {
         }
         PlaylumiVillageView village=new PlaylumiVillageView(this,this::visitVillagePlace,
                 activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar(),
-                wardrobe==null?null:wardrobe.equippedItems());
+                wardrobe==null?null:wardrobe.equippedItems(),playDays().current(PlaylumiPlayDays.today()));
         stage.addView(village,new FrameLayout.LayoutParams(-1,-1));
     }
     private TextView homeLabel(String label,int size,int color,boolean bold){
@@ -1311,7 +1405,7 @@ public class MainActivity extends Activity {
         top.addView(title,new LinearLayout.LayoutParams(0,-1,1f));
         homeMetric(top,"★ "+stars,stars+" speelsterren, open beloningen",()->visitVillagePlace(PlaylumiVillageView.STARS));
         homeMetric(top,"⚑ "+discovered+"/6",discovered+" van zes werelden bezocht",()->visitVillagePlace(PlaylumiVillageView.DISCOVERY));
-        if(width>=800)homeMetric(top,"Ouderzone","Open de beveiligde ouderzone",()->visitVillagePlace(PlaylumiVillageView.PARENTS));
+        if(width>=800)homeMetric(top,playDays().current(PlaylumiPlayDays.today())>0?"🔥 "+playDays().current(PlaylumiPlayDays.today()):"🏆", "Mijn prestaties",()->openAchievements(HOME));
         homeMetric(top,"⚙","Instellingen",()->visitVillagePlace(PlaylumiVillageView.SETTINGS));
         shell.addView(top,new LinearLayout.LayoutParams(-1,dp(62)));
 
@@ -1340,8 +1434,8 @@ public class MainActivity extends Activity {
                 if(world>=6)break;
                 final int place=world;
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
-                card.setPadding(dp(5),dp(5),dp(5),dp(6));
                 card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x25ffffff),libraryCardSurface(world),null));
+                card.setPadding(0,0,0,dp(6));card.setClipToOutline(true);
                 card.addView(new PlaylumiHomeWorldArt(this,world),new LinearLayout.LayoutParams(-1,dp(artHeight)));
                 TextView name=text(PlaylumiWorldStyle.NAMES[world],width<650?15:18,PlaylumiMagicArt.CREAM);
                 name.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
@@ -1398,7 +1492,9 @@ public class MainActivity extends Activity {
         homeAdd(panel,text(PlaylumiWorldStyle.AVATAR_NAMES[chosenAvatar()],20,PlaylumiMagicArt.CREAM),2,4);
         homeAdd(panel,text(AGES[PlaylumiRocketCurriculum.level(age)],13,0xffe8d3ff),0,2);
         homeAdd(panel,text("★ "+stars+" sterren",17,PlaylumiMagicArt.GOLD),2,1);
-        homeAdd(panel,text("✦ "+collectionTotal()+"/18 schatten",13,PlaylumiMagicArt.CREAM),0,5);
+        homeAdd(panel,text("✦ "+collectionTotal()+"/18 schatten",13,PlaylumiMagicArt.CREAM),0,3);
+        PlaylumiPlayDays days=playDays();int current=days.current(PlaylumiPlayDays.today());
+        homeAdd(panel,homeAction(current>0?"🔥 "+current+(current==1?" speeldag":" dagen op rij"):"🏆 Mijn prestaties",false,()->openAchievements(HOME)),1,3);
         homeAdd(panel,homeAction("Mijn maatje",true,()->visitVillagePlace(PlaylumiVillageView.FRIEND)),3,3);
         homeAdd(panel,homeAction("Ouderzone",false,()->visitVillagePlace(PlaylumiVillageView.PARENTS)),2,0);
         return panel;
@@ -1979,7 +2075,7 @@ public class MainActivity extends Activity {
             star.setOnClickListener(view->{
                 java.util.Set<String> saved=librarySet("library_favorites");
                 if(saved.contains(entry.id)){confirmFavoriteRemoval(entry,star);return;}
-                saved.add(entry.id);prefs().edit().putStringSet("library_favorites",saved).apply();
+                saved.add(entry.id);prefs().edit().putStringSet("library_favorites",saved).putBoolean("achievement_favorite_ever",true).apply();
                 if(sound!=null)sound.tap();
                 updateFavoriteLabel(star,entry,true);refreshLibraryNavigation();PlaylumiMotion.pop(star);
             });
@@ -1996,7 +2092,7 @@ public class MainActivity extends Activity {
                     if(page!=LIBRARY||activeProfile!=profile||libraryFilter!=filter)return;
                     java.util.Set<String> saved=librarySet("library_favorites");
                     if(!saved.remove(entry.id))return;
-                    prefs().edit().putStringSet("library_favorites",saved).apply();
+                    prefs().edit().putStringSet("library_favorites",saved).putBoolean("achievement_favorite_ever",true).apply();
                     if(sound!=null)sound.tap();
                     if(star!=null)updateFavoriteLabel(star,entry,false);
                     if(filter==PlaylumiGameCatalog.FAVORITES){
@@ -2749,7 +2845,9 @@ public class MainActivity extends Activity {
         Button trophies=tile("🏆 Mijn badges","Jouw prestaties",0xffffeab9,92);
         trophies.setOnClickListener(v->{villageLaunch=PlaylumiVillageView.FRIEND;move(TROPHY_WORLDS);});
         Button album=tile("✦ Mijn schatten",collectionTotal()+" van 18 verzameld",0xffffe4bd,92);album.setOnClickListener(v->{collectionReturn=AVATAR;move(COLLECTIBLES);});
-        personalActionGrid(style,choose,stageButton,home,trophies,album);
+        Button achievements=tile("🏆 Mijn prestaties",achievementCount()+"/"+PlaylumiAchievements.ALL.length+" behaald",0xffffe4bd,92);
+        achievements.setOnClickListener(v->openAchievements(AVATAR));
+        personalActionGrid(achievements,style,choose,stageButton,home,trophies,album);
     }
     private void invalidateAvatars(View view){
         if(view instanceof PlaylumiAvatar)view.invalidate();
@@ -2858,6 +2956,8 @@ public class MainActivity extends Activity {
     private void showCollectibles(){
         header("Mijn schatten","Ontdek de zes werelden en verzamel magische schatten.");
         addText("✦ "+collectionTotal()+" van 18 schatten",23,0xff715021,6,5);
+        Button achievements=tile("🏆 Mijn prestaties",achievementCount()+"/"+PlaylumiAchievements.ALL.length+" behaald",0xffffe4bd,76);
+        addTile(achievements,4);achievements.setOnClickListener(v->openAchievements(COLLECTIBLES));
         addText("Verdien ze met goede antwoorden en voltooide opdrachten. Geen sterren uitgeven!",15,SUB,0,8);
         int columns=getResources().getConfiguration().screenWidthDp>=600?2:1;
         for(int first=0;first<6;first+=columns){
@@ -2897,9 +2997,11 @@ public class MainActivity extends Activity {
         Button closet=tile("🎀 Kledingkast","Kleed je maatje aan",0xffe8dcff,92);closet.setOnClickListener(v->{closetReturn=SHOP;move(CLOSET);});
         Button treasures=tile("✦ Mijn schatten",collectionTotal()+" van 18 verzameld",0xffffe4bd,92);treasures.setOnClickListener(v->{collectionReturn=SHOP;move(COLLECTIBLES);});
         Button roomButton=tile("🏠 Mijn kamer","Versier jouw kamer",0xffd9ecff,92);roomButton.setOnClickListener(v->move(ROOM));
-        Button badges=tile("🏆 Mijn badges","Jouw prestaties",0xffffe8b8,92);
+        Button achievements=tile("🏆 Mijn prestaties",achievementCount()+"/"+PlaylumiAchievements.ALL.length+" behaald",0xffffe4bd,92);
+        achievements.setOnClickListener(v->openAchievements(SHOP));
+        Button badges=tile("🏅 Mijn badges","Jouw bestaande badges",0xffffe8b8,92);
         badges.setOnClickListener(v->{villageLaunch=PlaylumiVillageView.COLLECTION;move(TROPHY_WORLDS);});
-        personalActionGrid(closet,treasures,roomButton,badges);
+        personalActionGrid(achievements,closet,treasures,roomButton,badges);
         Button done=tile("Verder spelen","Terug naar het dorp",0xffd9f2d8,82);
         addTile(done,6);done.setOnClickListener(v->move(HOME));
     }
@@ -3391,6 +3493,7 @@ public class MainActivity extends Activity {
                 drawingInfo.setText("Oeps! Probeer nog eens te bewaren.");
                 return;
             }
+            recordPlayDay();
             boolean first=!prefs().getBoolean("drawing_saved_once",false);
             if(first) {
                 prefs().edit().putBoolean("drawing_saved_once",true).apply();
