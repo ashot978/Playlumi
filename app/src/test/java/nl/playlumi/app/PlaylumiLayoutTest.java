@@ -67,6 +67,19 @@ public final class PlaylumiLayoutTest {
         assertTrue(1000-2*PlaylumiLayout.librarySidePadding(1000)>940);
         assertTrue(1400-2*PlaylumiLayout.librarySidePadding(1400)<=1320);
     }
+    @Test public void polishedUiAllocatesRoomForCardsAndPlayBoard(){
+        assertFalse(PlaylumiLayout.libraryRail(800));
+        assertTrue(PlaylumiLayout.libraryRail(1200));
+        assertTrue(PlaylumiLayout.libraryContentWidth(1200)>=900);
+        assertEquals(2,PlaylumiLayout.libraryColumns(PlaylumiLayout.libraryContentWidth(700)));
+        assertEquals(3,PlaylumiLayout.libraryColumns(PlaylumiLayout.libraryContentWidth(1200)));
+        assertFalse(PlaylumiLayout.interactiveWide(360));
+        assertTrue(PlaylumiLayout.interactiveWide(650));
+        assertEquals(4,PlaylumiLayout.interactiveCellColumns(270,7));
+        assertEquals(2,PlaylumiLayout.interactiveChoiceColumns(650,6));
+        assertEquals(3,PlaylumiLayout.interactiveChoiceColumns(1100,6));
+        assertEquals(2,PlaylumiLayout.closetItemColumns(650));
+    }
     @Test public void widerQuizIsCenteredAndContentWidthIsCapped(){
         assertTrue(PlaylumiLayout.centeredMagicQuiz(700,780));
         assertTrue(PlaylumiLayout.centeredMagicQuiz(900,1000));
