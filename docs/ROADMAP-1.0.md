@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.3 / build 600993. Test build, not a production launch.
+Status: 0.99.4 / build 600994. Test build, not a production launch.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -39,8 +39,17 @@ Status: 0.99.3 / build 600993. Test build, not a production launch.
 - [x] More missing-letter positions and complete visual patterns after solving.
 - [x] Automatic, calm and manual quiz progression per profile; existing automatic mode remains default.
 - [x] Additional 2,500 spelling and 3,600 letter regression samples and pacing checks.
-- [ ] Verify full build, signature, unit tests, lint and real-device interaction.
+- [x] 0.99.3 build, signature, unit tests and lint verified, Actions run 45899377905.
+- [ ] Real-device interaction.
  
+## 0.99.4: interactive learning depth
+- [x] Number race uses distractors for middle and older children, skip counting and descending sequences for older children.
+- [x] Letter train uses picture and word clues, incomplete examples and optional reveal instead of mandatory copying at older ages.
+- [x] Version interactive seeds so legacy unfinished rounds retain their original rules and tiles.
+- [x] Preserve final manual-pace quiz feedback across activity recreation.
+- [x] Additional 1,440 versioned interactive sessions tested by the release gate.
+- [ ] Confirm full build, signing, Android tests and real-device interaction.
+
 ## 0.99.x: remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
 - [ ] Verify navigation, fold/unfold, rotation, back, multi-profile isolation and parent gate.
