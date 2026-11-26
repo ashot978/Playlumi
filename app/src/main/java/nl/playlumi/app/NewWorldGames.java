@@ -12,7 +12,7 @@ public final class NewWorldGames {
             "Dagelijkse dingen","Eten & drinken","Dierenwereld","Meten & vergelijken","Slim nadenken"};
     public static final String[] ICONS = {"🕒","🌦️","🧭","🏠","🥕","🦁","📏","💡"};
     public static final String[][] VARIANTS = {
-            {"Hele uren","Een uur later","Een uur eerder","Tijd in minuten","Tijden vergelijken"},
+            {"Hele uren","Een uur later","Een uur eerder","Ochtend, middag, avond en nacht","Tijden vergelijken"},
             {"Welk seizoen?","Kleed je goed","Weer herkennen","Wat past bij het weer?","Seizoen kiezen"},
             {"Links of rechts","Boven of onder","Voor of achter","Waar staat het?","Richting volgen"},
             {"Wat gebruik je?","Ochtend en avond","Wat doe je eerst?","Waar hoort het?","Veilig kiezen"},
@@ -137,11 +137,12 @@ public final class NewWorldGames {
                     "⏰ "+hour(base),correct,opts(correct,pool,choiceCount(lvl),r),r);
         }
         if(v==3) {
-            int minutes=(choose(r,12)*5), total=base*60+minutes;
-            String correct=minute(total);
-            String[] pool=new String[24*12]; for(int i=0;i<pool.length;i++)pool[i]=minute(i*5);
-            return make("Hoe schrijf je deze tijd?","🕓 "+base+" uur en "+minutes+" minuten",
-                    correct,opts(correct,pool,choiceCount(lvl),r),r);
+            // The 12-hour wording is ambiguous without a day part. Always show it,
+            // and include the matching AM/PM distractor rather than random times.
+            int h=choose(r,24);
+            int step=lvl==0?30:lvl==1?15:5;
+            int m=choose(r,60/step)*step;
+            return PlaylumiDaytimeClock.round(h,m,lvl,r);
         }
         int other=(base+1+choose(r,11))%24;
         String correct=base>other?"Links":"Rechts";

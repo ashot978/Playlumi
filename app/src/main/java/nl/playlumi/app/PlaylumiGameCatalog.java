@@ -36,7 +36,7 @@ public final class PlaylumiGameCatalog {
         }
         if(a>=2){
             q(list,0,16,1,"Een uur later","Reken met hele uren","◷");
-            q(list,0,16,3,"Tijd in minuten","Schrijf de juiste tijd","◷");
+            q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
             q(list,0,22,0,"Meten","Vergelijk de lengte van linten","↔");
             q(list,0,23,2,"Even of oneven","Ontdek getallenpatronen","123");
