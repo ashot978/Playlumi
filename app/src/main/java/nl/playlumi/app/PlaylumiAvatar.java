@@ -51,6 +51,7 @@ public final class PlaylumiAvatar extends View {
     public static void draw(Canvas c,float x,float y,float size,int choice,int[] outfit) {
         choice=PlaylumiWorldStyle.safeAvatar(choice);
         c.save();c.translate(x,y);c.scale(size/100f,size/100f);
+        Path circle=new Path();circle.addCircle(50,50,49,Path.Direction.CW);c.clipPath(circle);
         Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
         oval(c,p,1,1,99,99,0xff432270);
         int color=item(outfit,PlaylumiWardrobe.COLORS);

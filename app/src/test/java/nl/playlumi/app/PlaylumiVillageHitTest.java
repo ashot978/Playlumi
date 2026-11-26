@@ -43,6 +43,15 @@ public final class PlaylumiVillageHitTest {
                 PlaylumiVillageHit.at(width,height,x,y));
         assertEquals(-1,PlaylumiVillageHit.at(width,height,-1,60));
     }
+    @Test public void mascotRemainsCircularOnStretchedPhoneAndFold(){
+        for(int[] screen:new int[][]{{412,915},{658,1380},{1800,1300},{360,640}}){
+            float[] dst=PlaylumiVillageHit.destination(screen[0],screen[1]);
+            float sx=dst[2]/PlaylumiVillageHit.ART_W,sy=dst[3]/PlaylumiVillageHit.ART_H;
+            float[] corrected=PlaylumiVillageHit.avatarCompensation(sx,sy);
+            assertEquals(126*sx*corrected[0],126*sy*corrected[1],.001f);
+            assertTrue(corrected[0]<=1f&&corrected[1]<=1f);
+        }
+    }
     @Test public void foldableLandscapeUsesContainedArt() {
         float[] box=PlaylumiVillageHit.destination(1800,1300);
         assertTrue(box[0]>0);
