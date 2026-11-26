@@ -7,8 +7,9 @@ public final class PlaylumiSpeechText {
         String question=clean(prompt);
         if(display==null||display.startsWith("clock:")||display.startsWith("pattern:"))return question;
         if(mode==ExtraGames.MATH||mode==ExtraGames.SEQUENCES||mode==22||
-                mode==23&&variant!=2||mode==16&&variant>=1&&variant<=3||mode==19&&variant==4){
-            String problem=clean(display);
+                mode==23&&variant!=2||mode==16&&variant>=1&&variant<=3||mode==19&&variant==4||
+                mode==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(display)){
+            String problem=clean(display.replace("…"," leeg vak "));
             if(!problem.isEmpty())return question+". "+problem;
         }
         return question;

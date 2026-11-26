@@ -11,13 +11,21 @@ import android.view.View;
 public final class PlaylumiPatternView extends View {
     private final String[] tokens;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int completed=-1;
     public PlaylumiPatternView(Context context,String display){
-        super(context);tokens=PlaylumiPatterns.tokens(display);
+        super(context);tokens=PlaylumiPatterns.tokens(display);describe();
+    }
+    public void complete(String value){
+        if(completed>=0||!(PlaylumiPatterns.colorIndex(value)>=0||java.util.Arrays.asList(LearningGame.SHAPE_SYMBOLS).contains(value)))return;
+        for(int i=0;i<tokens.length;i++)if("?".equals(tokens[i])){tokens[i]=value;completed=i;describe();invalidate();return;}
+    }
+    private void describe(){
         StringBuilder description=new StringBuilder("Patroon: ");
         for(String token:tokens){
             int index=PlaylumiPatterns.colorIndex(token);
             description.append(index>=0?LearningGame.COLOR_NAMES[index]:"?".equals(token)?"ontbreekt":token).append(", ");
         }
+        if(completed>=0)description.append("Ontbrekend vak ingevuld.");
         setContentDescription(description.toString());
     }
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
@@ -51,6 +59,10 @@ public final class PlaylumiPatternView extends View {
                 paint.setTypeface(Typeface.DEFAULT_BOLD);paint.setColor(0xff432467);
                 paint.setTextAlign(Paint.Align.CENTER);paint.setTextSize(radius*1.65f);
                 c.drawText(token,x,y-(paint.ascent()+paint.descent())/2f,paint);
+            }
+            if(i==completed){
+                paint.setStyle(Paint.Style.STROKE);paint.setColor(0xff278653);paint.setStrokeWidth(dp(3));
+                c.drawRoundRect(new RectF(x-radius-dp(3),y-radius-dp(3),x+radius+dp(3),y+radius+dp(3)),dp(8),dp(8),paint);
             }
         }
         paint.setStyle(Paint.Style.FILL);

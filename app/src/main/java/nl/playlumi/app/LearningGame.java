@@ -14,8 +14,8 @@ public final class LearningGame {
     public static final int[] COLOR_VALUES = {0xffd93646, 0xff2472c8, 0xff2b994f, 0xffd0a000, 0xff894bc1, 0xffdf7623};
     public static final String[] SHAPE_NAMES = {"cirkel", "vierkant", "driehoek", "ruit", "ster", "hart"};
     public static final String[] SHAPE_SYMBOLS = {"●", "■", "▲", "◆", "★", "♥"};
-    public static final String[] UPPER = {"A", "B", "M", "S", "O", "P", "K", "T", "L", "R"};
-    public static final String[] LOWER = {"a", "b", "m", "s", "o", "p", "k", "t", "l", "r"};
+    public static final String[] UPPER = {"A","B","M","S","O","P","K","T","L","R","D","E","F","G","H","I","N","U","C","J","Q","V","W","X","Y","Z"};
+    public static final String[] LOWER = {"a","b","m","s","o","p","k","t","l","r","d","e","f","g","h","i","n","u","c","j","q","v","w","x","y","z"};
     public static final String[] OBJECTS = {"★", "✿", "●", "♥", "◆", "☀"};
     public static final String[] OBJECT_NAMES = {"sterren", "bloemen", "ballen", "hartjes", "ruiten", "zonnetjes"};
     private final Random random;
@@ -177,10 +177,16 @@ public final class LearningGame {
         else make("Tik op " + COLOR_NAMES[correct], "🎨", 0xff34495e, answers, paints, COLOR_NAMES[correct]);
     }
     private void makeLetters() {
-        int count = pool(UPPER.length), correct = pick(count);
-        boolean lowercase = variant == 0;
-        String[] source = lowercase ? LOWER : UPPER;
-        List<String> answers = shuffled(source, count);
+        int count=level==0?3:level==1?4:6, available=level==0?10:level==1?18:UPPER.length;
+        int correct=pick(available);
+        boolean lowercase=variant==0;
+        String[] source=lowercase?LOWER:UPPER;
+        List<String> others=new ArrayList<>();
+        for(int i=0;i<available;i++)if(i!=correct)others.add(source[i]);
+        Collections.shuffle(others,random);
+        List<String> answers=new ArrayList<>();answers.add(source[correct]);
+        for(int i=0;i<count-1;i++)answers.add(others.get(i));
+        Collections.shuffle(answers,random);
         make(lowercase ? "Zoek de kleine letter" : "Zoek de hoofdletter",
                 lowercase ? UPPER[correct] : LOWER[correct], 0xff574a9e,
                 answers, clearColors(answers.size()), source[correct]);
@@ -237,7 +243,7 @@ public final class LearningGame {
     private void makeWords() {
         int index = pick(ANIMALS[level].length);
         String word = ANIMALS[level][index];
-        int missing = variant == 0 ? word.length() / 2 : (level == 0 ? 0 : word.length() - 1);
+        int missing=variant==0?(level==2?1+pick(word.length()-2):word.length()/2):(level==0?0:word.length()-1);
         String correct = String.valueOf(word.charAt(missing));
         String display = ICONS[level][index] + "\n" + word.substring(0, missing) + "_" + word.substring(missing + 1);
         List<String> answers = new ArrayList<>();

@@ -144,6 +144,33 @@ public final class ReleaseCandidateCheck {
         require(game.round().isRejected(wrong)&&!game.round().choose(wrong),"wrong choice restored");
         require(game.round().choose(game.round().correctIndex)&&!PlaylumiQuizCoach.explain(ExtraGames.MATH,0,game.round()).isEmpty(),"solved explanation");
         System.out.println("PASS: "+searches+" search scopes and rejected-answer restoration.");
+        Set<String> spellingSentences=new HashSet<>();
+        for(int i=0;i<2500;i++){
+            LearningGame.Round r=PlaylumiSpellingPractice.next(RNG);
+            String answer=r.answers.get(r.correctIndex);
+            require(PlaylumiSpellingPractice.isContext(r.display)&&r.display.indexOf('…')==r.display.lastIndexOf('…'),"spelling context");
+            require(answer.equals(PlaylumiSpellingPractice.answerFor(r.display))&&r.answers.size()==4&&new HashSet<>(r.answers).size()==4,"spelling options");
+            require(!PlaylumiSpellingPractice.hint(r.display).isEmpty(),"spelling hint");
+            require(PlaylumiQuizCoach.explain(ExtraGames.SPELLING,0,r).isEmpty(),"premature explanation");
+            require(r.choose(r.correctIndex)&&!PlaylumiQuizCoach.explain(ExtraGames.SPELLING,0,r).isEmpty(),"spelling explanation");
+            spellingSentences.add(r.display);
+        }
+        require(spellingSentences.size()==PlaylumiSpellingPractice.count(),"spelling sentence coverage");
+        for(int age=0;age<3;age++)for(int variant=0;variant<2;variant++){
+            Set<String> letters=new HashSet<>();
+            game.configure(LearningGame.LETTERS,variant,age);
+            for(int i=0;i<600;i++){
+                LearningGame.Round r=game.round();
+                String answer=r.answers.get(r.correctIndex);
+                require(answer.equalsIgnoreCase(r.display)&&!answer.equals(r.display),"letter case");
+                require(r.answers.size()==(age==0?3:age==1?4:6),"letter choices");
+                letters.add(r.display);game.nextRound();
+            }
+            require(letters.size()==(age==0?10:age==1?18:26),"letter variety");
+        }
+        require(PlaylumiQuizPace.delay(PlaylumiQuizPace.MANUAL,false,"")<0,"manual pace");
+        require(PlaylumiQuizPace.delay(PlaylumiQuizPace.CALM,true,"uitleg")>PlaylumiQuizPace.delay(PlaylumiQuizPace.AUTO,true,"uitleg"),"calm pace");
+        System.out.println("PASS: 2,500 spelling questions across "+spellingSentences.size()+" contexts; 3,600 letter questions; quiz pace settings.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");

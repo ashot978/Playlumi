@@ -54,7 +54,7 @@ public final class PlaylumiGameCatalog {
             q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
         }
         if(a>=2){
-            q(list,1,ExtraGames.SPELLING,0,"Spelling","Kies het goed geschreven woord","Ab");
+            q(list,1,ExtraGames.SPELLING,0,"Spelling","Maak een zin af met het goed gespelde woord","Ab");
             q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Vul de laatste letter in of zoek een woord met dezelfde eindletter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
             q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","✦");

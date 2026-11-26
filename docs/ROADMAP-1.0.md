@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.2 / build 600992. Test build, not a production launch.
+Status: 0.99.3 / build 600993. Test build, not a production launch.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -30,9 +30,17 @@ Status: 0.99.2 / build 600992. Test build, not a production launch.
 - [x] Dedicated complete list of unfinished games ordered by recent use.
 - [x] Optional strategy hints, previously attempted answer state and explanations after solving; automatic next question remains.
 - [x] More compact short-answer layouts and filled numeric sequences after solving.
-- [ ] Full release gate, APK signature, unit tests and lint.
+- [x] 0.99.2 release gate, APK signature, full unit tests and lint passed on Actions run 45897467652.
 - [ ] Manual acceptance of search, answer selection and Fold layout.
 
+## 0.99.3: learning depth and pace
+- [x] 28 curated Dutch spelling contexts for the oldest age tier, with specific hints and explanations.
+- [x] Letter matching draws from 10, 18 or 26 letters according to level; still only 3, 4 or 6 choices.
+- [x] More missing-letter positions and complete visual patterns after solving.
+- [x] Automatic, calm and manual quiz progression per profile; existing automatic mode remains default.
+- [x] Additional 2,500 spelling and 3,600 letter regression samples and pacing checks.
+- [ ] Verify full build, signature, unit tests, lint and real-device interaction.
+ 
 ## 0.99.x: remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
 - [ ] Verify navigation, fold/unfold, rotation, back, multi-profile isolation and parent gate.

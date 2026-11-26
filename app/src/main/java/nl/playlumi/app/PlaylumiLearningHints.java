@@ -12,7 +12,9 @@ public final class PlaylumiLearningHints {
             case LearningGame.NUMBERS:return "Tel rustig of lees het getal.";
             case LearningGame.PATTERNS:return "Zoek het groepje dat zich herhaalt.";
             case LearningGame.WORDS:return "Lees het woord langzaam.";
-            case ExtraGames.SPELLING:return "Kijk naar alle letters in het woord.";
+            case ExtraGames.SPELLING:
+                String spelling=PlaylumiSpellingPractice.hint(display);
+                return spelling.isEmpty()?"Kijk naar alle letters in het woord.":spelling;
             case ExtraGames.FIRST_LAST:
                 if(PlaylumiLetterChallenges.MATCH_LAST.equals(prompt))return "Bedenk de laatste letter. Zoek een woord dat ook zo eindigt.";
                 if(PlaylumiLetterChallenges.MATCH_FIRST.equals(prompt))return "Bedenk de eerste letter. Zoek een woord dat ook zo begint.";
