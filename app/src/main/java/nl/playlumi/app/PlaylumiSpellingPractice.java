@@ -16,7 +16,7 @@ public final class PlaylumiSpellingPractice {
         {"De … ligt in het water.","boot","bot","bood","bootd","Denk aan meer dan één.","Boot wordt boten. Je hoort de t."},
         {"Ik fiets over de … naar huis.","brug","bruch","brugg","bruh","Denk aan het meervoud.","Brug wordt bruggen."},
         {"We reizen met de … naar de stad.","trein","trijn","trejn","treinn","Let op ei of ij.","Trein schrijf je met ei."},
-        {"Ik eet een … bij het ontbijt.","ei","ij","eij","ey","Let op ei of ij.","Een ei schrijf je met ei."},
+        {"We koken twee … voor het ontbijt.","eieren","ijeren","eijeren","eiren","Let op ei of ij.","Ei en eieren schrijf je met ei."},
         {"De … schijnt door het raam.","zon","son","zonn","zohn","Luister naar de eerste klank.","Zon begint met z."},
         {"De … springt in de vijver.","kikker","kiker","kikkur","kikerr","Hoor je een korte i?","Na de korte i schrijf je dubbel k."},
         {"We … door de plassen.","rennen","renen","rennun","rènnen","Hoor je een korte e?","Na de korte e schrijf je dubbel n."},
