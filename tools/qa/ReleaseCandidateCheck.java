@@ -236,6 +236,22 @@ public final class ReleaseCandidateCheck {
             }
         }
         System.out.println("PASS: "+advancedMath+" additional advanced arithmetic rounds.");
+        int completionChecks=0;
+        for(int age=0;age<3;age++){
+            Set<String> marks=new HashSet<>();
+            for(PlaylumiGameCatalog.Entry entry:PlaylumiGameCatalog.entries(age)){
+                require(!PlaylumiCompletion.record(marks,age,entry,1,2),"partial completion");
+                boolean eligible=PlaylumiCompletion.eligible(entry);
+                require(PlaylumiCompletion.record(marks,age,entry,2,2)==eligible,"finished route");
+                require(!PlaylumiCompletion.record(marks,age,entry,2,2),"duplicate completion");
+                completionChecks++;
+            }
+            require(PlaylumiCompletion.completed(age,marks).size()==marks.size(),"completion list");
+            for(int other=0;other<3;other++)if(other!=age)require(!PlaylumiCompletion.key(age).equals(PlaylumiCompletion.key(other)),"age scope");
+        }
+        require(PlaylumiCompletion.baseStars(8)==24&&PlaylumiCompletion.baseStars(1)==3,"base rewards");
+        require(PlaylumiCompletion.medalSize(400)<PlaylumiCompletion.medalSize(900),"compact medal");
+        System.out.println("PASS: "+completionChecks+" catalog completion and replay checks.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");

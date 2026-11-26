@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.5 / build 600995. Test build, not a production launch.
+Status: 0.99.6 / build 600996. Test build, not a production launch.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -56,7 +56,17 @@ Status: 0.99.5 / build 600995. Test build, not a production launch.
 - [x] Separate route IDs retain existing arithmetic, favorites, and save slots.
 - [x] Correct quiz hints, explanations, speech operators and restored variant selection.
 - [x] Additional 3,600 advanced arithmetic regression samples.
-- [ ] Full build, signature, Android unit tests, lint and real-device acceptance.
+- [x] 0.99.5 full build, signature, Android unit tests and lint verified on Actions run 45901750270.
+- [ ] Real-device acceptance.
+
+## 0.99.6: completion and celebration
+- [x] Reusable responsive completion panel for quizzes, story missions, minigames, music, stars and interactive boards.
+- [x] Display base round reward and actual saved wallet balance separately; rendering cannot grant currency.
+- [x] New persistent per-profile and age-specific completion marks, dedicated library filter, and count in achievements.
+- [x] Mark only completed catalog routes after the existing reward event; no guessed backfill for previous versions.
+- [x] Reuse scalable medal artwork and adapt medal size to screen height.
+- [x] Additional catalog completion and replay checks.
+- [ ] Verify full CI, signing and physical layout, including long labels and Fold.
 
 ## 0.99.x: remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
