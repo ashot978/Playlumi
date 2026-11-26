@@ -57,6 +57,7 @@ public final class PlaylumiVillageView extends View {
     private final int starBalance;
     private final int avatar;
     private final int[] outfit;
+    private final int playStreak;
     private int discovered;
     private int pressed=-1;
     private float downX,downY;
@@ -67,8 +68,9 @@ public final class PlaylumiVillageView extends View {
     private final long created=SystemClock.uptimeMillis();
 
     public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar){this(context,listener,profile,stars,avatar,null);}
-    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit) {
-        super(context);this.outfit=outfit==null?null:outfit.clone();
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit){this(context,listener,profile,stars,avatar,outfit,0);}
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit,int playStreak) {
+        super(context);this.outfit=outfit==null?null:outfit.clone();this.playStreak=Math.max(0,playStreak);
         this.listener=listener;
         this.profileNumber=Math.max(0,profile);
         this.starBalance=Math.max(0,stars);
@@ -137,7 +139,7 @@ public final class PlaylumiVillageView extends View {
         c.save();c.translate(75,166);c.scale(round[0],round[1]);
         PlaylumiAvatar.draw(c,-63,-63,126,avatar,outfit);c.restore();
         text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
-        text(c,"Kies je maatje",225,192,21,Color.WHITE);
+        text(c,playStreak>0?"🔥 "+playStreak+(playStreak==1?" speeldag":" dagen op rij"):"Kies je maatje",225,192,playStreak>99?17:21,Color.WHITE);
     }
     private void drawGameTab(Canvas c){
         // Same home artwork and original hit zone. Only the former Missions label
