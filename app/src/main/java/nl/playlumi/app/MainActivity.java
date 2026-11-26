@@ -117,7 +117,7 @@ public class MainActivity extends Activity {
     // Tracks which village building started a screen, so Back returns logically.
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
-    private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5;
+    private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5,LIBRARY_COMPLETED=-6;
     private String libraryQuery="";
     private TextView quizTip;
     private boolean finalFeedbackPending;
@@ -650,6 +650,12 @@ public class MainActivity extends Activity {
         }
         summary.addView(metrics,new LinearLayout.LayoutParams(-1,-2));
         homeAdd(summary,text("Speel wanneer je zin hebt. Je trofeeën blijven altijd van jou.",14,SUB),5,2);
+        int completeCount=PlaylumiCompletion.completed(age,completedRoutes()).size();
+        homeAdd(summary,text("✓ "+completeCount+" verschillende spellen afgerond",17,0xff286e54),5,3);
+        homeAdd(summary,text("Voltooide spellen worden vanaf 0.99.6 bijgehouden, per leeftijd.",12,SUB),0,3);
+        TextView allCompleted=homeAction("Bekijk mijn voltooide spellen",true,()->{});
+        libraryClick(allCompleted,"Bekijk mijn voltooide spellen",()->openLibrary(LIBRARY_COMPLETED));
+        homeAdd(summary,allCompleted,2,0);
         addWidget(summary,3,7);
         LinearLayout filters=new LinearLayout(this);filters.setGravity(Gravity.CENTER);
         String[] filterNames={"Alle ("+PlaylumiAchievements.ALL.length+")","Behaald ("+Long.bitCount(mask)+")","Nog te ontdekken"};
@@ -1648,6 +1654,15 @@ public class MainActivity extends Activity {
         return entry.kind==PlaylumiGameCatalog.QUIZ?"library_quiz_resume":
                 entry.kind==PlaylumiGameCatalog.INTERACTIVE?"library_interactive_resume":null;
     }
+    private java.util.Set<String> completedRoutes(){
+        return librarySet(PlaylumiCompletion.key(age));
+    }
+    private void recordCompletion(PlaylumiGameCatalog.Entry entry,int done,int total){
+        if(!libraryReturn||entry==null)return;
+        java.util.Set<String> completed=completedRoutes();
+        if(PlaylumiCompletion.record(completed,age,entry,done,total))
+            prefs().edit().putStringSet(PlaylumiCompletion.key(age),completed).apply();
+    }
     private void rememberCatalog(PlaylumiGameCatalog.Entry entry){
         if(entry==null)return;
         java.util.Set<String> played=librarySet("library_played");played.add(entry.id);
@@ -1966,6 +1981,9 @@ public class MainActivity extends Activity {
         final ArrayList<Button> buttons=new ArrayList<>();
         final Button again=tile("Nog eens spelen!","",0xffd5f5df,64);
         final Button back=tile("Andere spellen","",0xffe8d9ff,64);
+        final LinearLayout victory=new LinearLayout(this);victory.setOrientation(LinearLayout.VERTICAL);
+        addWidget(victory,3,6);
+        if(round.solved())victory.addView(completionPanel(PlaylumiInteractive.TITLES[round.kind],round.kind==PlaylumiInteractive.NUMBERS?"🚀":round.kind==PlaylumiInteractive.LETTERS?"🚂":round.kind==PlaylumiInteractive.HABITATS?"🐾":"🎨",round.total(),1),new LinearLayout.LayoutParams(-1,-2));
         final LinearLayout finish=finishActions(again,back,round.solved());
         again.setOnClickListener(v->startInteractive(round.kind));back.setOnClickListener(v->move(LIBRARY));
         LinearLayout row=null;
@@ -2000,8 +2018,11 @@ public class MainActivity extends Activity {
                         ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
                         lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
                         saveWardrobe();saveScore(category);
+                        recordCompletion(PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.INTERACTIVE,round.kind,0),round.progress(),round.total());
                         interactiveMessage="🌟 Knap gedaan! +"+(PlaylumiWardrobe.STARS_FOR_ANSWER+badges.size()*PlaylumiWardrobe.STARS_FOR_BADGE)+" speelsterren";
                         for(Button b:buttons)b.setEnabled(false);
+                        victory.removeAllViews();
+                        victory.addView(completionPanel(PlaylumiInteractive.TITLES[round.kind],round.kind==PlaylumiInteractive.NUMBERS?"🚀":round.kind==PlaylumiInteractive.LETTERS?"🚂":round.kind==PlaylumiInteractive.HABITATS?"🐾":"🎨",round.total(),1),new LinearLayout.LayoutParams(-1,-2));
                         showFinishActions(finish,true);PlaylumiDelight.sprinkle(stage,board);
                     }
                 }else{
@@ -2165,11 +2186,16 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(item,lp);
         }
         addWidget(row,1,4);
+        int count=PlaylumiCompletion.completed(age,completedRoutes()).size();
+        TextView collection=homeAction("✓ Voltooide spellen ("+count+")",libraryFilter==LIBRARY_COMPLETED,()->{});
+        libraryClick(collection,"Bekijk "+count+" voltooide spellen",()->libraryFilter(LIBRARY_COMPLETED));
+        addWidget(collection,0,4);
     }
     private void renderLibraryBody(){
         header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:
                 libraryFilter==PlaylumiGameCatalog.FAVORITES?"Mijn favorieten":
                 libraryFilter==LIBRARY_SEARCH?"Spellen zoeken":libraryFilter==LIBRARY_RESUME?"Verder spelen":
+                libraryFilter==LIBRARY_COMPLETED?"Voltooide spellen":
                 libraryFilter==PlaylumiGameCatalog.ALL?"Alle spellen":"Spellen","");
         addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
         java.util.Set<String> favorites=librarySet("library_favorites");
@@ -2244,10 +2270,11 @@ public class MainActivity extends Activity {
             libraryWorldStrip();
         }else if(libraryFilter==PlaylumiGameCatalog.ALL)libraryWorldStrip();
         java.util.List<PlaylumiGameCatalog.Entry> entries=libraryFilter==LIBRARY_SEARCH?PlaylumiLibrarySearch.find(age,libraryQuery):
-                libraryFilter==LIBRARY_RESUME?inProgress:PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
+                libraryFilter==LIBRARY_RESUME?inProgress:libraryFilter==LIBRARY_COMPLETED?
+                PlaylumiCompletion.completed(age,completedRoutes()):PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
         if(libraryFilter==LIBRARY_SEARCH){
             librarySection(libraryQuery.isEmpty()?"Alle zoekresultaten":"Zoekresultaten: "+libraryQuery,entries.size()+(entries.size()==1?" spel":" spellen"));
-        }else librarySection(libraryFilter==LIBRARY_RESUME?"Jouw bewaarde rondes":libraryFilter==PlaylumiGameCatalog.FAVORITES?"Jouw lievelingsspellen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
+        }else librarySection(libraryFilter==LIBRARY_COMPLETED?"Jouw afgeronde avonturen":libraryFilter==LIBRARY_RESUME?"Jouw bewaarde rondes":libraryFilter==PlaylumiGameCatalog.FAVORITES?"Jouw lievelingsspellen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
         if(libraryFilter==LIBRARY_RESUME&&!entries.isEmpty()){
             for(PlaylumiGameCatalog.Entry entry:entries)addWidget(libraryGameCard(entry,favorites,played,false),1,3);
             return;
@@ -2266,7 +2293,8 @@ public class MainActivity extends Activity {
         if(entries.isEmpty()){
             favoriteEditMode=false;
             addText(libraryFilter==LIBRARY_SEARCH?"Geen spellen gevonden. Probeer een ander woord.":libraryFilter==LIBRARY_RESUME?
-                    "Je hebt nog geen onafgemaakte spellen. Kies een nieuw avontuur.":"Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
+                    "Je hebt nog geen onafgemaakte spellen. Kies een nieuw avontuur.":libraryFilter==LIBRARY_COMPLETED?
+                    "Hier komen de spellen die je vanaf deze update afrondt. Je oude sterren en trofeeën blijven bewaard.":"Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
             Button discover=tile("Ontdek alle spellen","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
             return;
         }
@@ -2295,6 +2323,7 @@ public class MainActivity extends Activity {
         card.setMinimumHeight(dp(wide?138:82));
         org.json.JSONObject snapshot=libraryResume(entry);
         boolean resume=snapshot!=null;
+        boolean completed=completedRoutes().contains(entry.id)&&PlaylumiCompletion.eligible(entry);
         LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView icon=text(entry.icon,wide?29:25,PlaylumiMagicArt.INK);
         icon.setBackground(PlaylumiMagicArt.gemButton(this,entry.world));icon.setIncludeFontPadding(false);
@@ -2303,6 +2332,10 @@ public class MainActivity extends Activity {
         labels.setPadding(dp(8),0,dp(3),0);
         TextView name=text(entry.title,17,PlaylumiMagicArt.CREAM);name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         name.setGravity(Gravity.START);labels.addView(name,new LinearLayout.LayoutParams(-1,-2));
+        if(completed){
+            TextView marker=homeLabel("✓ Voltooid",12,0xffc9ffdc,true);
+            labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
+        }
         if(!wide){
             TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);labels.addView(description);
         }
@@ -2335,7 +2368,7 @@ public class MainActivity extends Activity {
             TextView action=text(resume?resumeLabel:played.contains(entry.id)?"▶ Opnieuw spelen":"▶ Spelen",12,PlaylumiMagicArt.GOLD);
             action.setGravity(Gravity.START);labels.addView(action);
         }
-        if(!editing)libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title,()->{
+        if(!editing)libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title+(completed?", eerder voltooid":""),()->{
             if(favoriteList&&SystemClock.uptimeMillis()<favoriteReadyAt)return;
             launchCatalog(entry,resume);
         });
@@ -2575,7 +2608,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.5 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.6 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -3061,6 +3094,7 @@ public class MainActivity extends Activity {
             wardrobe.earnAnswer();
             wardrobe.earnBadges(newBadges.size());
             saveWardrobe();
+            if(storyStage<0)recordCompletion(learningEntry,sessionSolved,sessionGoal());
             pendingBadges.addAll(newBadges);
             if(!newBadges.isEmpty())feedbackText.setText(feedback+"  🏅");
             scheduleAutoAdvance();
@@ -3101,6 +3135,41 @@ public class MainActivity extends Activity {
         feedback="";
         move(PLAY);
     }
+    /** Presentation only: never award currency or increment progress while rendering. */
+    private LinearLayout completionPanel(String title,String icon,int solved,int rewarded){
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12),dp(12),dp(12),dp(10));
+        GradientDrawable gradient=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xfffff9e4,0xffffe6ac,0xffeee0ff});
+        gradient.setCornerRadius(dp(22));gradient.setStroke(dp(2),0xffdca953);card.setBackground(gradient);
+        int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
+        boolean side=PlaylumiCompletion.sideBySide(width,height);
+        LinearLayout heading=new LinearLayout(this);heading.setOrientation(side?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);heading.setGravity(Gravity.CENTER);
+        PlaylumiMedal medal=new PlaylumiMedal(this,icon,true,Math.max(0,worldTheme())%3);
+        int size=PlaylumiCompletion.medalSize(height);
+        LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(size),dp(size));mp.gravity=Gravity.CENTER;
+        heading.addView(medal,mp);
+        LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);labels.setGravity(Gravity.CENTER);
+        if(side)heading.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));else heading.addView(labels,new LinearLayout.LayoutParams(-1,-2));
+        homeAdd(labels,text("Avontuur voltooid!",21,0xff583477),0,2);
+        homeAdd(labels,text(title,17,0xff583477),0,3);
+        homeAdd(labels,text(solved+" / "+solved+" klaar",16,0xff27684d),0,3);
+        card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
+        PlaylumiStarTrail stars=new PlaylumiStarTrail(this,Math.max(1,Math.min(12,solved)),Math.max(1,Math.min(12,solved)));
+        stars.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(stars,new LinearLayout.LayoutParams(-1,dp(30)));
+        LinearLayout totals=new LinearLayout(this);totals.setGravity(Gravity.CENTER);totals.setOrientation(LinearLayout.HORIZONTAL);
+        String[] values={"+ "+PlaylumiCompletion.baseStars(rewarded)+" ★",""+wardrobe.stars()+" ★"};
+        String[] labelsText={"Basisbeloning","Jouw sterrenpot"};
+        for(int j=0;j<2;j++){
+            LinearLayout metric=new LinearLayout(this);metric.setOrientation(LinearLayout.VERTICAL);metric.setGravity(Gravity.CENTER);
+            metric.setPadding(dp(3),dp(7),dp(3),dp(7));metric.setBackground(rounded(0xfffff8e8,12));
+            homeAdd(metric,text(values[j],22,0xff855b24),0,1);homeAdd(metric,text(labelsText[j],12,0xff67477c),0,0);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);totals.addView(metric,lp);
+        }
+        homeAdd(card,totals,4,3);
+        homeAdd(card,text("Extra badges staan apart. Je sterren zijn al opgeslagen.",12,0xff60446f),2,1);
+        return card;
+    }
     private void showCompleted() {
         final FrameLayout finishedScreen=stage;
         finishedScreen.post(()->{
@@ -3108,10 +3177,7 @@ public class MainActivity extends Activity {
         });
         if(storyStage>=0) {
             header("Avontuur klaar!","");
-            characterHero(172);
-            addText(PlaylumiAdventure.ICONS[world][storyStage]+"  "+
-                    PlaylumiAdventure.TITLES[world][storyStage],24,0xff543c97,12,8);
-            addText("Je hebt "+sessionGoal()+" uitdagingen opgelost!",17,SUB,0,10);
+            addWidget(completionPanel(PlaylumiAdventure.TITLES[world][storyStage],PlaylumiAdventure.ICONS[world][storyStage],sessionGoal(),sessionGoal()),3,5);
             if(storyNewReward)addText("🎁 +"+PlaylumiAdventure.BONUS+" extra speelsterren!",19,0xff27866b,0,12);
             Button map=tile("🗺️ Verder op avontuur!","",0xffd2f4dd,93);
             map.setOnClickListener(v->{
@@ -3128,9 +3194,11 @@ public class MainActivity extends Activity {
             return;
         }
         header("Knap gedaan!","");
-        characterHero(145);
-        addText("🌟 "+sessionGoal()+" vragen goed!",27,0xff4b3488,9,9);
-        addText("Je hebt iets nieuws geoefend. Kies een volgend spel of speel nog eens.",17,SUB,0,12);
+        PlaylumiGameCatalog.Entry entry=currentLearningEntry();
+        addWidget(completionPanel(entry==null?LearningGame.GAME_NAMES[game.mode()]:entry.title,
+                PlaylumiPremiumLayout.emblem(game.mode(),game.variant()),sessionGoal(),sessionGoal()),3,6);
+        characterHero(102);
+        addText("Goed geoefend! Je mag stoppen of nog een avontuur kiezen.",15,PlaylumiMagicArt.CREAM,0,8);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
         PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{
@@ -3161,11 +3229,14 @@ public class MainActivity extends Activity {
     }
     private void showReward() {
         header("🎉 Nieuwe badge!","");
-        TextView badgeIcon=text(PlaylumiScores.BADGE_ICONS[earnedBadge],
-                77,0xffc68823);
+        PlaylumiMedal badgeIcon=new PlaylumiMedal(this,PlaylumiScores.BADGE_ICONS[earnedBadge],true,earnedBadge%3);
+        badgeIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         badgeIcon.setContentDescription("Je hebt een nieuwe badge! Tik om te fonkelen.");
         badgeIcon.setFocusable(true);badgeIcon.setClickable(true);
-        addWidget(badgeIcon,12,5);
+        LinearLayout badgeHolder=new LinearLayout(this);badgeHolder.setGravity(Gravity.CENTER);
+        int medalSize=PlaylumiCompletion.medalSize(getResources().getConfiguration().screenHeightDp)+20;
+        badgeHolder.addView(badgeIcon,new LinearLayout.LayoutParams(dp(medalSize),dp(medalSize)));
+        addWidget(badgeHolder,10,5);
         PlaylumiDelight.invite(badgeIcon);
         badgeIcon.setOnClickListener(v->{
             sound.sparkle();
@@ -3470,8 +3541,7 @@ public class MainActivity extends Activity {
         header(miniRound>=20?"Knap gedaan!":miniTitle,miniRound>=20?"":Math.min(miniRound+1,20)+"/20");
         addIllustratedPortal(worldTheme(),PlaylumiWorldStyle.NAMES[worldTheme()],116);
         if(miniRound>=20) {
-            characterHero(150);
-            addText("🎉 Alle uitdagingen gespeeld!",25,0xff4e3889,13,9);
+            addWidget(completionPanel(miniTitle,miniKind==PlaylumiMiniChallenge.MEMORY?"🐾":miniKind==PlaylumiMiniChallenge.DRAG?"◆":"🎈",20,20),3,6);
             Button again=tile("🔄 Nog eens spelen!","",0xffd4f5e0,96);
             again.setOnClickListener(v->{
                 miniRound=0;miniSolved=false;
@@ -3491,7 +3561,7 @@ public class MainActivity extends Activity {
                 if(page!=MINI_PLAY||moving||!autoRoundVisible||miniSolved)return;
                 stopSpeech();miniSolved=true;
                 if(playPal!=null)playPal.dance();
-                recordMiniAnswer();saveLibrarySpecial(MINI_PLAY);
+                recordMiniAnswer();recordCompletion(specialEntry(MINI_PLAY),miniRound+1,20);saveLibrarySpecial(MINI_PLAY);
                 scheduleAutoAdvance();
                 PlaylumiMotion.celebrate(stage,miniRound+1);
             }
@@ -4230,8 +4300,7 @@ public class MainActivity extends Activity {
         header("Sterren vangen",Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+"/"+PlaylumiStarCatch.ROUNDS);
         addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Vang de sterren",98);
         if(starCatchRound>=PlaylumiStarCatch.ROUNDS){
-            characterHero(140);
-            addText("🏆 Alle sterren gevangen!",24,0xff59438f,8,12);
+            addWidget(completionPanel("Sterren vangen","⭐",PlaylumiStarCatch.ROUNDS,PlaylumiStarCatch.ROUNDS),3,6);
             Button again=tile("🌟 Speel nog eens","",0xffd4f4e2,88);
             again.setOnClickListener(v->{starCatchRound=0;starCatchSolved=false;starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());move(STAR_CATCH);});
             Button back=tile("🎪 Andere spelletjes","",0xffe8dfff,80);
@@ -4256,7 +4325,8 @@ public class MainActivity extends Activity {
                 int category=LearningGame.COUNT;
                 ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
                 lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
-                saveWardrobe();saveScore(category);pendingBadges.addAll(badges);saveLibrarySpecial(STAR_CATCH);
+                saveWardrobe();saveScore(category);pendingBadges.addAll(badges);
+                recordCompletion(specialEntry(STAR_CATCH),starCatchRound+1,PlaylumiStarCatch.ROUNDS);saveLibrarySpecial(STAR_CATCH);
                 sound.good();
                 if(playPal!=null)playPal.dance();
                 PlaylumiMotion.celebrate(stage,starCatchRound+1);
@@ -4280,8 +4350,7 @@ public class MainActivity extends Activity {
         header("🫧 Het Bellenfeest","Ronde "+Math.min(bubbleRound+1,20)+" van 20");
         addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Bellenfeest",96);
         if(bubbleRound>=20) {
-            characterHero(170);
-            addText("🎉 Wat een bubbelkampioen!",25,0xff63458c,10,10);
+            addWidget(completionPanel("Bellenfeest","🫧",20,20),3,6);
             Button again=tile("🫧 Nog meer bellen!","",0xffd3f4df,99);
             again.setOnClickListener(v->{
                 bubbleRound=0;bubbleSolved=false;
@@ -4309,7 +4378,7 @@ public class MainActivity extends Activity {
                 wardrobe.earnAnswer();
                 wardrobe.earnBadges(badges.size());
                 saveWardrobe();saveScore(category);
-                pendingBadges.addAll(badges);saveLibrarySpecial(BUBBLE_PLAY);
+                pendingBadges.addAll(badges);recordCompletion(specialEntry(BUBBLE_PLAY),bubbleRound+1,20);saveLibrarySpecial(BUBBLE_PLAY);
                 sound.good();
                 PlaylumiMotion.celebrate(stage,bubbleRound+1);
                 scheduleAutoAdvance();
@@ -4461,8 +4530,7 @@ public class MainActivity extends Activity {
         addIllustratedPortal(PlaylumiVillageView.MUSIC,"Muziekstudio",116);
         addMagicProgress(melodyRound,PlaylumiMelody.ROUNDS,false);
         if(melodyRound>=PlaylumiMelody.ROUNDS) {
-            characterHero(170);
-            addText("🏆 Wat een muzikale ster!",26,0xff61418f,10,14);
+            addWidget(completionPanel(melodyVariant==2?"Geheugenconcert":melodyVariant==1?"Lange melodie":"Muziekstudio","♫",PlaylumiMelody.ROUNDS,PlaylumiMelody.ROUNDS),3,6);
             Button again=tile("🎶 Nog eens muziek maken","",0xffd4f3dd,96);
             again.setOnClickListener(v->{
                 melodyRound=0;melodySolved=false;
@@ -4542,7 +4610,7 @@ public class MainActivity extends Activity {
             wardrobe.earnAnswer();
             wardrobe.earnBadges(badges.size());
             saveWardrobe();saveScore(LearningGame.PATTERNS);
-            pendingBadges.addAll(badges);saveLibrarySpecial(MUSIC_PLAY);
+            pendingBadges.addAll(badges);recordCompletion(specialEntry(MUSIC_PLAY),melodyRound+1,PlaylumiMelody.ROUNDS);saveLibrarySpecial(MUSIC_PLAY);
             sound.good();
             PlaylumiDelight.sprinkle(stage,pressed);
             scheduleAutoAdvance();
