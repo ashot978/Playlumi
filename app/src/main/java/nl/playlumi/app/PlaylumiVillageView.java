@@ -42,7 +42,7 @@ public final class PlaylumiVillageView extends View {
     private static final String[] NAMES={
             "Rekenraket","Letterhuis","Vormkasteel","Muziekstudio",
             "Speelplein","Kleurentuin","Maatje","Ouderzone",
-            "Missies","Beloningen","Home","Collectie","Profiel","Instellingen",
+            "Spellen","Beloningen","Home","Collectie","Profiel","Instellingen",
             "Sterren","Ontdekte gebouwen","Maatje"
     };
     private static final float[][] DISCOVERED_AT={
@@ -179,6 +179,8 @@ public final class PlaylumiVillageView extends View {
         canvas.drawBitmap(village,null,
                 new RectF(0,0,PlaylumiVillageHit.ART_W,PlaylumiVillageHit.ART_H),pen);
         drawRealCounters(canvas);
+        rounded(canvas,5,1576,174,1649,0xff60399c);
+        text(canvas,"Spellen",89,1624,28,Color.WHITE);
         drawDiscovered(canvas);
         drawSparkles(canvas);
         canvas.restore();
