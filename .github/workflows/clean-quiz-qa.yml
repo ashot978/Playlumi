@@ -1,0 +1,49 @@
+name: Playlumi 0.99.7 quiz interface acceptance
+on:
+  push:
+    branches: ['qa/playlumi-0997-clean-quiz']
+  workflow_dispatch:
+jobs:
+  quiz-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build debug variant of exact 0.99.7 source
+        run: gradle --no-daemon assembleDebug
+      - name: Enable KVM when available
+        run: |
+          if [[ -e /dev/kvm ]]; then
+            sudo chown root:kvm /dev/kvm
+            sudo chmod 666 /dev/kvm
+          fi
+      - name: Test native quiz controls on phone and unfolded Fold viewport
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          disable-linux-hw-accel: auto
+          emulator-boot-timeout: 390
+          script: python3 ci/check-clean-quiz.py
+      - name: Save actual emulator screenshots and UI hierarchy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-0997-quiz-acceptance
+          path: build/clean-quiz/
+          if-no-files-found: warn
