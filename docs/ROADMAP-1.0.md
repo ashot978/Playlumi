@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.6 / build 600996. Test build, not a production launch.
+Status: 1.0 / build 601000. Test build, not a production launch. Future builds use 1.1, 1.2, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -68,10 +68,19 @@ Status: 0.99.6 / build 600996. Test build, not a production launch.
 - [x] Additional catalog completion and replay checks.
 - [ ] Verify full CI, signing and physical layout, including long labels and Fold.
 
-## 0.99.x: remaining acceptance checks
+## 1.0: simplified quiz interface and versioning
+- [x] Remove the quiz hint row, including hints after incorrect answers.
+- [x] Remove spoken instructions from game screens and parent settings; keep music, feedback sounds and Android accessibility.
+- [x] Hide the quiz continuation row until a correct answer; keep manual and automatic continuation and existing progress.
+- [x] Use the actual APK version in settings and remove obsolete voice information from the privacy dialog.
+- [x] 0.99.7 release compilation, artwork verification, tests and lint passed on Actions run 45902862452.
+- [ ] Repeat release and emulator checks for 1.0; verify release signature before distribution.
+- [ ] Physical-device acceptance still required. Version 1.0 is not authorization to publish.
+
+## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
 - [ ] Verify navigation, fold/unfold, rotation, back, multi-profile isolation and parent gate.
-- [ ] Verify screen reader, text sizing, offline Dutch voice present/absent, muted audio and reduced motion.
+- [ ] Verify screen reader, text sizing, muted audio, reduced motion, and absence of app-generated speech.
 - [ ] Test long sessions and app background/foreground, no repeated awards.
 - [ ] Review all wording and artwork licensing; final privacy notice, store Data Safety and target audience declarations must match the actual app and distribution.
 

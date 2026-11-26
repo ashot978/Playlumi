@@ -2589,7 +2589,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.6 · testversie",13,SUB,4,2);
+        addText("Playlumi "+BuildConfig.VERSION_NAME+" · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -4045,7 +4045,7 @@ public class MainActivity extends Activity {
         Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
         addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
                 .setTitle("Privacy en gegevens")
-                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Leeftijdskeuze, voortgang, favorieten, speelgegevens, maatje en tekeningen worden op dit toestel opgeslagen. Er is geen Playlumi-server. De optionele voorleesfunctie kiest een geïnstalleerde Nederlandse offline stem van Android. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen ook de verdiende beloningen.").setPositiveButton("Sluiten",null).show());
+                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Leeftijdskeuze, voortgang, favorieten, speelgegevens, maatje en tekeningen worden op dit toestel opgeslagen. Er is geen Playlumi-server. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen ook de verdiende beloningen.").setPositiveButton("Sluiten",null).show());
         Button back=tile("🌈 Terug naar spelen","",0xffd4f3e0,85);
         addTile(back,11);
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
