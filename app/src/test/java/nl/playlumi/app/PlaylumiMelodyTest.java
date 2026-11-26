@@ -19,6 +19,16 @@ public final class PlaylumiMelodyTest {
             assertEquals(3,melody.tap(0));
         }
     }
+    @Test public void ageSpecificLongerConcertsCanRestoreAndComplete(){
+        for(int age=0;age<3;age++)for(int variant=0;variant<=age;variant++){
+            PlaylumiMelody m=PlaylumiMelody.generate(age,variant,new Random(87));
+            assertEquals(variant==2?6:age+2+variant,m.length());
+            assertEquals(1,m.tap(m.noteAt(0)));
+            m=PlaylumiMelody.restore(m.sequence(),m.progress());
+            while(!m.completed())m.tap(m.noteAt(m.progress()));
+            assertEquals(m.length(),m.progress());
+        }
+    }
     @Test public void wrongAnswersOnlyRestartTune(){
         PlaylumiMelody melody=PlaylumiMelody.restore(new int[]{0,1,3},0);
         assertEquals(1,melody.tap(0));

@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
     private PlaylumiBubbles bubbles;
     private PlaylumiMelody melody;
     private int melodyRound;
+    private int melodyVariant;
     private boolean melodySolved;
     private TextView melodyStatus,magicHeaderProgress;
     private final Button[] melodyPads=new Button[4];
@@ -186,6 +187,7 @@ public class MainActivity extends Activity {
             miniRound=state.getInt("miniRound",0);
             bubbleRound=state.getInt("bubbleRound",0);
             melodyRound=state.getInt("melodyRound",0);
+            melodyVariant=Math.max(0,Math.min(PlaylumiRocketCurriculum.level(age),state.getInt("melodyVariant",0)));
             melodySolved=state.getBoolean("melodySolved",false);
             bubbleSolved=state.getBoolean("bubbleSolved",false);
             rewardReturn=state.getInt("rewardReturn",PLAY);
@@ -292,7 +294,7 @@ public class MainActivity extends Activity {
             } catch(IllegalArgumentException ignored) {}
         }
         if(page==MUSIC_PLAY && melody==null)
-            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+            melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
         if(page==STAR_CATCH) {
             starCatchRound=state==null?0:Math.max(0,Math.min(PlaylumiStarCatch.ROUNDS,state.getInt("starCatchRound",0)));
             if(starCatchRound<PlaylumiStarCatch.ROUNDS){
@@ -376,7 +378,7 @@ public class MainActivity extends Activity {
         out.putInt("bubbleRound",bubbleRound);
         out.putInt("starCatchRound",starCatchRound);
         if(starCatch!=null){out.putInt("starCatchTarget",starCatch.target());out.putInt("starCatchTotal",starCatch.total());out.putInt("starCatchMask",starCatch.mask());out.putInt("starCatchTypes",starCatch.starMask());}
-        out.putInt("melodyRound",melodyRound);
+        out.putInt("melodyRound",melodyRound);out.putInt("melodyVariant",melodyVariant);
         out.putBoolean("melodySolved",melodySolved);
         if(melody!=null) {
             out.putIntArray("melodyNotes",melody.sequence());
@@ -901,6 +903,8 @@ public class MainActivity extends Activity {
             addText(subtitle,14,SUB,0,8);
     }
     private void showPage() {
+        // Restore old navigation destinations directly into the new library.
+        if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
         // Retire old star wardrobe and pet pages without deleting their saved data.
         if(page==CLOSET || page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
@@ -948,7 +952,7 @@ public class MainActivity extends Activity {
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
-        if(magicScreen)side=PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
+        if(magicScreen)side=page==LIBRARY?PlaylumiLayout.librarySidePadding(getResources().getConfiguration().screenWidthDp):PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
         root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),
                 page==HOME?0:dp(side),page==HOME?0:dp(16));
         scroller.addView(root);
@@ -1133,8 +1137,7 @@ public class MainActivity extends Activity {
                 case PlaylumiVillageView.MUSIC:
                 case PlaylumiVillageView.PLAYGROUND:
                 case PlaylumiVillageView.COLORS:
-                    storyStage=-1;
-                    move(VILLAGE_MENU);
+                    openLibrary(place);
                     break;
                 case PlaylumiVillageView.FRIEND:
                     move(AVATAR);
@@ -1202,14 +1205,16 @@ public class MainActivity extends Activity {
         java.util.Set<String> played=librarySet("library_played");played.add(entry.id);
         prefs().edit().putStringSet("library_played",played)
                 .putString("library_last",entry.id).putInt("library_last_age",age)
-                .remove("library_quiz_resume").apply();
+                .remove("library_quiz_resume").remove("library_interactive_resume").apply();
     }
     private PlaylumiGameCatalog.Entry lastCatalog(){
         if(prefs().getInt("library_last_age",-1)!=age)return null;
         return PlaylumiGameCatalog.find(age,prefs().getString("library_last",""));
     }
     private org.json.JSONObject libraryResume(PlaylumiGameCatalog.Entry entry){
-        if(entry==null||entry.kind!=PlaylumiGameCatalog.QUIZ)return null;
+        if(entry==null)return null;
+        if(entry.kind==PlaylumiGameCatalog.INTERACTIVE)return libraryInteractiveResume(entry);
+        if(entry.kind!=PlaylumiGameCatalog.QUIZ)return null;
         try{
             org.json.JSONObject saved=new org.json.JSONObject(prefs().getString("library_quiz_resume",""));
             int count=saved.getInt("count");
@@ -1217,6 +1222,29 @@ public class MainActivity extends Activity {
                     count<0||count>=SESSION_ROUNDS)return null;
             return saved;
         }catch(org.json.JSONException|ClassCastException ignored){return null;}
+    }
+    private org.json.JSONObject libraryInteractiveResume(PlaylumiGameCatalog.Entry entry){
+        if(entry==null||entry.kind!=PlaylumiGameCatalog.INTERACTIVE)return null;
+        try{
+            org.json.JSONObject o=new org.json.JSONObject(prefs().getString("library_interactive_resume",""));
+            if(o.getInt("age")!=age||!entry.id.equals(o.getString("id")))return null;
+            int count=o.getInt("count");
+            PlaylumiInteractive game=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),o.getLong("seed"),count);
+            if(count<0||count>=game.total()||game.progress()!=count)return null;
+            return o;
+        }catch(org.json.JSONException|IllegalArgumentException ignored){return null;}
+    }
+    private void saveLibraryInteractive(){
+        if(interactive==null)return;
+        PlaylumiGameCatalog.Entry last=lastCatalog();
+        if(last==null||last.kind!=PlaylumiGameCatalog.INTERACTIVE||last.mode!=interactive.kind)return;
+        if(interactive.solved()){prefs().edit().remove("library_interactive_resume").apply();return;}
+        try{
+            org.json.JSONObject o=new org.json.JSONObject();
+            o.put("id",last.id);o.put("age",age);o.put("seed",interactive.seed);
+            o.put("count",interactive.progress());o.put("total",interactive.total());
+            prefs().edit().putString("library_interactive_resume",o.toString()).apply();
+        }catch(org.json.JSONException ignored){}
     }
     private void saveLibraryQuiz(){
         if(game==null||storyStage>=0)return;
@@ -1263,8 +1291,8 @@ public class MainActivity extends Activity {
         rememberCatalog(PlaylumiGameCatalog.route(age,villageLaunch,kind,0,0));
         pendingBadges.clear();rewardReturn=PLAY;
         if(kind==PlaylumiGameCatalog.MUSIC){
-            melodyRound=0;melodySolved=false;
-            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());move(MUSIC_PLAY);
+            melodyVariant=0;melodyRound=0;melodySolved=false;
+            melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());move(MUSIC_PLAY);
         }else if(kind==PlaylumiGameCatalog.BUBBLES){
             bubbleRound=0;bubbleSolved=false;
             bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());move(BUBBLE_PLAY);
@@ -1281,13 +1309,22 @@ public class MainActivity extends Activity {
         if(entry.kind==PlaylumiGameCatalog.QUIZ){
             if(resume&&resumeLibraryQuiz(entry))return;
             startWorldQuiz(entry.mode,entry.variant);
-        }else if(entry.kind==PlaylumiGameCatalog.INTERACTIVE){rememberCatalog(entry);startInteractive(entry.mode);}
-        else if(entry.kind==PlaylumiGameCatalog.MINI)startWorldMini(entry.mode);
-        else startCatalogSpecial(entry.kind);
+        }else if(entry.kind==PlaylumiGameCatalog.INTERACTIVE){
+            org.json.JSONObject saved=resume?libraryInteractiveResume(entry):null;
+            if(saved!=null){
+                interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"));
+                interactiveMessage="";move(INTERACTIVE);
+            }else{rememberCatalog(entry);startInteractive(entry.mode);}
+        }else if(entry.kind==PlaylumiGameCatalog.MINI)startWorldMini(entry.mode);
+        else if(entry.kind==PlaylumiGameCatalog.MUSIC){
+            melodyVariant=entry.variant;rememberCatalog(entry);pendingBadges.clear();rewardReturn=PLAY;
+            melodyRound=0;melodySolved=false;
+            melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());move(MUSIC_PLAY);
+        }else startCatalogSpecial(entry.kind);
     }
     private void startInteractive(int kind){
         interactive=new PlaylumiInteractive(kind,PlaylumiRocketCurriculum.level(age),new Random().nextLong(),0);
-        interactiveMessage="";
+        interactiveMessage="";saveLibraryInteractive();
         move(INTERACTIVE);
     }
     private String interactiveBuilt(PlaylumiInteractive round){
@@ -1304,7 +1341,7 @@ public class MainActivity extends Activity {
         if(interactive==null){move(LIBRARY);return;}
         final PlaylumiInteractive round=interactive;
         header(PlaylumiInteractive.TITLES[round.kind],"");
-        addText(PlaylumiInteractive.INSTRUCTIONS[round.kind],18,PlaylumiMagicArt.CREAM,4,5);
+        addText(round.kind==PlaylumiInteractive.NUMBERS?PlaylumiInteractive.INSTRUCTIONS[round.kind]+" Begin bij "+round.target(0)+".":PlaylumiInteractive.INSTRUCTIONS[round.kind],18,PlaylumiMagicArt.CREAM,4,5);
         addMagicProgress(round.progress(),round.total(),false);
         final PlaylumiStarTrail trail=roundStars;
         final TextView count=progressCounter;
@@ -1322,6 +1359,7 @@ public class MainActivity extends Activity {
         final TextView message=text(round.solved()?"🌟 Knap gedaan! Alles klaar!":interactiveMessage,16,PlaylumiMagicArt.CREAM);
         message.setMinHeight(dp(48));message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         addWidget(message,2,4);
+        final int choiceColumns=PlaylumiLayout.libraryColumns(getResources().getConfiguration().screenWidthDp)>=2&&round.options().size()>=3?3:2;
         final LinearLayout choices=new LinearLayout(this);
         choices.setOrientation(LinearLayout.VERTICAL);addWidget(choices,0,0);
         final ArrayList<Button> buttons=new ArrayList<>();
@@ -1335,7 +1373,7 @@ public class MainActivity extends Activity {
         back.setOnClickListener(v->move(LIBRARY));
         LinearLayout row=null;
         for(int i=0;i<round.options().size();i++){
-            if(i%2==0){
+            if(i%choiceColumns==0){
                 row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
                 LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,-2);
                 rp.setMargins(dp(4),dp(3),dp(4),dp(3));choices.addView(row,rp);
@@ -1356,7 +1394,7 @@ public class MainActivity extends Activity {
                     sound.good();interactiveMessage="Goed zo!";
                     built.setText(interactiveBuilt(round));
                     count.setText(round.progress()+"/"+round.total());
-                    trail.showProgress(round.progress());
+                    trail.showProgress(round.progress());saveLibraryInteractive();
                     if(round.kind==PlaylumiInteractive.NUMBERS){choice.setEnabled(false);choice.setAlpha(.45f);}
                     if(round.solved()){
                         int category=round.kind==PlaylumiInteractive.NUMBERS?LearningGame.NUMBERS:
@@ -1390,11 +1428,41 @@ public class MainActivity extends Activity {
     private void libraryFilter(int filter){
         libraryFilter=filter;showPage();
     }
+    private void showLibraryNavigation(){
+        // Keep the tabs outside the scrolling list, above the real system navigation bar.
+        LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);
+        nav.setPadding(dp(6),dp(4),dp(6),dp(4));nav.setBackground(PlaylumiMagicArt.primary(this));
+        String[] labels={"⌂ Dorp","Werelden","Alle spellen","★ Favorieten"};
+        int[] filters={Integer.MIN_VALUE,PlaylumiGameCatalog.OVERVIEW,PlaylumiGameCatalog.ALL,PlaylumiGameCatalog.FAVORITES};
+        for(int i=0;i<labels.length;i++){
+            final int filter=filters[i];
+            boolean selected=filter==libraryFilter;
+            TextView tab=text(labels[i],13,selected?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
+            tab.setSelected(selected);tab.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            tab.setBackground(selected?PlaylumiMagicArt.creamPlate(this):PlaylumiMagicArt.softPanel(this));
+            tab.setPadding(dp(2),dp(4),dp(2),dp(4));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1f);lp.setMargins(dp(2),0,dp(2),0);nav.addView(tab,lp);
+            libraryClick(tab,labels[i]+(selected?", geselecteerd":""),()->{
+                if(filter==Integer.MIN_VALUE)move(HOME);
+                else if(filter!=libraryFilter)libraryFilter(filter);
+            });
+        }
+        FrameLayout.LayoutParams scrollParams=new FrameLayout.LayoutParams(-1,-1);
+        scrollParams.bottomMargin=dp(62);scroller.setLayoutParams(scrollParams);
+        FrameLayout.LayoutParams navParams=new FrameLayout.LayoutParams(-1,dp(58),Gravity.BOTTOM);
+        int pad=dp(PlaylumiLayout.librarySidePadding(getResources().getConfiguration().screenWidthDp));
+        navParams.setMargins(pad,0,pad,0);stage.addView(nav,navParams);
+    }
     private void showGameLibrary(){
-        header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:"Spellen","");
+        header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:
+                libraryFilter==PlaylumiGameCatalog.FAVORITES?"Mijn favorieten":
+                libraryFilter==PlaylumiGameCatalog.ALL?"Alle spellen":"Spellen","");
         addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
+        showLibraryNavigation();
         java.util.Set<String> favorites=librarySet("library_favorites");
         java.util.Set<String> played=librarySet("library_played");
+        final int width=getResources().getConfiguration().screenWidthDp;
+        final int columns=PlaylumiLayout.libraryColumns(width);
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
             PlaylumiGameCatalog.Entry last=lastCatalog();
             if(last!=null){
@@ -1403,22 +1471,18 @@ public class MainActivity extends Activity {
                 int completed=resume?snapshot.optInt("count",0):0;
                 LinearLayout recentCard=libraryPanel();
                 LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-                View art=PlaylumiMagicArt.hero(this,last.world);
-                row.addView(art,new LinearLayout.LayoutParams(dp(96),dp(76)));
+                row.addView(PlaylumiMagicArt.hero(this,last.world),new LinearLayout.LayoutParams(dp(96),dp(76)));
                 LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);
                 info.setPadding(dp(10),0,dp(4),0);
                 TextView label=text(resume?"Verder spelen":"Opnieuw spelen",14,0xffffdc85);
                 label.setGravity(Gravity.START);info.addView(label);
                 TextView name=text(last.title,19,PlaylumiMagicArt.CREAM);
                 name.setGravity(Gravity.START);info.addView(name);
-                TextView details=text(resume?completed+" van "+SESSION_ROUNDS+" vragen":PlaylumiWorldStyle.NAMES[last.world],13,0xffe6ccff);
+                TextView details=text(resume?completed+" van "+snapshot.optInt("total",SESSION_ROUNDS)+" klaar":PlaylumiWorldStyle.NAMES[last.world],13,0xffe6ccff);
                 details.setGravity(Gravity.START);info.addView(details);
                 row.addView(info,new LinearLayout.LayoutParams(0,-2,1f));
                 row.addView(text("▶",22,0xffffd47a),new LinearLayout.LayoutParams(dp(32),-1));
-                recentCard.addView(row);
-                libraryClick(recentCard,(resume?"Verder spelen ":"Opnieuw spelen ")+last.title+
-                        (resume?" "+completed+" van "+SESSION_ROUNDS:""),()->launchCatalog(last,resume));
-                addWidget(recentCard,3,6);
+                recentCard.addView(row);libraryClick(recentCard,(resume?"Verder spelen ":"Opnieuw spelen ")+last.title,()->launchCatalog(last,resume));addWidget(recentCard,3,6);
             }
             Button all=tile("Alle spellen",""+PlaylumiGameCatalog.entries(age).size()+" avonturen",COLORS[2],58);
             Button fav=tile("★ Favorieten",""+PlaylumiGameCatalog.filter(age,PlaylumiGameCatalog.FAVORITES,favorites).size()+" bewaard",COLORS[1],58);
@@ -1426,28 +1490,25 @@ public class MainActivity extends Activity {
             fav.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.FAVORITES));
             addTwo(all,fav,58);
             addText("Onze zes speelwerelden",19,PlaylumiMagicArt.CREAM,8,3);
-            int columns=getResources().getConfiguration().screenWidthDp>=600?3:2;
-            for(int start=0;start<6;start+=columns){
+            int worldColumns=width>=600?3:2;
+            for(int start=0;start<6;start+=worldColumns){
                 LinearLayout row=new LinearLayout(this);
-                for(int i=start;i<Math.min(start+columns,6);i++){
-                    final int w=i;
+                for(int i=start;i<Math.min(start+worldColumns,6);i++){
+                    final int worldIndex=i;
                     LinearLayout card=libraryPanel();
-                    View art=PlaylumiMagicArt.hero(this,w);
-                    card.addView(art,new LinearLayout.LayoutParams(-1,dp(columns==3?94:76)));
-                    TextView title=text(PlaylumiWorldStyle.NAMES[w],16,PlaylumiMagicArt.CREAM);
-                    title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setMinHeight(dp(28));
-                    card.addView(title);
-                    int n=PlaylumiGameCatalog.filter(age,w,favorites).size();
+                    card.addView(PlaylumiMagicArt.hero(this,worldIndex),new LinearLayout.LayoutParams(-1,dp(width>=600?116:76)));
+                    TextView title=text(PlaylumiWorldStyle.NAMES[worldIndex],16,PlaylumiMagicArt.CREAM);
+                    title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setMinHeight(dp(28));card.addView(title);
+                    int n=PlaylumiGameCatalog.filter(age,worldIndex,favorites).size();
                     card.addView(text(n+(n==1?" spel":" spellen")+"  ›",13,0xffffde9e));
-                    libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[w]+" "+n+" spellen",()->libraryFilter(w));
-                    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1f);
-                    p.setMargins(dp(4),dp(4),dp(4),dp(4));row.addView(card,p);
+                    libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[worldIndex]+" "+n+" spellen",()->libraryFilter(worldIndex));
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+                    lp.setMargins(dp(4),dp(4),dp(4),dp(4));row.addView(card,lp);
                 }
                 root.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
             Button missions=tile("Missies","Speel je bestaande avonturen",COLORS[3],64);
-            addTile(missions,7);
-            missions.setOnClickListener(v->{
+            addTile(missions,7);missions.setOnClickListener(v->{
                 libraryReturn=false;villageLaunch=PlaylumiVillageView.MISSIONS;
                 world=0;storyPage=Math.min(2,adventures.progress(world)/2);move(ADVENTURE_MAP);
             });
@@ -1455,58 +1516,71 @@ public class MainActivity extends Activity {
         }
         if(libraryFilter>=0){
             View art=PlaylumiMagicArt.hero(this,libraryFilter);
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(94));
-            p.setMargins(dp(4),dp(2),dp(4),dp(6));root.addView(art,p);
-        }else addText(libraryFilter==PlaylumiGameCatalog.FAVORITES?"Mijn favorieten":"Alle spelletjes",20,PlaylumiMagicArt.CREAM,2,5);
-        Button overview=tile("Alle speelwerelden","Terug naar het overzicht",COLORS[2],48);
-        addTile(overview,3);overview.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.OVERVIEW));
-        java.util.List<PlaylumiGameCatalog.Entry> list=PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
-        if(list.isEmpty()){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(width>=600?140:94));
+            lp.setMargins(dp(4),dp(2),dp(4),dp(6));root.addView(art,lp);
+        }
+        java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
+        addText(entries.size()+(entries.size()==1?" spel":" spellen"),16,PlaylumiMagicArt.CREAM,2,5);
+        if(entries.isEmpty()){
             addText("Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
+            Button discover=tile("Ontdek alle spellen","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
             return;
         }
-        int prior=-1;
-        for(PlaylumiGameCatalog.Entry entry:list){
-            if(libraryFilter<0&&entry.world!=prior){
-                addText(PlaylumiWorldStyle.NAMES[entry.world],18,PlaylumiMagicArt.CREAM,9,2);
-                prior=entry.world;
+        for(int w=0;w<6;w++){
+            java.util.List<PlaylumiGameCatalog.Entry> group=new ArrayList<>();
+            for(PlaylumiGameCatalog.Entry e:entries)if(e.world==w)group.add(e);
+            if(group.isEmpty())continue;
+            if(libraryFilter<0)addText(PlaylumiWorldStyle.NAMES[w],18,PlaylumiMagicArt.CREAM,9,2);
+            for(int first=0;first<group.size();first+=columns){
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+                int n=Math.min(columns,group.size()-first);
+                for(int j=0;j<n;j++){
+                    View card=libraryGameCard(group.get(first+j),favorites,played,columns>1);
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+                    lp.setMargins(dp(4),dp(3),dp(4),dp(3));row.addView(card,lp);
+                }
+                for(int j=n;j<columns;j++)row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));
+                root.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
-            LinearLayout row=new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(6),dp(5),dp(5),dp(5));row.setBackground(PlaylumiMagicArt.softPanel(this));
-            LinearLayout play=new LinearLayout(this);play.setGravity(Gravity.CENTER_VERTICAL);
-            TextView icon=text(entry.icon,23,PlaylumiMagicArt.INK);
-            icon.setBackground(PlaylumiMagicArt.gemButton(this,entry.world));icon.setIncludeFontPadding(false);
-            play.addView(icon,new LinearLayout.LayoutParams(dp(43),dp(43)));
-            LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);
-            labels.setPadding(dp(9),0,dp(4),0);
-            TextView name=text(entry.title,17,PlaylumiMagicArt.CREAM);name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-            name.setGravity(Gravity.START);labels.addView(name);
-            TextView description=text(entry.description,13,0xffecd8ff);
-            description.setGravity(Gravity.START);labels.addView(description);
-            if(played.contains(entry.id)){
-                TextView seen=text("✓ Gespeeld",12,0xffbaf4cb);seen.setGravity(Gravity.START);labels.addView(seen);
-            }
-            play.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
-            play.addView(text("›",24,0xffffd47a),new LinearLayout.LayoutParams(dp(22),-2));
-            row.addView(play,new LinearLayout.LayoutParams(0,-2,1f));
-            libraryClick(play,"Speel "+entry.title,()->launchCatalog(entry,false));
-            TextView star=text(favorites.contains(entry.id)?"★":"☆",26,0xffffd96b);
-            star.setBackground(PlaylumiMagicArt.silkRibbon(this));
-            updateFavoriteLabel(star,entry,favorites.contains(entry.id));
-            star.setClickable(true);star.setFocusable(true);
-            row.addView(star,new LinearLayout.LayoutParams(dp(48),dp(48)));
-            star.setOnClickListener(v->{
-                java.util.Set<String> saved=librarySet("library_favorites");
-                boolean now=!saved.contains(entry.id);
-                if(now)saved.add(entry.id);else saved.remove(entry.id);
-                prefs().edit().putStringSet("library_favorites",saved).apply();
-                if(sound!=null)sound.tap();
-                updateFavoriteLabel(star,entry,now);
-                if(libraryFilter==PlaylumiGameCatalog.FAVORITES&&!now)showPage();
-            });
-            addWidget(row,3,3);
         }
+    }
+    private View libraryGameCard(PlaylumiGameCatalog.Entry entry,java.util.Set<String> favorites,java.util.Set<String> played,boolean wide){
+        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(6),dp(5),dp(5),dp(5));card.setBackground(PlaylumiMagicArt.softPanel(this));
+        LinearLayout play=new LinearLayout(this);play.setOrientation(wide?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
+        play.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
+        TextView icon=text(entry.icon,23,PlaylumiMagicArt.INK);
+        icon.setBackground(PlaylumiMagicArt.gemButton(this,entry.world));icon.setIncludeFontPadding(false);
+        (wide?heading:play).addView(icon,new LinearLayout.LayoutParams(dp(43),dp(43)));
+        LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setPadding(dp(9),0,dp(4),0);
+        TextView name=text(entry.title,17,PlaylumiMagicArt.CREAM);name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        name.setGravity(Gravity.START);
+        if(wide){heading.addView(name,new LinearLayout.LayoutParams(0,-2,1f));play.addView(heading,new LinearLayout.LayoutParams(-1,-2));}
+        else labels.addView(name);
+        TextView description=text(entry.description,13,0xffecd8ff);description.setGravity(Gravity.START);labels.addView(description);
+        if(played.contains(entry.id)){TextView seen=text("✓ Gespeeld",12,0xffbaf4cb);seen.setGravity(Gravity.START);labels.addView(seen);}
+        play.addView(labels,wide?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1f));
+        if(!wide)play.addView(text("›",24,0xffffd47a),new LinearLayout.LayoutParams(dp(22),-2));
+        if(wide){play.setMinimumHeight(dp(104));play.setPadding(0,dp(3),0,dp(3));}
+        card.addView(play,new LinearLayout.LayoutParams(0,-2,1f));
+        libraryClick(play,"Speel "+entry.title,()->launchCatalog(entry,false));
+        TextView star=text(favorites.contains(entry.id)?"★":"☆",26,0xffffd96b);
+        star.setBackground(PlaylumiMagicArt.silkRibbon(this));
+        updateFavoriteLabel(star,entry,favorites.contains(entry.id));
+        star.setClickable(true);star.setFocusable(true);
+        card.addView(star,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        star.setOnClickListener(v->{
+            java.util.Set<String> saved=librarySet("library_favorites");
+            boolean now=!saved.contains(entry.id);
+            if(now)saved.add(entry.id);else saved.remove(entry.id);
+            prefs().edit().putStringSet("library_favorites",saved).apply();
+            if(sound!=null)sound.tap();
+            updateFavoriteLabel(star,entry,now);
+            if(libraryFilter==PlaylumiGameCatalog.FAVORITES&&!now)showPage();
+        });
+        return card;
     }
     private void updateFavoriteLabel(TextView star,PlaylumiGameCatalog.Entry entry,boolean saved){
         star.setText(saved?"★":"☆");
@@ -2224,7 +2298,7 @@ public class MainActivity extends Activity {
         musicButton.setOnClickListener(v->{
             melodyRound=0;melodySolved=false;
             pendingBadges.clear();
-            melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+            melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
             move(MUSIC_PLAY);
         });
         addTwo(first[0],first[1],103);
@@ -3192,8 +3266,8 @@ public class MainActivity extends Activity {
         },melody.length()*470L+220L);
     }
     private void showMusicPlay() {
-        if(melody==null)melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
-        header("Muziekstudio",Math.min(melodyRound,PlaylumiMelody.ROUNDS)+"/"+PlaylumiMelody.ROUNDS);
+        if(melody==null)melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
+        header(melodyVariant==2?"Geheugenconcert":melodyVariant==1?"Lange melodie":"Muziekstudio",Math.min(melodyRound,PlaylumiMelody.ROUNDS)+"/"+PlaylumiMelody.ROUNDS);
         addIllustratedPortal(PlaylumiVillageView.MUSIC,"Muziekstudio",116);
         addMagicProgress(melodyRound,PlaylumiMelody.ROUNDS,false);
         if(melodyRound>=PlaylumiMelody.ROUNDS) {
@@ -3203,7 +3277,7 @@ public class MainActivity extends Activity {
             addTile(again,9);
             again.setOnClickListener(v->{
                 melodyRound=0;melodySolved=false;
-                melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+                melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
                 move(MUSIC_PLAY);
             });
             Button other=tile("🎪 Ander spelletje","",0xffe9deff,80);
@@ -3301,7 +3375,7 @@ public class MainActivity extends Activity {
     }
     private void advanceMelody() {
         melodySolved=false;
-        melody=PlaylumiMelody.generate(Math.max(0,age),new Random());
+        melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
         move(MUSIC_PLAY);
     }
 

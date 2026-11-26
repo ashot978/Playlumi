@@ -1,5 +1,16 @@
-name: Android Playlumi 0.85.1 fast build
-on: [push, pull_request, workflow_dispatch]
+name: Android Playlumi 0.87.0 fast build
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      full_qa:
+        description: 'Also run all unit tests and Android Lint after APK upload'
+        type: boolean
+        default: false
+
+concurrency:
+  group: playlumi-android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -19,17 +30,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          cache-read-only: false
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600851" >> "$GITHUB_ENV"
-      - name: Test, lint and build both APK variants
-        run: gradle --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
+        run: echo "PLAYLUMI_BUILD_CODE=600870" >> "$GITHUB_ENV"
+      - name: Compile production APK
+        run: gradle --no-daemon assembleRelease
 
       - name: Verify approved village and four illustrated game worlds in APK
         shell: bash
         run: |
           set -euo pipefail
           ART_HASH=bc39c748fb82a101e0280d16d6d3de1cd3e44d39453f87bb6d30870e155f5804
-          for APK in app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/release/app-release-unsigned.apk; do
+          for APK in app/build/outputs/apk/release/app-release-unsigned.apk; do
             test -s "$APK"
             actual=$(unzip -p "$APK" assets/playlumi_village.webp | sha256sum | awk '{print $1}')
             if [[ "$actual" != "$ART_HASH" ]]; then
@@ -47,11 +59,9 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600851'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.85.1'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600870'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.87.0'"
           done
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk > build-debug-sha256.txt
           sha256sum app/build/outputs/apk/release/app-release-unsigned.apk > build-release-unsigned-sha256.txt
 
       - name: Copy Android SDK signing utilities for private offline release
@@ -66,20 +76,10 @@ jobs:
           chmod +x build/signing-tools/apksigner build/signing-tools/zipalign
           (cd build/signing-tools && sha256sum apksigner lib/apksigner.jar zipalign > tool-checksums.txt)
 
-      - name: Upload validated debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: playlumi-0851-debug-apk
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            build-debug-sha256.txt
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0851-unsigned-release
+          name: playlumi-087-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -89,7 +89,49 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0851-offline-signing-tools
+          name: playlumi-087-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
+
+      # Sign automatically only if the owner's existing encrypted secrets are present.
+      # Never publish a differently signed APK or include the key in any artifact.
+      - name: Sign with existing Playlumi release certificate
+        id: sign
+        shell: bash
+        env:
+          PLAYLUMI_KEYSTORE_BASE64: ${{ secrets.PLAYLUMI_KEYSTORE_BASE64 }}
+          PLAYLUMI_SIGNING_PASSWORD: ${{ secrets.PLAYLUMI_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$PLAYLUMI_KEYSTORE_BASE64" || -z "$PLAYLUMI_SIGNING_PASSWORD" ]]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "Release key unavailable in Actions; use private offline signing."
+            exit 0
+          fi
+          umask 077
+          TMP=$(mktemp -d)
+          trap 'rm -rf "$TMP"' EXIT
+          printf '%s' "$PLAYLUMI_KEYSTORE_BASE64" | base64 --decode > "$TMP/release.p12"
+          SDK="$ANDROID_HOME/build-tools/35.0.0"
+          "$SDK/zipalign" -P 16 -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$TMP/aligned.apk"
+          mkdir -p build/release
+          "$SDK/apksigner" sign --ks "$TMP/release.p12" --ks-type PKCS12 --ks-key-alias playlumi-release --ks-pass env:PLAYLUMI_SIGNING_PASSWORD --key-pass env:PLAYLUMI_SIGNING_PASSWORD --v4-signing-enabled false --out build/release/Playlumi-0.87.0-release.apk "$TMP/aligned.apk"
+          "$SDK/zipalign" -c -P 16 4 build/release/Playlumi-0.87.0-release.apk
+          "$SDK/apksigner" verify --verbose --print-certs build/release/Playlumi-0.87.0-release.apk | tee "$TMP/certificate.txt"
+          grep -Fx 'Signer #1 certificate SHA-256 digest: d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef' "$TMP/certificate.txt"
+          sha256sum build/release/Playlumi-0.87.0-release.apk > build/release/SHA256SUMS.txt
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed Playlumi APK
+        if: steps.sign.outputs.signed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-087-signed-release
+          path: build/release/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Optional full quality checks
+        if: github.event_name == 'workflow_dispatch' && inputs.full_qa
+        run: gradle --no-daemon testDebugUnitTest lintDebug

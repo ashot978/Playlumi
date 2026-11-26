@@ -29,6 +29,7 @@ public final class PlaylumiGameCatalog {
         ArrayList<Entry> list=new ArrayList<>();
         for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(a))
             q(list,0,m.mode,m.variant,m.title,m.description,"✦");
+        if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
         if(a>=1){
             q(list,0,16,0,"Klokkijken","Lees een echte wijzerklok","◷");
             q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Maak de getallenrij af","123");
@@ -39,6 +40,7 @@ public final class PlaylumiGameCatalog {
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
             q(list,0,22,0,"Meten","Vergelijk de lengte van linten","↔");
             q(list,0,23,2,"Even of oneven","Ontdek getallenpatronen","123");
+            q(list,0,ExtraGames.SEQUENCES,1,"Terugtellen","Welk getal komt hiervoor?","123");
         }
         q(list,1,LearningGame.LETTERS,0,"Kleine letters","Vind de kleine letter","Aa");
         q(list,1,LearningGame.LETTERS,1,"Hoofdletters","Vind de grote letter","Aa");
@@ -47,12 +49,14 @@ public final class PlaylumiGameCatalog {
             q(list,1,ExtraGames.FIRST_LAST,0,"Beginletter","Kies de eerste letter","A");
             q(list,1,ExtraGames.PICTURES,0,"Woord en plaatje","Lees het woord bij het dier","🐾");
             q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","✦");
+            q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
         }
         if(a>=2){
             q(list,1,ExtraGames.SPELLING,0,"Spelling","Kies het goed geschreven woord","Ab");
             q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Kies de laatste letter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
             q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","✦");
+            q(list,1,LearningGame.LETTERS,4,"Vorige letter","Welke letter komt hiervoor?","Aa");
         }
         g(list,2,MINI,PlaylumiMiniChallenge.DRAG,"Sleep de vormen","Breng vormen naar hun poort","◆");
         q(list,2,LearningGame.SHAPES,0,"Vormen zoeken","Vind dezelfde vorm","▲");
@@ -62,8 +66,13 @@ public final class PlaylumiGameCatalog {
             q(list,2,18,0,"Links of rechts","Ontdek waar de ster staat","↔");
             q(list,2,18,1,"Boven of onder","Waar staat de ster?","↕");
         }
-        if(a>=2)q(list,2,23,0,"Slim nadenken","Maak de logische reeks af","✦");
-        g(list,3,MUSIC,0,"Speel het deuntje","Speel de melodie na","♪");
+        if(a>=2){
+            q(list,2,23,0,"Slim nadenken","Maak de logische reeks af","✦");
+            q(list,2,LearningGame.SHAPES,4,"Vorm bij het woord","Kies de vorm die bij het woord past","◆");
+        }
+        g(list,3,MUSIC,0,"Speel het deuntje","Speel "+(a+2)+" tonen na","♪");
+        if(a>=1)list.add(new Entry(3,MUSIC,0,1,"Lange melodie","Onthoud "+(a+3)+" tonen","♫"));
+        if(a>=2)list.add(new Entry(3,MUSIC,0,2,"Geheugenconcert","Onthoud zes tonen","♪"));
         g(list,4,MINI,PlaylumiMiniChallenge.MEMORY,"Dierenmemory","Vind gelijke dieren","🐾");
         g(list,4,MINI,PlaylumiMiniChallenge.BALLOONS,"Tel de ballonnen","Tel echte ballonnen","🎈");
         g(list,4,BUBBLES,0,"Bellenfeest","Prik de zeepbellen","○");
@@ -78,6 +87,7 @@ public final class PlaylumiGameCatalog {
         if(a>=2){
             q(list,4,21,2,"Dieren en hun huis","Waar woont dit dier?","🐾");
             q(list,4,19,4,"Veilig kiezen","Wat is een veilige keuze?","✦");
+            q(list,4,21,3,"Dierenbaby’s","Hoe heet het jong?","🐣");
         }
         q(list,5,LearningGame.COLORS,0,"Kleuren herkennen","Welke kleur zie je?","●");
         q(list,5,LearningGame.COLORS,1,"Kleuren zoeken","Vind de gevraagde kleur","●");
@@ -87,11 +97,19 @@ public final class PlaylumiGameCatalog {
             q(list,5,17,0,"Seizoenen","Welk seizoen zie je?","✿");
             q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Maak de kleurenreeks af","✦");
         }
+        if(a>=2){
+            q(list,5,17,3,"Weer en spullen","Wat past bij het weer?","☂");
+            q(list,5,17,4,"Seizoensplaatjes","Kies het juiste seizoen","✿");
+        }
         g(list,0,INTERACTIVE,PlaylumiInteractive.NUMBERS,"Getallenrace","Bouw de raket in de juiste volgorde","🚀");
         g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein","Bouw een woord met lettertegels","🚂");
         g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
         g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
-        return Collections.unmodifiableList(list);
+        // Stable world order, including Android 6 (API 23).
+        ArrayList<Entry> grouped=new ArrayList<>();
+        for(int world=0;world<6;world++)
+            for(Entry entry:list)if(entry.world==world)grouped.add(entry);
+        return Collections.unmodifiableList(grouped);
     }
     public static Entry find(int age,String id){
         if(id==null)return null;
