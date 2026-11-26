@@ -50,15 +50,18 @@ public final class LearningGame {
         public int letterBlank() {
             int index=display.indexOf('_');
             if(index<0||index!=display.lastIndexOf('_'))return -1;
-            String answer=answers.get(correctIndex);
+            String answer=blankReplacement();
             return answer.codePointCount(0,answer.length())==1 &&
                     Character.isLetter(answer.codePointAt(0))?index:-1;
+        }
+        public String blankReplacement(){
+            return PlaylumiLetterChallenges.replacement(prompt,answers.get(correctIndex));
         }
         /** Never reveal an incorrect guess as part of the word. */
         public String visibleDisplay() {
             int blank=letterBlank();
             if(!solved || blank<0)return display;
-            return display.substring(0,blank)+answers.get(correctIndex)+display.substring(blank+1);
+            return display.substring(0,blank)+blankReplacement()+display.substring(blank+1);
         }
         public boolean choose(int index) {
             if (solved || index != correctIndex) return false;
