@@ -171,6 +171,33 @@ public final class ReleaseCandidateCheck {
         require(PlaylumiQuizPace.delay(PlaylumiQuizPace.MANUAL,false,"")<0,"manual pace");
         require(PlaylumiQuizPace.delay(PlaylumiQuizPace.CALM,true,"uitleg")>PlaylumiQuizPace.delay(PlaylumiQuizPace.AUTO,true,"uitleg"),"calm pace");
         System.out.println("PASS: 2,500 spelling questions across "+spellingSentences.size()+" contexts; 3,600 letter questions; quiz pace settings.");
+        int advancedInteractive=0;
+        for(int level=0;level<3;level++)for(int kind=0;kind<4;kind++)for(int seed=0;seed<120;seed++){
+            PlaylumiInteractive old=new PlaylumiInteractive(kind,level,seed,0);
+            PlaylumiInteractive legacy=new PlaylumiInteractive(kind,level,seed,0,PlaylumiInteractive.LEGACY);
+            require(old.total()==legacy.total()&&old.options().equals(legacy.options()),"legacy interactive compatibility");
+            PlaylumiInteractive r=PlaylumiInteractive.start(kind,level,seed);
+            if(kind==PlaylumiInteractive.NUMBERS&&level>0){
+                require(r.options().size()==r.total()+(level==1?1:2),"number decoys");
+                for(int j=1;j<r.total();j++)require(Integer.parseInt(r.target(j))-Integer.parseInt(r.target(j-1))==r.step(),"number step");
+                for(int j=0;j<r.total();j++)require(Integer.parseInt(r.target(j))>=1&&Integer.parseInt(r.target(j))<=20,"number bounds");
+            }
+            if(kind==PlaylumiInteractive.LETTERS&&level>0){
+                require(r.wordPuzzle()&&!r.clue().isEmpty()&&!r.picture().isEmpty(),"word clue");
+                require(r.example(1,false).equals("?")&&r.example(1,true).equals(r.target(1)),"hidden letters");
+            }
+            while(!r.solved()){
+                String right=r.expected();
+                require(r.options().contains(right),"new interactive answer");
+                for(String value:r.options())if(!value.equals(right))require(!r.choose(value),"wrong new tile");
+                require(r.choose(right),"correct new tile");
+                PlaylumiInteractive restored=new PlaylumiInteractive(kind,level,seed,r.progress(),r.version);
+                require(r.options().equals(restored.options())&&r.expected().equals(restored.expected())&&r.total()==restored.total()&&r.step()==restored.step()&&r.clue().equals(restored.clue()),"versioned interactive restore");
+            }
+            require(!r.choose(r.options().get(0)),"completed interactive cannot credit again");
+            advancedInteractive++;
+        }
+        System.out.println("PASS: "+advancedInteractive+" versioned interactive sessions, including legacy compatibility.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");

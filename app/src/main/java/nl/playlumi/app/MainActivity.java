@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
     private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5;
     private String libraryQuery="";
     private TextView quizTip;
+    private boolean finalFeedbackPending;
     private PlaylumiPatternView questionPattern;
     private int libraryScrollY;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
@@ -212,6 +213,7 @@ public class MainActivity extends Activity {
             storyNewReward=state.getBoolean("storyNewReward",false);
             smartDifficulty=state.getBoolean("smartDifficulty",smartDifficulty);
             roundHadMistake=state.getBoolean("roundHadMistake",false);
+            finalFeedbackPending=state.getBoolean("finalFeedbackPending",false);
             pendingLevel=state.getInt("pendingLevel",-1);
             badgesFromTrophy=state.getBoolean("badgesFromTrophy",false);
             trophyWorld=state.getInt("trophyWorld",0);
@@ -231,7 +233,9 @@ public class MainActivity extends Activity {
             achievementFilter=Math.max(0,Math.min(2,state.getInt("achievementFilter",0)));
             personalReturn=state.getInt("personalReturn",HOME);collectionReturn=state.getInt("collectionReturn",HOME);closetReturn=state.getInt("closetReturn",AVATAR);
             libraryReturn=state.getBoolean("libraryReturn",false);
-            if(state.containsKey("interactiveKind"))interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"));
+            if(state.containsKey("interactiveKind"))try{
+                interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"),state.getInt("interactiveVersion",PlaylumiInteractive.LEGACY));
+            }catch(IllegalArgumentException ignored){interactive=null;}
             quickCategoryPlay=state.getBoolean("quickCategoryPlay",false);
             breakReturn=state.getInt("breakReturn",HOME);
         }
@@ -445,7 +449,7 @@ public class MainActivity extends Activity {
         out.putInt("storyPage",storyPage);
         out.putBoolean("storyNewReward",storyNewReward);
         out.putBoolean("smartDifficulty",smartDifficulty);
-        out.putBoolean("roundHadMistake",roundHadMistake);
+        out.putBoolean("roundHadMistake",roundHadMistake);out.putBoolean("finalFeedbackPending",finalFeedbackPending);
         out.putInt("pendingLevel",pendingLevel);
         out.putBoolean("badgesFromTrophy",badgesFromTrophy);
         out.putInt("trophyWorld",trophyWorld);
@@ -462,7 +466,7 @@ public class MainActivity extends Activity {
         out.putInt("libraryScrollY",page==LIBRARY&&scroller!=null?scroller.getScrollY():libraryScrollY);
         out.putInt("achievementReturn",achievementReturn);out.putInt("achievementFilter",achievementFilter);
         out.putInt("personalReturn",personalReturn);out.putInt("collectionReturn",collectionReturn);out.putInt("closetReturn",closetReturn);
-        if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());}
+        if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());out.putInt("interactiveVersion",interactive.version);}
         out.putBoolean("quickCategoryPlay",quickCategoryPlay);
         out.putInt("breakReturn",breakReturn);
         out.putInt("roomPage",roomPage);
@@ -1702,8 +1706,8 @@ public class MainActivity extends Activity {
         if(o==null)return null;
         try{
             int count=o.getInt("count");
-            PlaylumiInteractive game=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),o.getLong("seed"),count);
-            if(count<=0||count>=game.total()||game.progress()!=count)return null;
+            PlaylumiInteractive game=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),o.getLong("seed"),count,o.optInt("engine",PlaylumiInteractive.LEGACY));
+            if(count<=0||count>=game.total()||game.progress()!=count||o.optInt("total",game.total())!=game.total())return null;
             return o;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return null;}
     }
@@ -1715,7 +1719,7 @@ public class MainActivity extends Activity {
         if(interactive.solved()||interactive.progress()==0){clearLibrarySnapshot(entry);return;}
         try{
             org.json.JSONObject o=new org.json.JSONObject();
-            o.put("id",entry.id);o.put("age",age);o.put("seed",interactive.seed);
+            o.put("id",entry.id);o.put("age",age);o.put("seed",interactive.seed);o.put("engine",interactive.version);
             o.put("count",interactive.progress());o.put("total",interactive.total());
             o.put("updated",System.currentTimeMillis());writeLibrarySnapshot(entry,o);
         }catch(org.json.JSONException ignored){}
@@ -1902,7 +1906,7 @@ public class MainActivity extends Activity {
         }else if(entry.kind==PlaylumiGameCatalog.INTERACTIVE){
             org.json.JSONObject saved=resume?libraryInteractiveResume(entry):null;
             if(saved!=null){
-                interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"));
+                interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"),saved.optInt("engine",PlaylumiInteractive.LEGACY));
                 interactiveMessage="";move(INTERACTIVE);
             }else{rememberCatalog(entry);startInteractive(entry.mode);}
         }else if(resume&&resumeLibrarySpecial(entry))return;
@@ -1915,7 +1919,7 @@ public class MainActivity extends Activity {
         }else{if(specialTotal(entry.kind)>0)clearLibrarySnapshot(entry);startCatalogSpecial(entry.kind);}
     }
     private void startInteractive(int kind){
-        interactive=new PlaylumiInteractive(kind,PlaylumiRocketCurriculum.level(age),new Random().nextLong(),0);
+        interactive=PlaylumiInteractive.start(kind,PlaylumiRocketCurriculum.level(age),new Random().nextLong());
         interactiveMessage="";saveLibraryInteractive();
         move(INTERACTIVE);
     }
@@ -1925,7 +1929,7 @@ public class MainActivity extends Activity {
         final int width=getResources().getConfiguration().screenWidthDp;
         final boolean wide=PlaylumiLayout.interactiveWide(width);
         header(PlaylumiInteractive.TITLES[round.kind],"");
-        String instruction=round.kind==PlaylumiInteractive.NUMBERS?PlaylumiInteractive.INSTRUCTIONS[round.kind]+" Begin bij "+round.target(0)+".":PlaylumiInteractive.INSTRUCTIONS[round.kind];
+        String instruction=round.instruction();
         addSpokenPrompt(root,instruction,instruction,18,!round.solved());
         addMagicProgress(round.progress(),round.total(),false);
         final PlaylumiStarTrail trail=roundStars;
@@ -1945,6 +1949,13 @@ public class MainActivity extends Activity {
         addWidget(workspace,3,4);
         final PlaylumiInteractiveBoard board=new PlaylumiInteractiveBoard(this,round,PlaylumiLayout.interactiveBoardWidth(width));
         boardPane.addView(board,new LinearLayout.LayoutParams(-1,-2));
+        if(round.wordPuzzle()&&!round.solved()){
+            Button example=tile("💡 Bekijk het woord","",0xffffedc3,58);
+            boardPane.addView(example,new LinearLayout.LayoutParams(-1,-2));
+            example.setOnClickListener(v->{if(page==INTERACTIVE&&interactive==round&&!round.solved()){
+                board.revealExample();example.setEnabled(false);
+            }});
+        }
         final TextView message=text(round.solved()?"🌟 Knap gedaan! Alles klaar!":interactiveMessage.isEmpty()?"Jij bent aan de beurt!":interactiveMessage,16,PlaylumiMagicArt.CREAM);
         message.setMinHeight(dp(48));message.setMaxLines(2);message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         boardPane.addView(message,new LinearLayout.LayoutParams(-1,dp(54)));
@@ -1994,7 +2005,10 @@ public class MainActivity extends Activity {
                         showFinishActions(finish,true);PlaylumiDelight.sprinkle(stage,board);
                     }
                 }else{
-                    sound.mistake();interactiveMessage="Probeer nog eens!";message.setTextColor(PlaylumiMagicArt.GOLD);PlaylumiDelight.wiggle(choice);
+                    sound.mistake();interactiveMessage=round.kind==PlaylumiInteractive.NUMBERS&&round.version==PlaylumiInteractive.CURRENT&&round.level>0?
+                            "Tel "+Math.abs(round.step())+(round.step()<0?" terug.":" verder."):
+                            round.wordPuzzle()?"Zeg het woord langzaam. Welke letter hoor je nu?":"Probeer nog eens!";
+                    message.setTextColor(PlaylumiMagicArt.GOLD);PlaylumiDelight.wiggle(choice);
                 }
                 message.setText(interactiveMessage);
             });
@@ -2561,7 +2575,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.3 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.4 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -2719,7 +2733,7 @@ public class MainActivity extends Activity {
      */
     private void showPlay() {
         int mode=game.mode();
-        if(sessionSolved>=sessionGoal()) {showCompleted();return;}
+        if(sessionSolved>=sessionGoal()&&(!game.round().isSolved()||quizPace()!=PlaylumiQuizPace.MANUAL||!finalFeedbackPending)) {showCompleted();return;}
         autoRoundVisible=true;
         LearningGame.Round round=game.round();
         boolean wide=landscapeScreen();
@@ -3035,6 +3049,7 @@ public class MainActivity extends Activity {
             if(progressCounter!=null)progressCounter.setText(sessionSolved+"/"+sessionGoal());
             if(magicHeaderProgress!=null)magicHeaderProgress.setText("★ "+sessionSolved+"/"+sessionGoal());
             if(sessionSolved==sessionGoal()) {
+                finalFeedbackPending=true;
                 if(storyStage>=0) {
                     storyNewReward=adventures.complete(world,storyStage);
                     if(storyNewReward) {
@@ -3074,10 +3089,11 @@ public class MainActivity extends Activity {
             game.configure(game.mode(),game.variant(),difficulty);
             pendingLevel=-1;
         } else game.nextRound();
-        roundHadMistake=false;
+        roundHadMistake=false;finalFeedbackPending=false;
         saveRecent();saveLibraryQuiz();
     }
     private void continueAfterAnswer() {
+        finalFeedbackPending=false;
         if(!pendingBadges.isEmpty()) {
             earnedBadge=pendingBadges.remove(0);move(REWARD);return;
         }

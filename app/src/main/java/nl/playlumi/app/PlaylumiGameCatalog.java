@@ -103,8 +103,8 @@ public final class PlaylumiGameCatalog {
             q(list,5,17,3,"Weer en spullen","Wat past bij het weer?","☂");
             q(list,5,17,4,"Seizoensplaatjes","Kies het juiste seizoen","✿");
         }
-        g(list,0,INTERACTIVE,PlaylumiInteractive.NUMBERS,"Getallenrace","Bouw de raket in de juiste volgorde","🚀");
-        g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein","Bouw een woord met lettertegels","🚂");
+        g(list,0,INTERACTIVE,PlaylumiInteractive.NUMBERS,"Getallenrace",a==2?"Tel met sprongen vooruit en terug":a==1?"Tel verder en kies de juiste tegels":"Bouw de raket in de juiste volgorde","🚀");
+        g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein",a==0?"Bouw een woord met lettertegels":"Los woordraadsels op met lettertegels","🚂");
         g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
         g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
         // Stable world order, including Android 6 (API 23).
