@@ -61,7 +61,7 @@ public final class PlaylumiGameCatalog {
         g(list,2,MINI,PlaylumiMiniChallenge.DRAG,"Sleep de vormen","Breng vormen naar hun poort","◆");
         q(list,2,LearningGame.SHAPES,0,"Vormen zoeken","Vind dezelfde vorm","▲");
         q(list,2,LearningGame.SHAPES,1,"Vormen benoemen","Herken de vorm","●");
-        q(list,2,LearningGame.PATTERNS,0,"Patronen afmaken","Wat komt hierna?","◆");
+        q(list,2,LearningGame.PATTERNS,0,"Patronen afmaken","Ontdek de regel en vul het ontbrekende vakje in","◆");
         if(a>=1){
             q(list,2,18,0,"Links of rechts","Ontdek waar de ster staat","↔");
             q(list,2,18,1,"Boven of onder","Waar staat de ster?","↕");
@@ -95,7 +95,7 @@ public final class PlaylumiGameCatalog {
         if(a>=1){
             q(list,5,17,2,"Weer herkennen","Ontdek het weer","☀");
             q(list,5,17,0,"Seizoenen","Welk seizoen zie je?","✿");
-            q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Maak de kleurenreeks af","✦");
+            q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Langere reeksen met afwisselende kleurengroepjes","✦");
         }
         if(a>=2){
             q(list,5,17,3,"Weer en spullen","Wat past bij het weer?","☂");

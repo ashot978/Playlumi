@@ -1,4 +1,4 @@
-name: Android Playlumi 0.92.0 fast build
+name: Android Playlumi 0.93.0 fast build
 on:
   push:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
           gradle-version: '8.9'
           cache-read-only: false
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=600920" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=600930" >> "$GITHUB_ENV"
       - name: Compile production APK
         run: gradle --no-daemon assembleRelease
 
@@ -59,8 +59,8 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600920'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.92.0'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='600930'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.93.0'"
           done
           sha256sum app/build/outputs/apk/release/app-release-unsigned.apk > build-release-unsigned-sha256.txt
 
@@ -79,7 +79,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-092-unsigned-release
+          name: playlumi-093-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -89,7 +89,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-092-offline-signing-tools
+          name: playlumi-093-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
@@ -116,18 +116,18 @@ jobs:
           SDK="$ANDROID_HOME/build-tools/35.0.0"
           "$SDK/zipalign" -P 16 -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$TMP/aligned.apk"
           mkdir -p build/release
-          "$SDK/apksigner" sign --ks "$TMP/release.p12" --ks-type PKCS12 --ks-key-alias playlumi-release --ks-pass env:PLAYLUMI_SIGNING_PASSWORD --key-pass env:PLAYLUMI_SIGNING_PASSWORD --v4-signing-enabled false --out build/release/Playlumi-0.92.0-release.apk "$TMP/aligned.apk"
-          "$SDK/zipalign" -c -P 16 4 build/release/Playlumi-0.92.0-release.apk
-          "$SDK/apksigner" verify --verbose --print-certs build/release/Playlumi-0.92.0-release.apk | tee "$TMP/certificate.txt"
+          "$SDK/apksigner" sign --ks "$TMP/release.p12" --ks-type PKCS12 --ks-key-alias playlumi-release --ks-pass env:PLAYLUMI_SIGNING_PASSWORD --key-pass env:PLAYLUMI_SIGNING_PASSWORD --v4-signing-enabled false --out build/release/Playlumi-0.93.0-release.apk "$TMP/aligned.apk"
+          "$SDK/zipalign" -c -P 16 4 build/release/Playlumi-0.93.0-release.apk
+          "$SDK/apksigner" verify --verbose --print-certs build/release/Playlumi-0.93.0-release.apk | tee "$TMP/certificate.txt"
           grep -Fx 'Signer #1 certificate SHA-256 digest: d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef' "$TMP/certificate.txt"
-          sha256sum build/release/Playlumi-0.92.0-release.apk > build/release/SHA256SUMS.txt
+          sha256sum build/release/Playlumi-0.93.0-release.apk > build/release/SHA256SUMS.txt
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Upload signed Playlumi APK
         if: steps.sign.outputs.signed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-092-signed-release
+          name: playlumi-093-signed-release
           path: build/release/
           if-no-files-found: error
           retention-days: 30

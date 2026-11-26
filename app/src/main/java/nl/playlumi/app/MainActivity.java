@@ -117,6 +117,8 @@ public class MainActivity extends Activity {
     private int libraryScrollY;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR;
     private TextView[] libraryTabs;
+    private boolean favoriteEditMode;
+    private long favoriteReadyAt;
     private boolean libraryReturn;
     private PlaylumiInteractive interactive;
     private String interactiveMessage="";
@@ -438,6 +440,7 @@ public class MainActivity extends Activity {
         if(page==HOME) {super.onBackPressed();return;}
         if(page==INTERACTIVE){move(LIBRARY);return;}
         if(page==LIBRARY){
+            if(favoriteEditMode){favoriteEditMode=false;renderLibraryContents(scroller.getScrollY());return;}
             if(libraryFilter!=PlaylumiGameCatalog.OVERVIEW){libraryFilter(PlaylumiGameCatalog.OVERVIEW);}
             else move(HOME);
             return;
@@ -1117,7 +1120,7 @@ public class MainActivity extends Activity {
     private void move(int next) {
         if(moving)return;
         autoAdvanceToken++;
-        if(page==LIBRARY&&next!=LIBRARY&&scroller!=null)libraryScrollY=scroller.getScrollY();
+        if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();favoriteEditMode=false;}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
         if(page==INTERACTIVE&&next!=INTERACTIVE)saveLibraryInteractive();
         if(next==HOME)libraryReturn=false;
@@ -1243,7 +1246,7 @@ public class MainActivity extends Activity {
         stage.addView(village,new FrameLayout.LayoutParams(-1,-1));
     }
     private void openLibrary(int filter){
-        libraryReturn=false;libraryFilter=filter;libraryScrollY=0;storyStage=-1;move(LIBRARY);
+        libraryReturn=false;libraryFilter=filter;libraryScrollY=0;favoriteEditMode=false;storyStage=-1;move(LIBRARY);
     }
     private java.util.Set<String> librarySet(String key){
         return new java.util.HashSet<>(prefs().getStringSet(key,java.util.Collections.emptySet()));
@@ -1504,7 +1507,8 @@ public class MainActivity extends Activity {
     }
     private void libraryFilter(int filter){
         if(moving||page!=LIBRARY||libraryFilter==filter)return;
-        libraryFilter=filter;libraryScrollY=0;
+        libraryFilter=filter;libraryScrollY=0;favoriteEditMode=false;
+        if(filter==PlaylumiGameCatalog.FAVORITES)favoriteReadyAt=SystemClock.uptimeMillis()+400;
         renderLibraryContents(0);
     }
     private static final String[] LIBRARY_TAB_LABELS={"Dorp","Werelden","Spellen","Favorieten"};
@@ -1585,6 +1589,7 @@ public class MainActivity extends Activity {
         navParams.setMargins(pad,rail?dp(8):0,pad,dp(3));stage.addView(nav,navParams);
     }
     private void showGameLibrary(){
+        if(libraryFilter==PlaylumiGameCatalog.FAVORITES)favoriteReadyAt=SystemClock.uptimeMillis()+400;
         showLibraryNavigation();renderLibraryContents(libraryScrollY);
     }
     private void renderLibraryContents(int desiredScroll){
@@ -1675,7 +1680,19 @@ public class MainActivity extends Activity {
         }else if(libraryFilter==PlaylumiGameCatalog.ALL)libraryWorldStrip();
         java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
         librarySection(libraryFilter==PlaylumiGameCatalog.FAVORITES?"Jouw lievelingsspellen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
+        if(libraryFilter==PlaylumiGameCatalog.FAVORITES&&!entries.isEmpty()){
+            Button manage=tile(favoriteEditMode?"✓ Klaar met beheren":"Favorieten beheren",
+                    favoriteEditMode?"Tik op Verwijderen om een spel te kiezen":"Verwijderen kan alleen in de beheermodus",0xffe9dcff,64);
+            addTile(manage,3);
+            manage.setOnClickListener(view->{
+                if(SystemClock.uptimeMillis()<favoriteReadyAt)return;
+                favoriteEditMode=!favoriteEditMode;
+                favoriteReadyAt=SystemClock.uptimeMillis()+400;
+                renderLibraryContents(scroller.getScrollY());
+            });
+        }
         if(entries.isEmpty()){
+            favoriteEditMode=false;
             addText("Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
             Button discover=tile("Ontdek alle spellen","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
             return;
@@ -1684,7 +1701,7 @@ public class MainActivity extends Activity {
             java.util.List<PlaylumiGameCatalog.Entry> group=new ArrayList<>();
             for(PlaylumiGameCatalog.Entry e:entries)if(e.world==w)group.add(e);
             if(group.isEmpty())continue;
-            if(libraryFilter<0)librarySection(PlaylumiWorldStyle.NAMES[w],group.size()+" spellen");
+            if(libraryFilter<0)librarySection(PlaylumiWorldStyle.NAMES[w],group.size()+(group.size()==1?" spel":" spellen"));
             for(int first=0;first<group.size();first+=columns){
                 LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
                 int n=Math.min(columns,group.size()-first);
@@ -1717,9 +1734,15 @@ public class MainActivity extends Activity {
             TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);labels.addView(description);
         }
         heading.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
+        final boolean favoriteList=libraryFilter==PlaylumiGameCatalog.FAVORITES;
+        final boolean editing=favoriteList&&favoriteEditMode;
         TextView star=text(favorites.contains(entry.id)?"★":"☆",26,0xffffdf85);
         updateFavoriteLabel(star,entry,favorites.contains(entry.id));
-        heading.addView(star,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        if(favoriteList&&!editing){
+            // A decorative saved marker, never a removal control in the normal Favorites view.
+            star.setContentDescription("Bewaard als favoriet");star.setClickable(false);star.setFocusable(false);
+        }
+        if(!editing)heading.addView(star,new LinearLayout.LayoutParams(dp(48),dp(48)));
         if(wide){
             card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
             TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);
@@ -1739,24 +1762,58 @@ public class MainActivity extends Activity {
             TextView action=text(resume?resumeLabel:played.contains(entry.id)?"▶ Opnieuw spelen":"▶ Spelen",12,PlaylumiMagicArt.GOLD);
             action.setGravity(Gravity.START);labels.addView(action);
         }
-        libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title,()->launchCatalog(entry,resume));
-        if(resume)card.setOnLongClickListener(v->{
+        if(!editing)libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title,()->{
+            if(favoriteList&&SystemClock.uptimeMillis()<favoriteReadyAt)return;
+            launchCatalog(entry,resume);
+        });
+        if(resume&&!editing)card.setOnLongClickListener(v->{
             new android.app.AlertDialog.Builder(this).setTitle(entry.title).setMessage("Opnieuw beginnen met dit spel? Je verdiende sterren en schatten blijven bewaard.")
                     .setNegativeButton("Verder spelen",null).setPositiveButton("Opnieuw beginnen",(d,which)->launchCatalog(entry,false)).show();
             return true;
         });
-        star.setClickable(true);star.setFocusable(true);
-        star.setOnClickListener(v->{
-            java.util.Set<String> saved=librarySet("library_favorites");
-            boolean now=!saved.contains(entry.id);
-            if(now)saved.add(entry.id);else saved.remove(entry.id);
-            prefs().edit().putStringSet("library_favorites",saved).apply();
-            if(sound!=null)sound.tap();
-            updateFavoriteLabel(star,entry,now);refreshLibraryNavigation();
-            if(now)PlaylumiMotion.pop(star);
-            if(libraryFilter==PlaylumiGameCatalog.FAVORITES&&!now)renderLibraryContents(scroller.getScrollY());
-        });
+        if(editing){
+            TextView remove=text("Verwijderen",14,0xff432467);
+            remove.setTypeface(Typeface.DEFAULT,Typeface.BOLD);remove.setMinHeight(dp(48));
+            remove.setPadding(dp(7),0,dp(7),0);remove.setBackground(rounded(0xffffd8e5,13));
+            if(wide){
+                LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,dp(48));rp.topMargin=dp(4);card.addView(remove,rp);
+            }else card.addView(remove,new LinearLayout.LayoutParams(-2,dp(48)));
+            libraryClick(remove,"Verwijder "+entry.title+" uit favorieten",()->{
+                if(SystemClock.uptimeMillis()>=favoriteReadyAt)confirmFavoriteRemoval(entry,null);
+            });
+        }else if(!favoriteList){
+            star.setClickable(true);star.setFocusable(true);
+            star.setOnClickListener(view->{
+                java.util.Set<String> saved=librarySet("library_favorites");
+                if(saved.contains(entry.id)){confirmFavoriteRemoval(entry,star);return;}
+                saved.add(entry.id);prefs().edit().putStringSet("library_favorites",saved).apply();
+                if(sound!=null)sound.tap();
+                updateFavoriteLabel(star,entry,true);refreshLibraryNavigation();PlaylumiMotion.pop(star);
+            });
+        }
         return card;
+    }
+    private void confirmFavoriteRemoval(PlaylumiGameCatalog.Entry entry,TextView star){
+        final int profile=activeProfile,filter=libraryFilter;
+        final android.app.AlertDialog confirm=new android.app.AlertDialog.Builder(this)
+                .setTitle("Favoriet verwijderen?")
+                .setMessage("Wil je "+entry.title+" uit je favorieten halen? Je voortgang en sterren blijven bewaard.")
+                .setNegativeButton("Behouden",null)
+                .setPositiveButton("Verwijderen",(dialog,which)->{
+                    if(page!=LIBRARY||activeProfile!=profile||libraryFilter!=filter)return;
+                    java.util.Set<String> saved=librarySet("library_favorites");
+                    if(!saved.remove(entry.id))return;
+                    prefs().edit().putStringSet("library_favorites",saved).apply();
+                    if(sound!=null)sound.tap();
+                    if(star!=null)updateFavoriteLabel(star,entry,false);
+                    if(filter==PlaylumiGameCatalog.FAVORITES){
+                        favoriteReadyAt=SystemClock.uptimeMillis()+400;renderLibraryContents(scroller.getScrollY());
+                    }else refreshLibraryNavigation();
+                }).create();
+        confirm.show();
+        Button positive=confirm.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+        positive.setEnabled(false);
+        positive.postDelayed(()->{if(confirm.isShowing())positive.setEnabled(true);},400);
     }
     private void updateFavoriteLabel(TextView star,PlaylumiGameCatalog.Entry entry,boolean saved){
         star.setText(saved?"★":"☆");star.setSelected(saved);
@@ -2082,6 +2139,11 @@ public class MainActivity extends Activity {
             PlaylumiClockFace clock=new PlaylumiClockFace(this,Integer.parseInt(time[0]),Integer.parseInt(time[1]));
             clock.setBackground(PlaylumiMagicArt.parchment(this));clock.setMinimumHeight(dp(Math.max(148,questionH)));
             addWidgetIn(questions,clock,0,dp(3));
+        } else if(PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3)) {
+            PlaylumiPatternView pattern=new PlaylumiPatternView(this,round.display);
+            pattern.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,false));
+            pattern.setMinimumHeight(dp(Math.max(questionH,112)));
+            addWidgetIn(questions,pattern,0,dp(3));
         } else if(mode==LearningGame.COLORS && "●".equals(round.display)) {
             PlaylumiColorSwatch swatch=new PlaylumiColorSwatch(this,round.displayColor,!wide);
             swatch.setMinimumHeight(dp(questionH));
@@ -2106,6 +2168,7 @@ public class MainActivity extends Activity {
         feedbackText.setShadowLayer(dp(1),0,dp(1),0xff2e164c);
         addWidgetIn(answers,feedbackText,0,dp(2));
         answerButtons.clear();
+        boolean visualPattern=PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3);
         answerLocked=round.isSolved();
         int columns=PlaylumiAnswerOrder.verticalPair(round.answers)?1:PlaylumiAnswerOrder.horizontalPair(round.answers)?2:centered?PlaylumiLayout.centeredAnswerColumns(round.answers.size()):2;
         int rowHeight=centered?PlaylumiLayout.centeredAnswerHeight(height,round.answers.size()):PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
@@ -2124,6 +2187,15 @@ public class MainActivity extends Activity {
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:value.length()>=6?21:29);
                 button.setPadding(dp(6),dp(4),dp(6),dp(4));button.setMaxLines(3);
                 button.setMinHeight(dp(rowHeight));button.setEnabled(!answerLocked);
+                if(visualPattern&&PlaylumiPatterns.colorIndex(value)>=0){
+                    int paint=PlaylumiPatterns.color(PlaylumiPatterns.colorIndex(value));
+                    GradientDrawable dot=new GradientDrawable();dot.setShape(GradientDrawable.OVAL);
+                    dot.setColor(paint);dot.setStroke(dp(1),0xff573785);dot.setBounds(0,0,dp(22),dp(22));
+                    button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),PlaylumiMagicArt.creamPlate(this),null));
+                    button.setCompoundDrawables(dot,null,null,null);button.setCompoundDrawablePadding(dp(7));
+                    button.setTextColor(PlaylumiMagicArt.INK);button.setTextSize(19);
+                    button.setContentDescription(value);
+                }
                 if(mode==LearningGame.COLORS && game.variant()==1 && round.answerColors.get(j)!=0) {
                     int paint=round.answerColors.get(j);
                     GradientDrawable colorPlate=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
