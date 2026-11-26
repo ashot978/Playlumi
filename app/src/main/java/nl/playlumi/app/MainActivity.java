@@ -1526,6 +1526,12 @@ public class MainActivity extends Activity {
             final PlaylumiGameCatalog.Entry favorite=entry;
             homeAdd(panel,homeAction("▶ "+entry.title,false,()->startFromWideHome(favorite)),2,2);break;
         }
+        java.util.List<PlaylumiGameCatalog.Entry> suggested=learningSuggestions();
+        if(!suggested.isEmpty()){
+            final PlaylumiGameCatalog.Entry pick=suggested.get(0);
+            homeAdd(panel,homeLabel("Speciaal voor jou",14,PlaylumiMagicArt.GOLD,true),4,1);
+            homeAdd(panel,homeAction("▶ "+pick.title,false,()->startFromWideHome(pick)),1,3);
+        }
         homeAdd(panel,homeAction("Alle spellen",false,()->openLibrary(PlaylumiGameCatalog.ALL)),3,3);
         homeAdd(panel,homeAction("Mijn schatten",false,()->visitVillagePlace(PlaylumiVillageView.COLLECTION)),2,0);
         return panel;
@@ -1632,6 +1638,7 @@ public class MainActivity extends Activity {
             org.json.JSONObject o=new org.json.JSONObject();
             o.put("id",e.id);o.put("age",age);o.put("level",game.level());
             o.put("count",sessionSolved);o.put("total",sessionGoal());o.put("attempts",sessionAttempts);o.put("solved",r.isSolved());
+            o.put("hadMistake",roundHadMistake);
             o.put("prompt",r.prompt);o.put("display",r.display);o.put("color",r.displayColor);
             o.put("correct",r.correctIndex);o.put("fingers",r.fingerCount);
             o.put("answers",new org.json.JSONArray(r.answers));o.put("colors",new org.json.JSONArray(r.answerColors));
@@ -1657,10 +1664,14 @@ public class MainActivity extends Activity {
                 game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
                     answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
             difficulty=level;sessionSolved=count;sessionAttempts=attempts;feedback="";
-            smartDifficulty=false;roundHadMistake=false;pendingLevel=-1;pendingBadges.clear();
+            smartDifficulty=false;roundHadMistake=o.optBoolean("hadMistake",attempts>count&&!o.optBoolean("solved",false));pendingLevel=-1;pendingBadges.clear();
             earnedBadge=-1;rewardReturn=PLAY;quickCategoryPlay=true;storyStage=-1;
             // The solved round already earned points. Resume at the next question, never credit it twice.
-            if(game.round().isSolved())game.nextRound();
+            if(game.round().isSolved()){
+                int next=catalogLevel(entry);
+                if(game.level()!=next){difficulty=next;game.configure(entry.mode,entry.variant,next);}else game.nextRound();
+                roundHadMistake=false;
+            }
             saveRecent();saveLibraryQuiz();move(PLAY);return true;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return false;}
     }
@@ -1934,6 +1945,7 @@ public class MainActivity extends Activity {
             all.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
             fav.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.FAVORITES));
             addTwo(all,fav,58);
+            addLearningSuggestions();
             librarySection("Onze speelwerelden","6 avonturen");
             int worldColumns=PlaylumiLayout.libraryContentWidth(width)>=600?3:2;
             for(int start=0;start<6;start+=worldColumns){
@@ -2116,12 +2128,85 @@ public class MainActivity extends Activity {
         addTile(b,5);
         b.setOnClickListener(v->action.run());
     }
+    private PlaylumiGameCatalog.Entry currentLearningEntry(){
+        if(!libraryReturn||storyStage>=0||game==null)return null;
+        return PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.QUIZ,game.mode(),game.variant());
+    }
+    private String learningKey(PlaylumiGameCatalog.Entry entry){
+        return "learning_v1_"+PlaylumiRocketCurriculum.level(age)+"_"+entry.id+"_";
+    }
+    private PlaylumiLearningProfile learningProfile(PlaylumiGameCatalog.Entry entry){
+        String key=learningKey(entry);int tier=PlaylumiRocketCurriculum.level(age);
+        return new PlaylumiLearningProfile(tier,PlaylumiLearningProfile.minimum(tier,entry.mode,entry.variant),
+                prefs().getInt(key+"level",tier),prefs().getInt(key+"bits",0),
+                prefs().getInt(key+"samples",0),prefs().getInt(key+"total",0),prefs().getInt(key+"window",0));
+    }
+    private boolean catalogAdaptive(){return prefs().getBoolean("catalog_adaptive",true);}
+    private int catalogLevel(PlaylumiGameCatalog.Entry entry){
+        return catalogAdaptive()?learningProfile(entry).level:PlaylumiRocketCurriculum.level(age);
+    }
+    private void recordLearning(PlaylumiGameCatalog.Entry entry,boolean firstTry){
+        PlaylumiLearningProfile data=learningProfile(entry);
+        data.record(firstTry,catalogAdaptive());
+        String key=learningKey(entry);
+        prefs().edit().putInt(key+"level",data.level).putInt(key+"bits",data.bits)
+                .putInt(key+"samples",data.samples).putInt(key+"total",data.total)
+                .putInt(key+"window",data.window).apply();
+    }
+    private java.util.List<PlaylumiGameCatalog.Entry> learningSuggestions(){
+        java.util.List<PlaylumiGameCatalog.Entry> candidates=new ArrayList<>();
+        java.util.Set<String> played=librarySet("library_played");
+        final java.util.Map<String,Integer> priorities=new java.util.HashMap<>();
+        for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age)){
+            if(e.kind!=PlaylumiGameCatalog.QUIZ)continue;
+            PlaylumiLearningProfile profile=learningProfile(e);
+            int priority=profile.priority(played.contains(e.id));
+            if(priority>0){candidates.add(e);priorities.put(e.id,priority);}
+        }
+        java.util.Collections.sort(candidates,(x,y)->Integer.compare(priorities.get(y.id),priorities.get(x.id)));
+        ArrayList<PlaylumiGameCatalog.Entry> result=new ArrayList<>();
+        boolean[] worlds=new boolean[6];
+        for(PlaylumiGameCatalog.Entry e:candidates){
+            if(worlds[e.world])continue;
+            result.add(e);worlds[e.world]=true;if(result.size()==3)return result;
+        }
+        for(PlaylumiGameCatalog.Entry e:candidates){
+            if(!result.contains(e))result.add(e);
+            if(result.size()==3)break;
+        }
+        return result;
+    }
+    private String learningSuggestionReason(PlaylumiGameCatalog.Entry entry){
+        PlaylumiLearningProfile data=learningProfile(entry);
+        if(data.samples>=4&&data.firstTryPercent()<75)return "Samen nog even oefenen";
+        return librarySet("library_played").contains(entry.id)?"Een ander avontuur proberen":"Ontdek een nieuw spel";
+    }
+    private void addLearningSuggestions(){
+        java.util.List<PlaylumiGameCatalog.Entry> suggestions=learningSuggestions();
+        if(suggestions.isEmpty())return;
+        librarySection("Speciaal voor jou","Vrij om te kiezen");
+        for(PlaylumiGameCatalog.Entry entry:suggestions){
+            LinearLayout card=libraryPanel();card.setBackground(libraryCardSurface(entry.world));
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+            TextView icon=text(entry.icon,27,PlaylumiMagicArt.GOLD);
+            icon.setBackground(PlaylumiMagicArt.gemButton(this,entry.world));
+            row.addView(icon,new LinearLayout.LayoutParams(dp(46),dp(46)));
+            LinearLayout label=new LinearLayout(this);label.setOrientation(LinearLayout.VERTICAL);label.setPadding(dp(8),0,dp(5),0);
+            label.addView(homeLabel(entry.title,17,PlaylumiMagicArt.CREAM,true));
+            label.addView(homeLabel(learningSuggestionReason(entry),13,0xffffdf9a,false));
+            row.addView(label,new LinearLayout.LayoutParams(0,-2,1f));
+            row.addView(text("▶",20,PlaylumiMagicArt.GOLD),new LinearLayout.LayoutParams(dp(30),-2));
+            card.addView(row);libraryClick(card,"Speel "+entry.title,()->launchCatalog(entry,libraryResume(entry)!=null));
+            addWidget(card,1,3);
+        }
+    }
     private void startWorldQuiz(int mode,int variant) {
         storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;
         pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();rewardReturn=PLAY;
         boolean rocket=villageLaunch==PlaylumiVillageHit.ROCKET && PlaylumiRocketCurriculum.isMathMode(mode);
         if(rocket||libraryReturn)smartDifficulty=false;
-        difficulty=rocket||libraryReturn?PlaylumiRocketCurriculum.level(age):adaptive.level(mode,Math.max(0,age));
+        PlaylumiGameCatalog.Entry selected=libraryReturn?PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.QUIZ,mode,variant):null;
+        difficulty=selected!=null?catalogLevel(selected):rocket||libraryReturn?PlaylumiRocketCurriculum.level(age):adaptive.level(mode,Math.max(0,age));
         game.configure(mode,variant,difficulty);
         prefs().edit().putInt("game_mode",mode).putInt("game_variant",variant)
                 .putInt("last_played_category",mode).putInt("last_played_variant",variant).apply();
@@ -2454,7 +2539,7 @@ public class MainActivity extends Activity {
         }
         feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):"Kies het juiste antwoord",15,PlaylumiMagicArt.CREAM);
         feedbackText.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
-        feedbackText.setMinHeight(dp(23));
+        feedbackText.setMinHeight(dp(40));feedbackText.setMaxLines(3);
         feedbackText.setShadowLayer(dp(1),0,dp(1),0xff2e164c);
         addWidgetIn(answers,feedbackText,0,dp(2));
         answerButtons.clear();
@@ -2617,7 +2702,10 @@ public class MainActivity extends Activity {
                 if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
             }
             feedback="⭐ Goed gedaan! +3 🌟";
-            if(smartDifficulty && storyStage<0) {
+            PlaylumiGameCatalog.Entry learningEntry=currentLearningEntry();
+            if(learningEntry!=null){
+                recordLearning(learningEntry,!roundHadMistake);
+            }else if(smartDifficulty && storyStage<0) {
                 if(adaptive.observe(mode,!roundHadMistake,Math.max(0,age))) {
                     pendingLevel=adaptive.level(mode,Math.max(0,age));
                     feedback="🌟 Wat knap! Een nieuwe uitdaging!";
@@ -2658,11 +2746,7 @@ public class MainActivity extends Activity {
             scheduleAutoAdvance();
             feedbackText.announceForAccessibility(feedback);
         } else {
-            feedback="💛 Probeer nog eens!";
-            if(mode==ExtraGames.SEQUENCES||mode==23&&(game.variant()==0||game.variant()==1||game.variant()==3))
-                feedback="💛 Kijk naar de sprongen.";
-            if(mode==22&&game.variant()==0&&game.round().display.contains("mm"))
-                feedback="💛 1 cm = 10 mm.";
+            feedback="💛 "+PlaylumiLearningHints.hint(mode,game.variant(),game.round().display,game.round().prompt);
             roundHadMistake=true;
             sound.mistake();
             if(playPal!=null)playPal.react(2);
@@ -2673,7 +2757,12 @@ public class MainActivity extends Activity {
         saveScore(mode);saveLibraryQuiz();
     }
     private void advanceRegularRound() {
-        if(smartDifficulty && storyStage<0 && pendingLevel>=0) {
+        PlaylumiGameCatalog.Entry entry=currentLearningEntry();
+        if(entry!=null){
+            int next=catalogLevel(entry);
+            if(game.level()!=next){difficulty=next;game.configure(entry.mode,entry.variant,next);}else game.nextRound();
+            pendingLevel=-1;
+        }else if(smartDifficulty && storyStage<0 && pendingLevel>=0) {
             difficulty=pendingLevel;
             game.configure(game.mode(),game.variant(),difficulty);
             pendingLevel=-1;
@@ -3544,6 +3633,30 @@ public class MainActivity extends Activity {
             });
         }
     }
+    private void showLearningSummary(){
+        addText("Leerontwikkeling",22,TEXT,6,4);
+        addText("Recente eerste antwoorden per quiz, gemeten vanaf 0.97. Dit is oefenvoortgang, geen beoordeling.",14,SUB,0,6);
+        java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
+        for(int world=0;world<6;world++){
+            int samples=0,good=0,total=0;
+            for(PlaylumiGameCatalog.Entry e:entries)if(e.world==world&&e.kind==PlaylumiGameCatalog.QUIZ){
+                PlaylumiLearningProfile data=learningProfile(e);samples+=data.samples;
+                good+=Integer.bitCount(data.bits);total+=data.total;
+            }
+            LinearLayout card=personalPanel();
+            homeAdd(card,homeLabel(PlaylumiWorldStyle.NAMES[world],17,TEXT,true),0,3);
+            if(samples<4){
+                homeAdd(card,homeLabel(samples==0?"Nog geen nieuwe oefengegevens":"Nog te weinig gegevens voor een percentage",13,SUB,false),0,0);
+            }else{
+                int percent=(100*good+samples/2)/samples;
+                homeAdd(card,homeLabel(percent+"% in één keer goed · "+total+" opgeloste vragen",14,SUB,false),0,3);
+                ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+                bar.setMax(100);bar.setProgress(percent);bar.setProgressTintList(ColorStateList.valueOf(0xff8057ad));
+                card.addView(bar,new LinearLayout.LayoutParams(-1,dp(8)));
+            }
+            addWidget(card,2,3);
+        }
+    }
     private void showParentHome() {
         header("👨‍👩‍👧 Voor ouders","Inzicht en instellingen, alles blijft op dit toestel.");
         saveUsage();
@@ -3556,6 +3669,7 @@ public class MainActivity extends Activity {
         addText("⭐ "+correct+" goede antwoorden",23,0xff34856d,10,6);
         addText("🏅 "+badges+" van 144 badges verdiend",19,0xff9166b7,2,6);
         addText("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",16,SUB,0,12);
+        showLearningSummary();
         Button overview=tile("📊 Bekijk de voortgang","Scores en badges per leerwereld",
                 0xffd7eefe,104);
         addTile(overview,9);
@@ -3613,6 +3727,9 @@ public class MainActivity extends Activity {
             showPage();
         });
         addText("Spraak is uitgeschakeld. Geluidseffecten en muziek blijven beschikbaar.",14,SUB,2,7);
+        Button learning=tile(catalogAdaptive()?"Adaptief oefenen: aan":"Adaptief oefenen: uit",
+                "Past quizmoeilijkheid aan binnen de leeftijdsgroep. Voortgang blijft bewaard.",0xffd5f5df,90);
+        addTile(learning,7);learning.setOnClickListener(v->{prefs().edit().putBoolean("catalog_adaptive",!catalogAdaptive()).apply();showPage();});
         Button motion=tile(PlaylumiMotion.isReduced()?
                 "🍃 Rustige animaties: aan":"✨ Bewegingen: aan",
                 "Rustige modus beperkt beweging",0xffe6dcff,91);
