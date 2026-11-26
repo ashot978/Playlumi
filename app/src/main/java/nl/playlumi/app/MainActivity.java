@@ -1420,7 +1420,7 @@ public class MainActivity extends Activity {
     }
     private void startWorldQuiz(int mode,int variant) {
         storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;
-        pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();
+        pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();rewardReturn=PLAY;
         boolean rocket=villageLaunch==PlaylumiVillageHit.ROCKET && PlaylumiRocketCurriculum.isMathMode(mode);
         if(rocket||libraryReturn)smartDifficulty=false;
         difficulty=rocket||libraryReturn?PlaylumiRocketCurriculum.level(age):adaptive.level(mode,Math.max(0,age));

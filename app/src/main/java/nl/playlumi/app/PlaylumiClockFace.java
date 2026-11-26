@@ -17,6 +17,12 @@ public final class PlaylumiClockFace extends View {
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         setContentDescription("Wijzerklok: "+hour+" uur en "+minute+" minuten");
     }
+    @Override protected void onMeasure(int w,int h){
+        // A normal View consumes the entire AT_MOST height inside a ScrollView.
+        // Respect the explicitly requested question-card height instead.
+        setMeasuredDimension(resolveSize(getSuggestedMinimumWidth(),w),
+                resolveSize(getSuggestedMinimumHeight(),h));
+    }
     @Override protected void onDraw(Canvas c){
         super.onDraw(c);
         float x=getWidth()/2f,y=getHeight()/2f,r=Math.min(getWidth(),getHeight())*.43f;

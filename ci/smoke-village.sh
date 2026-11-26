@@ -664,8 +664,35 @@ PY
   adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
   adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
   grep -q "Wijzerklok:" build/qa/ui.xml
+  local safe
+  safe=$(adb logcat -d -s PlaylumiQA:I | grep 'gameReservedBottom=' | tail -1 | sed -nE 's/.*gameReservedBottom=([0-9]+).*/\1/p')
+  xy=$(python3 - "$screenH" "$safe" <<'PY'
+import re,sys,xml.etree.ElementTree as E
+h,safe=map(int,sys.argv[1:])
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+clock=next(n for n in nodes if n.get('content-desc','').startswith('Wijzerklok:'))
+m=re.search(r'(\d+) uur en (\d+) minuten',clock.get('content-desc'))
+answer=f'{int(m.group(1)):02d}:{int(m.group(2)):02d}'
+def bounds(n):
+    return list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+b=bounds(clock)
+assert 0<b[3]-b[1]<=h*.42, 'Clock consumes too much viewport'
+choices=[n for n in nodes if n.get('clickable')=='true' and re.fullmatch(r'\d\d:\d\d',n.get('content-desc',''))]
+assert len(choices)==4,'All four clock answers must be present'
+for n in choices:
+    a=bounds(n)
+    assert a[3]>a[1] and a[3]<=h-safe,'Clock answer outside safe area'
+n=next(n for n in choices if n.get('content-desc')==answer)
+a=bounds(n);print((a[0]+a[2])//2,(a[1]+a[3])//2)
+PY
+)
   screenshot "game-library-clock-${mode}"
-  echo "PASS: $mode library, age filter, favorites, resumed score, analog clock"
+  adb shell input tap $xy
+  sleep 2
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q '1/8' build/qa/ui.xml
+  echo "PASS: $mode library, age filter, favorites, resumed score, analog clock and safe visible answers"
 }
 libraryTest
 # The native layout must not have crashed anywhere during the recorded journeys.
