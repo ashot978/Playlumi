@@ -125,6 +125,25 @@ public final class ReleaseCandidateCheck {
             restores++;
         }
         System.out.println("PASS: "+restores+" saved minigame state round trips.");
+        int searches=0;
+        for(int age=0;age<3;age++)for(String query:new String[]{"","klok","rijmen","géheugen","maan","dieren","nietbestaandspel"}){
+            Set<String> ids=new HashSet<>();
+            for(PlaylumiGameCatalog.Entry e:PlaylumiLibrarySearch.find(age,query))
+                require(ids.add(e.id)&&PlaylumiGameCatalog.find(age,e.id)!=null,"search scope");
+            searches++;
+        }
+        require(PlaylumiLibrarySearch.find(2,"nietbestaandspel").isEmpty(),"search empty");
+        require(PlaylumiLibrarySearch.find(0,"klok").isEmpty(),"search age boundary");
+        require(PlaylumiLibrarySearch.find(2,"klokkijken").get(0).title.equals("Klokkijken"),"search rank");
+        game.configure(ExtraGames.MATH,0,2);
+        LearningGame.Round example=game.round();int wrong=(example.correctIndex+1)%example.answers.size();
+        require(!example.choose(wrong)&&example.isRejected(wrong),"wrong choice stored");
+        int rejected=example.rejectedMask();
+        game.restoreRound(example.prompt,example.display,example.displayColor,example.answers,example.answerColors,example.correctIndex,example.fingerCount,false);
+        game.round().restoreRejected(rejected);
+        require(game.round().isRejected(wrong)&&!game.round().choose(wrong),"wrong choice restored");
+        require(game.round().choose(game.round().correctIndex)&&!PlaylumiQuizCoach.explain(ExtraGames.MATH,0,game.round()).isEmpty(),"solved explanation");
+        System.out.println("PASS: "+searches+" search scopes and rejected-answer restoration.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");

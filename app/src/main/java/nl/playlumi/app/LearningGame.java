@@ -29,6 +29,7 @@ public final class LearningGame {
         public final List<String> answers;
         public final List<Integer> answerColors;
         private boolean solved;
+        private int rejected;
         Round(String prompt, String display, int displayColor, List<String> answers, List<Integer> answerColors, int correctIndex) {
             this(prompt,display,displayColor,answers,answerColors,correctIndex,0);
         }
@@ -63,10 +64,15 @@ public final class LearningGame {
             if(!solved || blank<0)return display;
             return display.substring(0,blank)+blankReplacement()+display.substring(blank+1);
         }
+        public int rejectedMask(){return rejected;}
+        public boolean isRejected(int index){return index>=0&&index<answers.size()&&index<31&&(rejected&(1<<index))!=0;}
+        public void restoreRejected(int mask){
+            rejected=mask&((1<<Math.min(answers.size(),30))-1)&~(1<<correctIndex);
+        }
         public boolean choose(int index) {
-            if (solved || index != correctIndex) return false;
-            solved = true;
-            return true;
+            if(solved||index<0||index>=answers.size()||isRejected(index))return false;
+            if(index!=correctIndex){if(index<31)rejected|=1<<index;return false;}
+            solved=true;return true;
         }
     }
 
