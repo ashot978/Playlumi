@@ -39,7 +39,7 @@ jobs:
           gradle-version: '8.9'
           cache-read-only: false
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=60100" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=601000" >> "$GITHUB_ENV"
       - name: Compile production APK
         run: gradle --no-daemon assembleRelease
 
@@ -66,7 +66,7 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='60100'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='601000'"
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='1.0'"
           done
           sha256sum app/build/outputs/apk/release/app-release-unsigned.apk > build-release-unsigned-sha256.txt
