@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -113,6 +113,8 @@ public class MainActivity extends Activity {
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
     private boolean libraryReturn;
+    private PlaylumiInteractive interactive;
+    private String interactiveMessage="";
     private boolean quickCategoryPlay;
     private boolean parentAllowed;
     private PlaylumiStories stories;
@@ -209,6 +211,7 @@ public class MainActivity extends Activity {
             villageLaunch=state.getInt("villageLaunch",-1);
             libraryFilter=state.getInt("libraryFilter",PlaylumiGameCatalog.OVERVIEW);
             libraryReturn=state.getBoolean("libraryReturn",false);
+            if(state.containsKey("interactiveKind"))interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"));
             quickCategoryPlay=state.getBoolean("quickCategoryPlay",false);
             breakReturn=state.getInt("breakReturn",HOME);
         }
@@ -404,6 +407,7 @@ public class MainActivity extends Activity {
         out.putBoolean("parentAllowed",parentAllowed);
         out.putInt("villageLaunch",villageLaunch);
         out.putInt("libraryFilter",libraryFilter);out.putBoolean("libraryReturn",libraryReturn);
+        if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());}
         out.putBoolean("quickCategoryPlay",quickCategoryPlay);
         out.putInt("breakReturn",breakReturn);
         out.putInt("roomPage",roomPage);
@@ -418,6 +422,7 @@ public class MainActivity extends Activity {
             return;
         }
         if(page==HOME) {super.onBackPressed();return;}
+        if(page==INTERACTIVE){move(LIBRARY);return;}
         if(page==LIBRARY){
             if(libraryFilter!=PlaylumiGameCatalog.OVERVIEW){libraryFilter=PlaylumiGameCatalog.OVERVIEW;showPage();}
             else move(HOME);
@@ -567,6 +572,7 @@ public class MainActivity extends Activity {
     /** A playful glossy 3D-like card, matching the purple-and-gold village. */
     private int worldTheme() {
         if(page==LIBRARY)return PlaylumiVillageHit.PLAYGROUND;
+        if(page==INTERACTIVE)return PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiVillageHit.PLAYGROUND;
         if(page==VILLAGE_MENU || page==PLAY || page==DETAIL || page==LEVEL || page==VARIANTS ||
                 page==MINI_MENU || page==MINI_PLAY || page==MUSIC_PLAY || page==BUBBLE_PLAY ||
                 page==STAR_CATCH || page==DRAW || page==BADGES) {
@@ -795,7 +801,7 @@ public class MainActivity extends Activity {
                         android.content.res.Configuration.ORIENTATION_LANDSCAPE);
     }
     private boolean gameScreen() {
-        return page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY || page==STAR_CATCH ||
+        return page==INTERACTIVE || page==PLAY || page==MINI_PLAY || page==BUBBLE_PLAY || page==STAR_CATCH ||
                 page==MUSIC_PLAY || page==STORY_PLAY || page==STORY_REACTION ||
                 page==GARDEN_PLANT || page==DRAW;
     }
@@ -1009,6 +1015,7 @@ public class MainActivity extends Activity {
             case HOME_OPTIONS: showHomeOptions();break;
             case VILLAGE_MENU: showVillageMenu();break;
             case LIBRARY: showGameLibrary();break;
+            case INTERACTIVE: showInteractive();break;
             case CATEGORIES: showCategories();break;
             case DETAIL: showDetail();break;
             case LEVEL: showLevel();break;
@@ -1274,9 +1281,77 @@ public class MainActivity extends Activity {
         if(entry.kind==PlaylumiGameCatalog.QUIZ){
             if(resume&&resumeLibraryQuiz(entry))return;
             startWorldQuiz(entry.mode,entry.variant);
-        }else if(entry.kind==PlaylumiGameCatalog.MINI)startWorldMini(entry.mode);
+        }else if(entry.kind==PlaylumiGameCatalog.INTERACTIVE){rememberCatalog(entry);startInteractive(entry.mode);}
+        else if(entry.kind==PlaylumiGameCatalog.MINI)startWorldMini(entry.mode);
         else startCatalogSpecial(entry.kind);
     }
+    private void startInteractive(int kind){
+        interactive=new PlaylumiInteractive(kind,PlaylumiRocketCurriculum.level(age),new Random().nextLong(),0);
+        interactiveMessage="";
+        move(INTERACTIVE);
+    }
+    private void showInteractive(){
+        if(interactive==null){move(LIBRARY);return;}
+        final PlaylumiInteractive round=interactive;
+        header(PlaylumiInteractive.TITLES[round.kind],"");
+        addText(PlaylumiInteractive.INSTRUCTIONS[round.kind],18,PlaylumiMagicArt.CREAM,4,5);
+        addMagicProgress(round.progress(),round.total(),false);
+        if(round.solved()){
+            addText("🌟 Knap gedaan! Alles klaar!",24,PlaylumiMagicArt.CREAM,12,8);
+            Button again=tile("Nog eens spelen!","",0xffd5f5df,64);
+            addTile(again,4);again.setOnClickListener(v->startInteractive(round.kind));
+            Button back=tile("Andere spellen","",0xffe8d9ff,64);
+            addTile(back,4);back.setOnClickListener(v->move(LIBRARY));
+            return;
+        }
+        if(round.kind==PlaylumiInteractive.HABITATS){
+            addText(round.target(round.progress()),54,PlaylumiMagicArt.CREAM,5,5);
+        }else{
+            if(round.kind!=PlaylumiInteractive.NUMBERS){
+                StringBuilder example=new StringBuilder();
+                for(int i=0;i<round.total();i++){
+                    String t=round.target(i);
+                    example.append(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t).append(" ");
+                }
+                addText("Voorbeeld: "+example,22,PlaylumiMagicArt.CREAM,4,5);
+            }
+            StringBuilder built=new StringBuilder();
+            for(int i=0;i<round.total();i++){
+                String t=round.target(i);
+                built.append(i<round.progress()?(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t):"□").append(" ");
+            }
+            addText((round.kind==PlaylumiInteractive.NUMBERS?"🚀 ":round.kind==PlaylumiInteractive.LETTERS?"🚂 ":"")+built,26,PlaylumiMagicArt.CREAM,5,8);
+        }
+        if(!interactiveMessage.isEmpty())addText(interactiveMessage,16,PlaylumiMagicArt.CREAM,2,4);
+        LinearLayout row=null;
+        for(int i=0;i<round.options().size();i++){
+            if(i%2==0){
+                row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
+                addWidget(row,3,3);
+            }
+            final String option=round.options().get(i);
+            Button choice=tile(option,"",COLORS[i%COLORS.length],64);
+            choice.setContentDescription("Kies "+option);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+            lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(choice,lp);
+            choice.setOnClickListener(v->{
+                if(interactive!=round||page!=INTERACTIVE||round.solved())return;
+                if(round.choose(option)){
+                    sound.good();interactiveMessage="Goed zo!";
+                    if(round.solved()){
+                        int category=round.kind==PlaylumiInteractive.NUMBERS?LearningGame.NUMBERS:
+                                round.kind==PlaylumiInteractive.LETTERS?LearningGame.WORDS:
+                                round.kind==PlaylumiInteractive.HABITATS?21:LearningGame.PATTERNS;
+                        ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
+                        lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
+                        saveWardrobe();saveScore(category);
+                    }
+                }else{sound.mistake();interactiveMessage="Probeer nog eens!";}
+                showPage();
+            });
+        }
+    }
+
     private void libraryClick(View view,String description,Runnable action){
         view.setContentDescription(description);view.setClickable(true);view.setFocusable(true);
         view.setOnClickListener(v->{if(sound!=null)sound.tap();action.run();});

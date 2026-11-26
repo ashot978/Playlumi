@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.84: full Android rendering, real controls and regression tests.
+# Playlumi 0.85: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
