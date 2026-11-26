@@ -50,6 +50,26 @@ public final class PlaylumiLayout {
         if(widthDp<600)return 8;
         return Math.max(12,(widthDp-1320)/2);
     }
+    public static final int LIBRARY_RAIL_WIDTH=132;
+    public static boolean libraryRail(int widthDp){return widthDp>=1100;}
+    public static int libraryContentWidth(int widthDp){
+        return Math.max(1,widthDp-2*librarySidePadding(widthDp)-(libraryRail(widthDp)?LIBRARY_RAIL_WIDTH+14:0));
+    }
+    public static int libraryWorldArtHeight(int widthDp){
+        return widthDp>=900?148:widthDp>=600?116:92;
+    }
+    public static boolean interactiveWide(int widthDp){return widthDp>=600;}
+    public static int interactiveBoardWidth(int widthDp){
+        int usable=Math.max(1,widthDp-2*librarySidePadding(widthDp)-28);
+        return interactiveWide(widthDp)?Math.max(1,usable/2-16):usable;
+    }
+    public static int interactiveCellColumns(int panelWidth,int count){
+        return Math.max(1,Math.min(count,panelWidth>=420?5:panelWidth>=240?4:3));
+    }
+    public static int interactiveChoiceColumns(int widthDp,int count){
+        return Math.max(1,Math.min(count,interactiveWide(widthDp)&&interactiveBoardWidth(widthDp)>=400?3:2));
+    }
+    public static int closetItemColumns(int widthDp){return widthDp>=1000?3:2;}
     public static int magicSidePadding(int widthDp){
         if(widthDp<600)return 8;
         return Math.max(20,(widthDp-760)/2);
