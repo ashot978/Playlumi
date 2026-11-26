@@ -1027,7 +1027,13 @@ public class MainActivity extends Activity {
                         top=Math.max(top,safe.top);
                         bottom=Math.max(bottom,safe.bottom);
                     }
-                    stage.setPadding(0,Math.max(0,top),0,Math.max(0,bottom));
+                    int left=0,right=0;
+                    if(Build.VERSION.SDK_INT>=30){
+                        android.graphics.Insets horizontal=insets.getInsets(
+                                android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());
+                        left=horizontal.left;right=horizontal.right;
+                    }
+                    stage.setPadding(left,Math.max(0,top),right,Math.max(0,bottom));
                     currentScroller.setPadding(0,0,0,0);
                     if((getApplicationInfo().flags &
                             android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
@@ -1176,75 +1182,259 @@ public class MainActivity extends Activity {
         move(PLAY);
     }
     /** Picture-driven village hub. Every building goes to a real existing game. */
-    private void showHome() {
-        PlaylumiVillageView village=new PlaylumiVillageView(this,place->{
-            villageLaunch=place;
-            libraryReturn=false;
-            quickCategoryPlay=false;
-            switch(place) {
-                case PlaylumiVillageView.ROCKET:
-                case PlaylumiVillageView.BOOKS:
-                case PlaylumiVillageView.SHAPES:
-                case PlaylumiVillageView.MUSIC:
-                case PlaylumiVillageView.PLAYGROUND:
-                case PlaylumiVillageView.COLORS:
-                    openLibrary(place);
-                    break;
-                case PlaylumiVillageView.FRIEND:
-                    move(AVATAR);
-                    break;
-                case PlaylumiVillageView.PARENTS:
-                    parentAllowed=false;
-                    adultA=10+new Random().nextInt(8);
-                    adultB=8+new Random().nextInt(8);
-                    move(PARENT_GATE);
-                    break;
-                case PlaylumiVillageView.SETTINGS:
-                    move(HOME_OPTIONS);
-                    break;
-                case PlaylumiVillageView.MISSIONS:
-                    openLibrary(PlaylumiGameCatalog.OVERVIEW);
-                    break;
-                case PlaylumiVillageView.REWARDS:
-                    move(SHOP);
-                    break;
-                case PlaylumiVillageView.STARS:
-                    villageLaunch=PlaylumiVillageView.REWARDS;
-                    move(SHOP);
-                    break;
-                case PlaylumiVillageView.DISCOVERY:
-                    if(sound!=null)sound.tap();
-                    int mask=getSharedPreferences("playlumi-village-"+activeProfile,
-                            MODE_PRIVATE).getInt("visited",0);
-                    int count=PlaylumiVillageProgress.visitedCount(mask);
-                    new android.app.AlertDialog.Builder(this)
-                            .setTitle("Mijn ontdekkingen")
-                            .setMessage(count+" van de 6 speelplekken bezocht.")
-                            .setPositiveButton("Verder spelen",null)
-                            .show();
-                    break;
-                case PlaylumiVillageView.PLAYER:
-                    villageLaunch=PlaylumiVillageView.PROFILE;
-                    personalReturn=HOME;move(PROFILES);
-                    break;
-                case PlaylumiVillageView.HOME:
-                    if(sound!=null)sound.tap();
-                    // Already in the village.
-                    break;
-                case PlaylumiVillageView.COLLECTION:
-                    collectionReturn=HOME;move(COLLECTIBLES);
-                    break;
-                case PlaylumiVillageView.PROFILE:
-                    personalReturn=HOME;move(PROFILES);
-                    break;
-                default:break;
-            }
-        },activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar(),wardrobe==null?null:wardrobe.equippedItems());
-        // The world takes the complete usable screen; no ScrollView, blank strip,
-        // clipped bottom buttons, or duplicate white space below the illustration.
+    private void visitVillagePlace(int place){
+        if(moving||page!=HOME)return;
+        if(PlaylumiWorldStyle.valid(place)){
+            SharedPreferences discovery=getSharedPreferences("playlumi-village-"+activeProfile,MODE_PRIVATE);
+            int old=discovery.getInt("visited",0),updated=PlaylumiVillageProgress.markVisited(old,place);
+            if(old!=updated)discovery.edit().putInt("visited",updated).apply();
+        }
+        villageLaunch=place;
+        libraryReturn=false;
+        quickCategoryPlay=false;
+        switch(place) {
+            case PlaylumiVillageView.ROCKET:
+            case PlaylumiVillageView.BOOKS:
+            case PlaylumiVillageView.SHAPES:
+            case PlaylumiVillageView.MUSIC:
+            case PlaylumiVillageView.PLAYGROUND:
+            case PlaylumiVillageView.COLORS:
+                openLibrary(place);
+                break;
+            case PlaylumiVillageView.FRIEND:
+                move(AVATAR);
+                break;
+            case PlaylumiVillageView.PARENTS:
+                parentAllowed=false;
+                adultA=10+new Random().nextInt(8);
+                adultB=8+new Random().nextInt(8);
+                move(PARENT_GATE);
+                break;
+            case PlaylumiVillageView.SETTINGS:
+                move(HOME_OPTIONS);
+                break;
+            case PlaylumiVillageView.MISSIONS:
+                openLibrary(PlaylumiGameCatalog.OVERVIEW);
+                break;
+            case PlaylumiVillageView.REWARDS:
+                move(SHOP);
+                break;
+            case PlaylumiVillageView.STARS:
+                villageLaunch=PlaylumiVillageView.REWARDS;
+                move(SHOP);
+                break;
+            case PlaylumiVillageView.DISCOVERY:
+                if(sound!=null)sound.tap();
+                int mask=getSharedPreferences("playlumi-village-"+activeProfile,
+                        MODE_PRIVATE).getInt("visited",0);
+                int count=PlaylumiVillageProgress.visitedCount(mask);
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Mijn ontdekkingen")
+                        .setMessage(count+" van de 6 speelplekken bezocht.")
+                        .setPositiveButton("Verder spelen",null)
+                        .show();
+                break;
+            case PlaylumiVillageView.PLAYER:
+                villageLaunch=PlaylumiVillageView.PROFILE;
+                personalReturn=HOME;move(PROFILES);
+                break;
+            case PlaylumiVillageView.HOME:
+                if(sound!=null)sound.tap();
+                // Already in the village.
+                break;
+            case PlaylumiVillageView.COLLECTION:
+                collectionReturn=HOME;move(COLLECTIBLES);
+                break;
+            case PlaylumiVillageView.PROFILE:
+                personalReturn=HOME;move(PROFILES);
+                break;
+            default:break;
+        }
+    }
+    private void showHome(){
+        int width=getResources().getConfiguration().screenWidthDp;
+        int height=getResources().getConfiguration().screenHeightDp;
         stage.removeView(scroller);
+        if(PlaylumiHomeLayout.mode(width,height)!=PlaylumiHomeLayout.PHONE){
+            showWideHome(width,height);return;
+        }
+        PlaylumiVillageView village=new PlaylumiVillageView(this,this::visitVillagePlace,
+                activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar(),
+                wardrobe==null?null:wardrobe.equippedItems());
         stage.addView(village,new FrameLayout.LayoutParams(-1,-1));
     }
+    private TextView homeLabel(String label,int size,int color,boolean bold){
+        TextView view=text(label,size,color);view.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+        if(bold)view.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        return view;
+    }
+    private LinearLayout homePanel(){
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(10),dp(10),dp(10),dp(10));panel.setBackground(PlaylumiMagicArt.softPanel(this));return panel;
+    }
+    private void homeAdd(LinearLayout panel,View child,int top,int bottom){
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(top),0,dp(bottom));panel.addView(child,lp);
+    }
+    private TextView homeAction(String label,boolean primary,Runnable action){
+        TextView button=text(label,15,primary?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
+        button.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        button.setMinHeight(dp(48));button.setPadding(dp(7),dp(5),dp(7),dp(5));
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),
+                primary?PlaylumiMagicArt.creamPlate(this):rounded(0xff63408e,14),null));
+        libraryClick(button,label,()->{if(page==HOME&&!moving)action.run();});
+        return button;
+    }
+    private void homeMetric(LinearLayout bar,String value,String description,Runnable action){
+        TextView chip=homeAction(value,false,action);chip.setTextSize(15);chip.setContentDescription(description);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-1);
+        lp.setMargins(dp(3),0,dp(3),0);bar.addView(chip,lp);
+    }
+    private void showWideHome(int width,int height){
+        final int mode=PlaylumiHomeLayout.mode(width,height);
+        final java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
+        final java.util.Set<String> favorites=librarySet("library_favorites");
+        final int favoriteCount=PlaylumiGameCatalog.filter(age,PlaylumiGameCatalog.FAVORITES,favorites).size();
+        final int visited=PlaylumiVillageProgress.sanitize(getSharedPreferences(
+                "playlumi-village-"+activeProfile,MODE_PRIVATE).getInt("visited",0));
+        final int stars=wardrobe==null?0:wardrobe.stars();
+        final int discovered=PlaylumiVillageProgress.visitedCount(visited);
+
+        stage.addView(PlaylumiMagicArt.backdrop(this,PlaylumiVillageView.COLORS),new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout shell=new LinearLayout(this);shell.setOrientation(LinearLayout.VERTICAL);
+        shell.setPadding(dp(8),dp(6),dp(8),dp(6));
+        stage.addView(shell,new FrameLayout.LayoutParams(-1,-1));
+
+        // Real full-width top bar: live controls, not a stretched picture.
+        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setPadding(dp(10),dp(5),dp(6),dp(5));top.setBackground(PlaylumiMagicArt.silkRibbon(this));
+        TextView title=homeLabel("✦ Playlumi",width<650?21:25,PlaylumiMagicArt.CREAM,true);
+        top.addView(title,new LinearLayout.LayoutParams(0,-1,1f));
+        homeMetric(top,"★ "+stars,stars+" speelsterren, open beloningen",()->visitVillagePlace(PlaylumiVillageView.STARS));
+        homeMetric(top,"⚑ "+discovered+"/6",discovered+" van zes werelden bezocht",()->visitVillagePlace(PlaylumiVillageView.DISCOVERY));
+        if(width>=800)homeMetric(top,"Ouderzone","Open de beveiligde ouderzone",()->visitVillagePlace(PlaylumiVillageView.PARENTS));
+        homeMetric(top,"⚙","Instellingen",()->visitVillagePlace(PlaylumiVillageView.SETTINGS));
+        shell.addView(top,new LinearLayout.LayoutParams(-1,dp(62)));
+
+        // Only the content scrolls on short landscape windows. Navigation stays visible.
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout.LayoutParams scrollParams=new LinearLayout.LayoutParams(-1,0,1f);
+        scrollParams.setMargins(0,dp(8),0,dp(8));shell.addView(scroll,scrollParams);
+        LinearLayout content=new LinearLayout(this);content.setGravity(Gravity.TOP);content.setOrientation(LinearLayout.HORIZONTAL);
+        scroll.addView(content,new ScrollView.LayoutParams(-1,-2));
+
+        LinearLayout profile=wideHomeProfile(width,stars,discovered);
+        LinearLayout actions=wideHomeActions(entries,favorites,favoriteCount);
+        LinearLayout worlds=new LinearLayout(this);worlds.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
+        TextView headingText=homeLabel("Ons magische dorp",width<650?20:23,PlaylumiMagicArt.CREAM,true);
+        heading.addView(headingText,new LinearLayout.LayoutParams(0,-2,1f));
+        TextView total=text(entries.size()+" spellen",13,PlaylumiMagicArt.GOLD);
+        heading.addView(total,new LinearLayout.LayoutParams(-2,-2));
+        heading.setPadding(dp(3),dp(3),dp(3),dp(6));worlds.addView(heading);
+        int columns=PlaylumiHomeLayout.worldColumns(width,height);
+        int artHeight=PlaylumiHomeLayout.artHeight(width,height);
+        for(int first=0;first<6;first+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+            for(int j=0;j<columns;j++){
+                int world=first+j;
+                if(world>=6)break;
+                final int place=world;
+                LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(5),dp(5),dp(5),dp(6));
+                card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x25ffffff),libraryCardSurface(world),null));
+                card.addView(new PlaylumiHomeWorldArt(this,world),new LinearLayout.LayoutParams(-1,dp(artHeight)));
+                TextView name=text(PlaylumiWorldStyle.NAMES[world],width<650?15:18,PlaylumiMagicArt.CREAM);
+                name.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+                name.setMinHeight(dp(31));name.setMaxLines(2);
+                card.addView(name,new LinearLayout.LayoutParams(-1,-2));
+                int games=PlaylumiGameCatalog.filter(age,world,favorites).size();
+                int treasures=PlaylumiCollection.unlocked(collectionProgress(world));
+                TextView meta=text(games+(games==1?" spel":" spellen")+"  ·  ✦ "+treasures+"/3",12,PlaylumiMagicArt.GOLD);
+                card.addView(meta,new LinearLayout.LayoutParams(-1,-2));
+                if(PlaylumiVillageProgress.isVisited(visited,world)){
+                    TextView badge=text("✓ Ontdekt",12,0xffc7f3d5);card.addView(badge,new LinearLayout.LayoutParams(-1,-2));
+                }else{
+                    TextView badge=text("Nieuw avontuur",12,0xffffe7af);card.addView(badge,new LinearLayout.LayoutParams(-1,-2));
+                }
+                libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[world]+", "+games+" spellen",()->visitVillagePlace(place));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1f);cp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(card,cp);
+            }
+            worlds.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+        if(mode==PlaylumiHomeLayout.EXPANDED){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.profileWidth(width)), -2);
+            lp.rightMargin=dp(8);content.addView(profile,lp);
+            content.addView(worlds,new LinearLayout.LayoutParams(0,-2,1f));
+            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.actionWidth(width)), -2);
+            rp.leftMargin=dp(8);content.addView(actions,rp);
+        }else{
+            content.addView(worlds,new LinearLayout.LayoutParams(0,-2,1f));
+            LinearLayout side=new LinearLayout(this);side.setOrientation(LinearLayout.VERTICAL);
+            homeAdd(side,profile,0,8);homeAdd(side,actions,0,0);
+            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.actionWidth(width)),-2);
+            rp.leftMargin=dp(7);content.addView(side,rp);
+        }
+
+        // Full-width native navigation with distinct 48dp+ touch targets.
+        LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);
+        nav.setPadding(dp(4),dp(4),dp(4),dp(4));nav.setBackground(PlaylumiMagicArt.silkRibbon(this));
+        String[] titles={"▶ Spellen","🎁 Beloningen","⌂ Home","✦ Collectie","● Profiel"};
+        int[] places={PlaylumiVillageView.MISSIONS,PlaylumiVillageView.REWARDS,PlaylumiVillageView.HOME,PlaylumiVillageView.COLLECTION,PlaylumiVillageView.PROFILE};
+        for(int i=0;i<places.length;i++){
+            final int place=places[i];TextView item=homeAction(titles[i],i==2,()->visitVillagePlace(place));
+            item.setTextSize(width<650?13:16);item.setSelected(i==2);
+            item.setContentDescription(titles[i]+(i==2?", geselecteerd":""));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1f);lp.setMargins(dp(3),0,dp(3),0);nav.addView(item,lp);
+        }
+        shell.addView(nav,new LinearLayout.LayoutParams(-1,dp(64)));
+    }
+    private LinearLayout wideHomeProfile(int width,int stars,int discovered){
+        LinearLayout panel=homePanel();panel.setGravity(Gravity.CENTER_HORIZONTAL);
+        homeAdd(panel,text("Mijn maatje",17,PlaylumiMagicArt.GOLD),0,3);
+        PlaylumiAvatar pal=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
+        int size=width<650?80:width<1100?96:112;
+        LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(size),dp(size));pp.gravity=Gravity.CENTER;
+        panel.addView(pal,pp);libraryClick(pal,"Open mijn maatje",()->visitVillagePlace(PlaylumiVillageView.FRIEND));
+        homeAdd(panel,text(PlaylumiWorldStyle.AVATAR_NAMES[chosenAvatar()],20,PlaylumiMagicArt.CREAM),2,4);
+        homeAdd(panel,text(AGES[PlaylumiRocketCurriculum.level(age)],13,0xffe8d3ff),0,2);
+        homeAdd(panel,text("★ "+stars+" sterren",17,PlaylumiMagicArt.GOLD),2,1);
+        homeAdd(panel,text("✦ "+collectionTotal()+"/18 schatten",13,PlaylumiMagicArt.CREAM),0,5);
+        homeAdd(panel,homeAction("Mijn maatje",true,()->visitVillagePlace(PlaylumiVillageView.FRIEND)),3,3);
+        homeAdd(panel,homeAction("Ouderzone",false,()->visitVillagePlace(PlaylumiVillageView.PARENTS)),2,0);
+        return panel;
+    }
+    private void startFromWideHome(PlaylumiGameCatalog.Entry entry){
+        if(page!=HOME||moving||entry==null)return;
+        libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;favoriteEditMode=false;
+        quickCategoryPlay=false;launchCatalog(entry,libraryResume(entry)!=null);
+    }
+    private LinearLayout wideHomeActions(java.util.List<PlaylumiGameCatalog.Entry> entries,
+                                         java.util.Set<String> favorites,int favoriteCount){
+        LinearLayout panel=homePanel();
+        homeAdd(panel,homeLabel("Snel spelen",19,PlaylumiMagicArt.GOLD,true),0,5);
+        PlaylumiGameCatalog.Entry newest=null;long best=Long.MIN_VALUE;
+        for(PlaylumiGameCatalog.Entry entry:entries){
+            org.json.JSONObject saved=libraryResume(entry);
+            if(saved!=null&&saved.optLong("updated",0)>best){best=saved.optLong("updated",0);newest=entry;}
+        }
+        if(newest==null)newest=lastCatalog();
+        if(newest!=null){
+            final PlaylumiGameCatalog.Entry recent=newest;
+            org.json.JSONObject progress=libraryResume(recent);
+            homeAdd(panel,homeLabel(progress==null?"Laatst gespeeld":"Verder spelen",14,PlaylumiMagicArt.CREAM,true),0,3);
+            homeAdd(panel,homeAction("▶ "+recent.title+(progress==null?"":"\n"+progress.optInt("count",0)+"/"+progress.optInt("total",SESSION_ROUNDS)+" klaar"),
+                    true,()->startFromWideHome(recent)),0,6);
+        }else homeAdd(panel,homeAction("▶ Kies een spel",true,()->openLibrary(PlaylumiGameCatalog.ALL)),0,5);
+        homeAdd(panel,homeAction("★ Favorieten ("+favoriteCount+")",false,()->openLibrary(PlaylumiGameCatalog.FAVORITES)),3,3);
+        for(PlaylumiGameCatalog.Entry entry:entries)if(favorites.contains(entry.id)){
+            final PlaylumiGameCatalog.Entry favorite=entry;
+            homeAdd(panel,homeAction("▶ "+entry.title,false,()->startFromWideHome(favorite)),2,2);break;
+        }
+        homeAdd(panel,homeAction("Alle spellen",false,()->openLibrary(PlaylumiGameCatalog.ALL)),3,3);
+        homeAdd(panel,homeAction("Mijn schatten",false,()->visitVillagePlace(PlaylumiVillageView.COLLECTION)),2,0);
+        return panel;
+    }
+
     private void openLibrary(int filter){
         libraryReturn=false;libraryFilter=filter;libraryScrollY=0;favoriteEditMode=false;storyStage=-1;move(LIBRARY);
     }
