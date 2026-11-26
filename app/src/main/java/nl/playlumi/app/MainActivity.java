@@ -117,6 +117,9 @@ public class MainActivity extends Activity {
     // Tracks which village building started a screen, so Back returns logically.
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
+    private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5;
+    private String libraryQuery="";
+    private TextView quizTip;
     private int libraryScrollY;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private TextView[] libraryTabs;
@@ -221,6 +224,7 @@ public class MainActivity extends Activity {
             parentAllowed=state.getBoolean("parentAllowed",false);
             villageLaunch=state.getInt("villageLaunch",-1);
             libraryFilter=state.getInt("libraryFilter",PlaylumiGameCatalog.OVERVIEW);
+            libraryQuery=state.getString("libraryQuery","");
             libraryScrollY=Math.max(0,state.getInt("libraryScrollY",0));
             achievementReturn=state.getInt("achievementReturn",HOME);
             achievementFilter=Math.max(0,Math.min(2,state.getInt("achievementFilter",0)));
@@ -286,6 +290,7 @@ public class MainActivity extends Activity {
                             state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
                             state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
                             state.getInt("roundFingers"),state.getBoolean("roundSolved"));
+                    game.round().restoreRejected(state.getInt("roundRejected",0));
                     feedback=state.getString("roundFeedback","");
                 }else{
                     // Keep earned points and completed round count; replace only the obsolete question.
@@ -394,7 +399,7 @@ public class MainActivity extends Activity {
             out.putInt("roundFingers",round.fingerCount);out.putBoolean("roundSolved",round.isSolved());
             out.putStringArrayList("roundAnswers",new ArrayList<>(round.answers));
             out.putIntegerArrayList("roundColors",new ArrayList<>(round.answerColors));
-            out.putString("roundFeedback",feedback);
+            out.putString("roundFeedback",feedback);out.putInt("roundRejected",round.rejectedMask());
             out.putIntegerArrayList("roundBadges",new ArrayList<>(pendingBadges));
         }
         if(savedPage==MINI_PLAY&&mini!=null){
@@ -452,7 +457,7 @@ public class MainActivity extends Activity {
         out.putInt("adultB",adultB);
         out.putBoolean("parentAllowed",parentAllowed);
         out.putInt("villageLaunch",villageLaunch);
-        out.putInt("libraryFilter",libraryFilter);out.putBoolean("libraryReturn",libraryReturn);
+        out.putInt("libraryFilter",libraryFilter);out.putBoolean("libraryReturn",libraryReturn);out.putString("libraryQuery",libraryQuery);
         out.putInt("libraryScrollY",page==LIBRARY&&scroller!=null?scroller.getScrollY():libraryScrollY);
         out.putInt("achievementReturn",achievementReturn);out.putInt("achievementFilter",achievementFilter);
         out.putInt("personalReturn",personalReturn);out.putInt("collectionReturn",collectionReturn);out.putInt("closetReturn",closetReturn);
@@ -1618,12 +1623,14 @@ public class MainActivity extends Activity {
             homeAdd(panel,homeLabel("Speciaal voor jou",14,PlaylumiMagicArt.GOLD,true),4,1);
             homeAdd(panel,homeAction("▶ "+pick.title,false,()->startFromWideHome(pick)),1,3);
         }
+        homeAdd(panel,homeAction("Verder spelen ("+unfinishedGames().size()+")",false,()->openLibrary(LIBRARY_RESUME)),2,3);
         homeAdd(panel,homeAction("Alle spellen",false,()->openLibrary(PlaylumiGameCatalog.ALL)),3,3);
         homeAdd(panel,homeAction("Mijn schatten",false,()->visitVillagePlace(PlaylumiVillageView.COLLECTION)),2,0);
         return panel;
     }
 
     private void openLibrary(int filter){
+        if(filter!=LIBRARY_SEARCH)libraryQuery="";
         libraryReturn=false;libraryFilter=filter;libraryScrollY=0;favoriteEditMode=false;storyStage=-1;move(LIBRARY);
     }
     private java.util.Set<String> librarySet(String key){
@@ -1724,7 +1731,7 @@ public class MainActivity extends Activity {
             org.json.JSONObject o=new org.json.JSONObject();
             o.put("id",e.id);o.put("age",age);o.put("level",game.level());
             o.put("count",sessionSolved);o.put("total",sessionGoal());o.put("attempts",sessionAttempts);o.put("solved",r.isSolved());
-            o.put("hadMistake",roundHadMistake);
+            o.put("hadMistake",roundHadMistake);o.put("rejected",r.rejectedMask());o.put("feedback",feedback);
             o.put("prompt",r.prompt);o.put("display",r.display);o.put("color",r.displayColor);
             o.put("correct",r.correctIndex);o.put("fingers",r.fingerCount);
             o.put("answers",new org.json.JSONArray(r.answers));o.put("colors",new org.json.JSONArray(r.answerColors));
@@ -1749,17 +1756,20 @@ public class MainActivity extends Activity {
                     !(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
                     !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
                     !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
-                    !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4))
+                    !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4)){
                 game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
                     answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
-            difficulty=level;sessionSolved=count;sessionAttempts=attempts;feedback="";
-            smartDifficulty=false;roundHadMistake=o.optBoolean("hadMistake",attempts>count&&!o.optBoolean("solved",false));pendingLevel=-1;pendingBadges.clear();
+                game.round().restoreRejected(o.optInt("rejected",0));feedback=o.optString("feedback","");
+                roundHadMistake=o.optBoolean("hadMistake",game.round().rejectedMask()!=0);
+            }else{feedback="";roundHadMistake=false;}
+            difficulty=level;sessionSolved=count;sessionAttempts=attempts;
+            smartDifficulty=false;pendingLevel=-1;pendingBadges.clear();
             earnedBadge=-1;rewardReturn=PLAY;quickCategoryPlay=true;storyStage=-1;
             // The solved round already earned points. Resume at the next question, never credit it twice.
             if(game.round().isSolved()){
                 int next=catalogLevel(entry);
                 if(game.level()!=next){difficulty=next;game.configure(entry.mode,entry.variant,next);}else game.nextRound();
-                roundHadMistake=false;
+                roundHadMistake=false;feedback="";
             }
             saveRecent();saveLibraryQuiz();move(PLAY);return true;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return false;}
@@ -2002,6 +2012,7 @@ public class MainActivity extends Activity {
     }
     private void libraryFilter(int filter){
         if(moving||page!=LIBRARY||libraryFilter==filter)return;
+        if(filter!=LIBRARY_SEARCH)libraryQuery="";
         libraryFilter=filter;libraryScrollY=0;favoriteEditMode=false;
         if(filter==PlaylumiGameCatalog.FAVORITES)favoriteReadyAt=SystemClock.uptimeMillis()+400;
         renderLibraryContents(0);
@@ -2014,7 +2025,7 @@ public class MainActivity extends Activity {
         int favorites=PlaylumiGameCatalog.filter(age,PlaylumiGameCatalog.FAVORITES,librarySet("library_favorites")).size();
         for(int i=0;i<libraryTabs.length;i++){
             TextView tab=libraryTabs[i];
-            boolean selected=LIBRARY_TAB_FILTERS[i]==libraryFilter||(i==1&&libraryFilter>=0);
+            boolean selected=LIBRARY_TAB_FILTERS[i]==libraryFilter||(i==1&&libraryFilter>=0)||(i==2&&libraryFilter==LIBRARY_SEARCH)||(i==0&&libraryFilter==LIBRARY_RESUME);
             String label=LIBRARY_TAB_LABELS[i]+(i==3&&favorites>0?" "+favorites:"");
             tab.setText(LIBRARY_TAB_ICONS[i]+"\n"+label);
             tab.setSelected(selected);tab.setTextColor(selected?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
@@ -2093,28 +2104,71 @@ public class MainActivity extends Activity {
         libraryScrollY=Math.max(0,desiredScroll);
         active.post(()->{if(scroller==active&&page==LIBRARY&&libraryFilter==filter)active.scrollTo(0,Math.max(0,desiredScroll));});
     }
+    private java.util.List<PlaylumiGameCatalog.Entry> unfinishedGames(){
+        ArrayList<PlaylumiGameCatalog.Entry> entries=new ArrayList<>();
+        final java.util.Map<String,Long> updates=new java.util.HashMap<>();
+        for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age)){
+            org.json.JSONObject snapshot=libraryResume(e);
+            if(snapshot!=null){entries.add(e);updates.put(e.id,snapshot.optLong("updated",0));}
+        }
+        java.util.Collections.sort(entries,(x,y)->Long.compare(updates.get(y.id),updates.get(x.id)));
+        return entries;
+    }
+    private void showLibrarySearch(){
+        if(page!=LIBRARY||moving)return;
+        final android.widget.EditText query=new android.widget.EditText(this);
+        query.setSingleLine(true);query.setTextSize(19);query.setHint("Bijvoorbeeld: klok, dieren, rijmen");
+        query.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        query.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(80)});
+        query.setText(libraryQuery);query.setSelectAllOnFocus(true);
+        LinearLayout body=new LinearLayout(this);body.setPadding(dp(20),dp(10),dp(20),dp(4));body.addView(query,new LinearLayout.LayoutParams(-1,-2));
+        android.app.AlertDialog dialog=new android.app.AlertDialog.Builder(this)
+                .setTitle("Zoek een spel").setView(body).setNegativeButton("Annuleren",null)
+                .setPositiveButton("Zoeken",(x,y)->submitLibrarySearch(query.getText().toString())).create();
+        query.setOnEditorActionListener((v,action,event)->{
+            if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){
+                dialog.dismiss();submitLibrarySearch(query.getText().toString());return true;
+            }return false;
+        });
+        dialog.setOnShowListener(v->{query.requestFocus();dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);});
+        dialog.show();
+    }
+    private void submitLibrarySearch(String value){
+        if(page!=LIBRARY||moving)return;
+        libraryQuery=value.trim();libraryFilter=LIBRARY_SEARCH;libraryScrollY=0;favoriteEditMode=false;
+        renderLibraryContents(0);
+    }
+    private void addLibraryTools(int unfinished){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView search=homeAction("⌕ Zoeken",libraryFilter==LIBRARY_SEARCH,()->{});
+        // homeAction guards HOME; the library uses its own guarded click binding.
+        libraryClick(search,"Zoeken in alle spellen",()->showLibrarySearch());
+        TextView resume=homeAction("▶ Verder ("+unfinished+")",libraryFilter==LIBRARY_RESUME,()->{});
+        libraryClick(resume,"Bekijk alle "+unfinished+" onafgemaakte spellen",()->libraryFilter(LIBRARY_RESUME));
+        for(TextView item:new TextView[]{search,resume}){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(item,lp);
+        }
+        addWidget(row,1,4);
+    }
     private void renderLibraryBody(){
         header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:
                 libraryFilter==PlaylumiGameCatalog.FAVORITES?"Mijn favorieten":
+                libraryFilter==LIBRARY_SEARCH?"Spellen zoeken":libraryFilter==LIBRARY_RESUME?"Verder spelen":
                 libraryFilter==PlaylumiGameCatalog.ALL?"Alle spellen":"Spellen","");
         addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
         java.util.Set<String> favorites=librarySet("library_favorites");
         java.util.Set<String> played=librarySet("library_played");
         final int width=getResources().getConfiguration().screenWidthDp;
         final int columns=PlaylumiLayout.libraryColumns(PlaylumiLayout.libraryContentWidth(width));
+        java.util.List<PlaylumiGameCatalog.Entry> inProgress=unfinishedGames();
+        addLibraryTools(inProgress.size());
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
             PlaylumiGameCatalog.Entry last=lastCatalog();
-            java.util.List<PlaylumiGameCatalog.Entry> inProgress=new ArrayList<>();
-            for(PlaylumiGameCatalog.Entry candidate:PlaylumiGameCatalog.entries(age))if(libraryResume(candidate)!=null)inProgress.add(candidate);
-            java.util.Collections.sort(inProgress,(left,right)->{
-                org.json.JSONObject x=libraryResume(left),y=libraryResume(right);
-                long lx=x==null?0:x.optLong("updated",0),ry=y==null?0:y.optLong("updated",0);
-                return Long.compare(ry,lx);
-            });
             if(!inProgress.isEmpty()){
                 librarySection("Verder spelen",inProgress.size()+(inProgress.size()==1?" spel":" spellen"));
                 for(int i=0;i<Math.min(3,inProgress.size());i++)addWidget(libraryGameCard(inProgress.get(i),favorites,played,false),1,3);
-                if(inProgress.size()>3){Button more=tile("Bekijk alle spellen","Ook jouw andere bewaarde rondes",COLORS[2],60);addTile(more,3);more.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));}
+                if(inProgress.size()>3){Button more=tile("Alle bewaarde spellen","Kies welke ronde je wilt hervatten",COLORS[2],60);addTile(more,3);more.setOnClickListener(v->libraryFilter(LIBRARY_RESUME));}
             }
             if(last!=null&&inProgress.isEmpty()){
                 org.json.JSONObject snapshot=libraryResume(last);
@@ -2174,8 +2228,15 @@ public class MainActivity extends Activity {
             addText(PlaylumiWorldStyle.SUBTITLES[libraryFilter],15,PlaylumiMagicArt.CREAM,2,4);
             libraryWorldStrip();
         }else if(libraryFilter==PlaylumiGameCatalog.ALL)libraryWorldStrip();
-        java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
-        librarySection(libraryFilter==PlaylumiGameCatalog.FAVORITES?"Jouw lievelingsspellen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
+        java.util.List<PlaylumiGameCatalog.Entry> entries=libraryFilter==LIBRARY_SEARCH?PlaylumiLibrarySearch.find(age,libraryQuery):
+                libraryFilter==LIBRARY_RESUME?inProgress:PlaylumiGameCatalog.filter(age,libraryFilter,favorites);
+        if(libraryFilter==LIBRARY_SEARCH){
+            librarySection(libraryQuery.isEmpty()?"Alle zoekresultaten":"Zoekresultaten: "+libraryQuery,entries.size()+(entries.size()==1?" spel":" spellen"));
+        }else librarySection(libraryFilter==LIBRARY_RESUME?"Jouw bewaarde rondes":libraryFilter==PlaylumiGameCatalog.FAVORITES?"Jouw lievelingsspellen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
+        if(libraryFilter==LIBRARY_RESUME&&!entries.isEmpty()){
+            for(PlaylumiGameCatalog.Entry entry:entries)addWidget(libraryGameCard(entry,favorites,played,false),1,3);
+            return;
+        }
         if(libraryFilter==PlaylumiGameCatalog.FAVORITES&&!entries.isEmpty()){
             Button manage=tile(favoriteEditMode?"✓ Klaar met beheren":"Favorieten beheren",
                     favoriteEditMode?"Tik op Verwijderen om een spel te kiezen":"Verwijderen kan alleen in de beheermodus",0xffe9dcff,64);
@@ -2189,7 +2250,8 @@ public class MainActivity extends Activity {
         }
         if(entries.isEmpty()){
             favoriteEditMode=false;
-            addText("Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
+            addText(libraryFilter==LIBRARY_SEARCH?"Geen spellen gevonden. Probeer een ander woord.":libraryFilter==LIBRARY_RESUME?
+                    "Je hebt nog geen onafgemaakte spellen. Kies een nieuw avontuur.":"Nog geen favorieten. Tik op een ster naast je lievelingsspel!",17,PlaylumiMagicArt.CREAM,12,8);
             Button discover=tile("Ontdek alle spellen","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
             return;
         }
@@ -2498,7 +2560,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.1 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.2 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -2737,15 +2799,27 @@ public class MainActivity extends Activity {
             updateQuestionPicture(round);
             addWidgetIn(questions,picture,0,dp(3));
         }
-        feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):"Kies het juiste antwoord",15,PlaylumiMagicArt.CREAM);
+        feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):feedback.isEmpty()?"Kies het juiste antwoord":feedback,15,PlaylumiMagicArt.CREAM);
         feedbackText.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         feedbackText.setMinHeight(dp(40));feedbackText.setMaxLines(3);feedbackText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         feedbackText.setShadowLayer(dp(1),0,dp(1),0xff2e164c);
-        addWidgetIn(answers,feedbackText,0,dp(2));
+        LinearLayout coach=new LinearLayout(this);coach.setGravity(Gravity.CENTER_VERTICAL);
+        coach.addView(feedbackText,new LinearLayout.LayoutParams(0,-2,1f));
+        quizTip=text("💡 Tip",14,PlaylumiMagicArt.INK);quizTip.setMinHeight(dp(48));quizTip.setPadding(dp(6),0,dp(6),0);
+        quizTip.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),PlaylumiMagicArt.creamPlate(this),null));
+        LinearLayout.LayoutParams tipParams=new LinearLayout.LayoutParams(dp(66),dp(48));tipParams.leftMargin=dp(4);
+        coach.addView(quizTip,tipParams);quizTip.setEnabled(!round.isSolved());
+        libraryClick(quizTip,"Vraag een hint",()->{
+            if(page!=PLAY||game.round()!=round||round.isSolved()||moving)return;
+            feedback="💡 "+PlaylumiLearningHints.hint(mode,game.variant(),round.display,round.prompt);
+            feedbackText.setText(feedback);feedbackText.setTextColor(0xffffdf9a);
+            feedbackText.announceForAccessibility(feedback);
+        });
+        addWidgetIn(answers,coach,0,dp(2));
         answerButtons.clear();
         boolean visualPattern=PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3);
         answerLocked=round.isSolved();
-        int columns=PlaylumiAnswerOrder.verticalPair(round.answers)?1:PlaylumiAnswerOrder.horizontalPair(round.answers)?2:centered?PlaylumiLayout.centeredAnswerColumns(round.answers.size()):2;
+        int columns=PlaylumiQuizCoach.columns(round.answers,width,split,centered,visualPattern);
         int rowHeight=centered?PlaylumiLayout.centeredAnswerHeight(height,round.answers.size()):PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
         if(split)rowHeight=Math.min(rowHeight,64);
         if(height<690)rowHeight=Math.max(48,Math.min(rowHeight,54));
@@ -2761,7 +2835,7 @@ public class MainActivity extends Activity {
                 button.setTextColor(PlaylumiMagicArt.INK);
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:value.length()>=6?21:29);
                 button.setPadding(dp(6),dp(4),dp(6),dp(4));button.setMaxLines(3);
-                button.setMinHeight(dp(rowHeight));button.setEnabled(!answerLocked);
+                button.setMinHeight(dp(rowHeight));button.setEnabled(!answerLocked&&!round.isRejected(j));
                 if(visualPattern&&PlaylumiPatterns.colorIndex(value)>=0){
                     int paint=PlaylumiPatterns.color(PlaylumiPatterns.colorIndex(value));
                     GradientDrawable dot=new GradientDrawable();dot.setShape(GradientDrawable.OVAL);
@@ -2779,6 +2853,7 @@ public class MainActivity extends Activity {
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),colorPlate,null));
                     button.setTextColor(Color.WHITE);
                 }
+                if(round.isRejected(j)){button.setAlpha(.52f);button.setContentDescription(value+", al geprobeerd");}
                 if(round.isSolved() && j==round.correctIndex){
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                             wide?PlaylumiMagicArt.gemButton(this,3):PlaylumiMagicArt.pastel(this,3),null));
@@ -2805,7 +2880,8 @@ public class MainActivity extends Activity {
     private void updateQuestionPicture(LearningGame.Round round){
         if(questionPicture==null)return;
         String shown=round.visibleDisplay();
-        if(game.mode()==ExtraGames.MATH && game.variant()!=4 && round.isSolved())
+        if(round.isSolved()&&((game.mode()==ExtraGames.MATH&&game.variant()!=4)||game.mode()==ExtraGames.SEQUENCES||
+                game.mode()==23&&(game.variant()==0||game.variant()==1||game.variant()==3)))
             shown=shown.replace("?",round.answers.get(round.correctIndex));
         int blank=round.letterBlank();
         if(round.isSolved() && blank>=0){
@@ -2866,7 +2942,7 @@ public class MainActivity extends Activity {
                     case MUSIC_PLAY:finishMelodyRound();break;
                 }
             }finally{advancingAutomatically=false;}
-        },expected==PLAY?500:700);
+        },expected==PLAY?PlaylumiQuizCoach.delay(roundHadMistake,feedback):700);
     }
     /** Fixed completion actions, outside the scrolling game content. */
     private LinearLayout finishActions(Button again,Button back,boolean visible){
@@ -2889,7 +2965,7 @@ public class MainActivity extends Activity {
     }
 
     private void choose(int index,Button touched) {
-        if(moving||!autoRoundVisible||answerLocked||game.round().isSolved())return;
+        if(page!=PLAY||moving||!autoRoundVisible||answerLocked||game.round().isSolved()||game.round().isRejected(index))return;
         int mode=game.mode();
         sessionAttempts++;
         int oldCorrect=scores.get(mode).correct;
@@ -2897,11 +2973,13 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             stopSpeech();answerLocked=true;sessionSolved++;lifetimeCount++;
-            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH){
+            if(quizTip!=null)quizTip.setEnabled(false);
+            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23){
                 updateQuestionPicture(game.round());
                 if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
             }
-            feedback="⭐ Goed gedaan! +3 🌟";
+            String explanation=PlaylumiQuizCoach.explain(mode,game.variant(),game.round());
+            feedback=explanation.isEmpty()?"⭐ Goed gedaan! +3 🌟":"⭐ "+explanation;
             PlaylumiGameCatalog.Entry learningEntry=currentLearningEntry();
             if(learningEntry!=null){
                 recordLearning(learningEntry,!roundHadMistake);
@@ -2948,6 +3026,8 @@ public class MainActivity extends Activity {
         } else {
             feedback="💛 "+PlaylumiLearningHints.hint(mode,game.variant(),game.round().display,game.round().prompt);
             roundHadMistake=true;
+            touched.setEnabled(false);touched.setAlpha(.52f);
+            touched.setContentDescription(game.round().answers.get(index)+", al geprobeerd");
             sound.mistake();
             if(playPal!=null)playPal.react(2);
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffffdf9a);
@@ -3007,7 +3087,7 @@ public class MainActivity extends Activity {
         header("Knap gedaan!","");
         characterHero(145);
         addText("🌟 "+sessionGoal()+" vragen goed!",27,0xff4b3488,9,9);
-        addText("Dat was knap! Zin in nog een ronde?",17,SUB,0,12);
+        addText("Je hebt iets nieuws geoefend. Kies een volgend spel of speel nog eens.",17,SUB,0,12);
         Button again=tile("🔄 Nog een ronde!","",0xffcbf1d9,92);
         PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{

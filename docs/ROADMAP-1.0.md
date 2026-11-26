@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.99.1 / build 600991. Test build, not a production launch.
+Status: 0.99.2 / build 600992. Test build, not a production launch.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -10,7 +10,8 @@ Status: 0.99.1 / build 600991. Test build, not a production launch.
 - [x] Parent information about local storage, offline voice and deleting all app data.
 - [x] Mandatory dependency-free seeded Java regression gate for all catalogue routes, adaptive levels and legacy quiz configurations. Full Android unit tests and lint after APK packaging.
 - [x] 0.99.0 gate, APK package and full unit tests/lint passed on Actions run 45894018546.
-- [ ] Repeat all checks for 0.99.1.
+- [x] 0.99.1 gate, APK package and full unit tests/lint passed on Actions run 45897062350.
+- [ ] Repeat all checks for 0.99.2.
 - [x] 0.99.0 signed and verified with existing release certificate.
 - [ ] Verify signed 0.99.1 APK.
 - [ ] Physical-device tests on compact phone, opened Fold, tablet (portrait and landscape) and Android 15+ insets.
@@ -23,6 +24,14 @@ Status: 0.99.1 / build 600991. Test build, not a production launch.
 - [x] Expand rhyme choices and prevent advanced letter/rhyme quizzes from silently dropping to the middle age tier.
 - [x] Add 1,620 deterministic mini state restoration checks to the release gate.
 - [ ] Confirm end-to-end restoration and reward counts on actual phones and Fold.
+
+## 0.99.2: improved everyday play
+- [x] Search by title, description and relevant keywords, within the chosen age group.
+- [x] Dedicated complete list of unfinished games ordered by recent use.
+- [x] Optional strategy hints, previously attempted answer state and explanations after solving; automatic next question remains.
+- [x] More compact short-answer layouts and filled numeric sequences after solving.
+- [ ] Full release gate, APK signature, unit tests and lint.
+- [ ] Manual acceptance of search, answer selection and Fold layout.
 
 ## 0.99.x: remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.

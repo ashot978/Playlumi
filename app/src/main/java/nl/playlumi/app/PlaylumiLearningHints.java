@@ -18,13 +18,13 @@ public final class PlaylumiLearningHints {
                 if(PlaylumiLetterChallenges.MATCH_FIRST.equals(prompt))return "Bedenk de eerste letter. Zoek een woord dat ook zo begint.";
                 return variant==1?"Zeg het woord zachtjes. Welke letter ontbreekt aan het einde?":"Zeg het woord zachtjes. Welke letter ontbreekt vooraan?";
             case ExtraGames.PICTURES:return "Kijk naar het dier en lees het woord.";
-            case ExtraGames.RHYMES:return "Zeg de woorden zachtjes; luister naar het einde.";
+            case ExtraGames.RHYMES:return variant==1?"Zeg de woorden hardop. Zoek het woord met een andere eindklank.":"Zeg de woorden hardop. Luister of de laatste klank hetzelfde is.";
             case ExtraGames.COMPARE:return "Vergelijk de hoeveelheden één voor één.";
             case ExtraGames.MATH:return variant==1?"Begin bij het eerste getal en tel terug.":variant==2?"Tel verder tot het getal achter het = teken.":variant==4?"Krijgt iemand iets erbij of gaat er iets weg?":"Tel de getallen bij elkaar op.";
             case ExtraGames.SEQUENCES:return "Kijk naar de sprongen tussen de getallen.";
             case ExtraGames.OPPOSITES:return "Denk aan precies het tegenovergestelde.";
             case ExtraGames.CATEGORIES:return "Wat hebben de dingen met elkaar gemeen?";
-            case 16:return variant==3?"Ochtend en nacht: 00–11 uur. Middag en avond: 12–23 uur.":variant==1?"Tel één uur vooruit.":variant==2?"Tel één uur terug.":variant==4?"Vergelijk eerst de uren, dan de minuten.":"Kijk eerst naar de korte wijzer, dan de lange.";
+            case 16:return variant==3?"Denk aan het dagdeel: bij middag of avond tel je meestal 12 bij het uur op.":variant==1?"Tel één uur vooruit. De minuten blijven gelijk.":variant==2?"Tel één uur terug. De minuten blijven gelijk.":variant==4?"Vergelijk eerst de uren, dan de minuten.":"Korte wijzer: uren. Tel per cijfer vijf minuten met de lange wijzer.";
             case 17:return "Kijk goed naar het weer en bedenk wat de opdracht vraagt.";
             case 18:return "Kijk naar de positie van de ster of pijl.";
             case 19:return "Denk aan wat je in het dagelijks leven doet.";
