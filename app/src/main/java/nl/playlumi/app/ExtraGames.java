@@ -44,12 +44,12 @@ public final class ExtraGames {
     };
     // Each group contains words that rhyme; all answers are chosen only from explicit groups.
     private static final String[][] RHYME_GROUPS = {
-            {"kat","rat","mat","vat"}, {"maan","haan","baan","kraan"},
-            {"huis","muis","pluis","buis"}, {"beer","peer","weer","meer"},
-            {"boom","room","droom","stroom"}, {"vis","mis","sis","gis"},
-            {"roos","doos","boos","loos"}, {"bal","hal","stal","dal"},
-            {"kop","pop","stop","top"}, {"jas","tas","plas","was"},
-            {"boot","noot","groot","rood"}, {"tak","dak","pak","bak"}
+            {"kat","rat","mat","vat","nat","plat"}, {"maan","haan","baan","kraan","staan","gaan"},
+            {"huis","muis","pluis","buis","thuis","sluis"}, {"beer","peer","weer","meer","veer","sfeer"},
+            {"boom","room","droom","stroom","zoom"}, {"vis","mis","fris","wis","is"},
+            {"roos","doos","boos","loos","broos","bloos"}, {"bal","hal","stal","dal","val","mal"},
+            {"kop","pop","stop","top","dop","sop"}, {"jas","tas","plas","was","gas","pas"},
+            {"boot","noot","groot","rood","brood","schoot"}, {"tak","dak","pak","bak","zak","vlak"}
     };
     private static final String[][] OPPOSITE_WORD_PAIRS = {
             {"groot","klein"}, {"warm","koud"}, {"hoog","laag"}, {"nat","droog"},
@@ -143,27 +143,26 @@ public final class ExtraGames {
                 WORDS[index][variant == 0 ? 0 : 1], answers, correct, random);
     }
     private static void uniqueAddIndex(List<Integer> list, int index) { if (!list.contains(index)) list.add(index); }
-    private static LearningGame.Round rhymes(int variant, int level, Random random) {
-        int groupIndex = random.nextInt(level == 0 ? 4 : level == 1 ? 8 : RHYME_GROUPS.length);
-        String[] group = RHYME_GROUPS[groupIndex];
-        String seed = group[0], rhyme = group[1 + random.nextInt(3)];
-        int other = (groupIndex + 1 + random.nextInt(RHYME_GROUPS.length - 1)) % RHYME_GROUPS.length;
-        String odd = RHYME_GROUPS[other][1];
-        List<String> answers = new ArrayList<>();
+    private static LearningGame.Round rhymes(int variant,int level,Random random) {
+        int groupIndex=random.nextInt(level==0?4:level==1?8:RHYME_GROUPS.length);
+        List<String> same=new ArrayList<>(java.util.Arrays.asList(RHYME_GROUPS[groupIndex]));
+        String seed=same.remove(random.nextInt(same.size()));
+        Collections.shuffle(same,random);
+        List<String> other=new ArrayList<>();
+        for(int i=0;i<RHYME_GROUPS.length;i++)if(i!=groupIndex)Collections.addAll(other,RHYME_GROUPS[i]);
+        Collections.shuffle(other,random);
+        List<String> answers=new ArrayList<>();
+        int size=level==0?3:level==1?4:6;
         String correct;
-        if (variant == 0) {
-            correct = rhyme;
-            answers.add(rhyme); answers.add(odd);
-            int another = (other + 1) % RHYME_GROUPS.length;
-            if (another == groupIndex) another = (another + 1) % RHYME_GROUPS.length;
-            uniqueAdd(answers, RHYME_GROUPS[another][2]);
-        } else {
-            correct = odd;
-            answers.add(group[1]); answers.add(group[2]); answers.add(odd);
-            if (level > 0) uniqueAdd(answers, group[3]);
+        if(variant==0){
+            correct=same.get(0);answers.add(correct);
+            for(int i=0;i<size-1;i++)answers.add(other.get(i));
+        }else{
+            correct=other.get(0);answers.add(correct);
+            for(int i=0;i<Math.min(size-1,same.size());i++)answers.add(same.get(i));
         }
-        return round(variant == 0 ? "Welk woord rijmt op " + seed + "?" : "Welk woord rijmt NIET op " + seed + "?",
-                "🎵 " + seed, answers, correct, random);
+        return round(variant==0?"Welk woord rijmt op "+seed+"?":"Welk woord rijmt NIET op "+seed+"?",
+                "🎵 "+seed,answers,correct,random);
     }
     private static LearningGame.Round compare(int variant, int level, Random random) {
         int max = numberMax(level), left = 1 + random.nextInt(max), right = 1 + random.nextInt(max);

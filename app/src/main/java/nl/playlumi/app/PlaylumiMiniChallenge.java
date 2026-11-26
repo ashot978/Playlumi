@@ -65,6 +65,40 @@ public final class PlaylumiMiniChallenge {
             throw new IllegalArgumentException("Invalid saved shape round");
         return new PlaylumiMiniChallenge(DRAG,level,"Sleep de juiste vorm naar het huisje",target,choices,correctIndex);
     }
+    public int matchedMask(){
+        int mask=0;for(int i=0;i<matched.length;i++)if(matched[i])mask|=1<<i;
+        return mask;
+    }
+    /** A mismatched pair is closed on restore; keep a single open card. */
+    public int firstOpen(){return second<0?first:-1;}
+    public static PlaylumiMiniChallenge restore(int kind,int level,String target,List<String> choices,int correctIndex,int mask,int open){
+        if(level<0||level>2||kind<DRAG||kind>MEMORY||choices==null||target==null)
+            throw new IllegalArgumentException("saved mini game");
+        if(kind==DRAG)return restoreDrag(level,target,choices,correctIndex);
+        int count=level==0?3:level==1?4:6;
+        if(kind==BALLOONS){
+            if(choices.size()!=count||correctIndex<0||correctIndex>=count||!target.equals(choices.get(correctIndex))||
+                    new java.util.HashSet<>(choices).size()!=count)throw new IllegalArgumentException("saved balloon choices");
+            int maximum=level==0?3:level==1?5:8;
+            for(String value:choices){int n=Integer.parseInt(value);if(n<1||n>maximum)throw new IllegalArgumentException("saved balloon count");}
+            return new PlaylumiMiniChallenge(kind,level,"Waar zie je "+target+(target.equals("1")?" ballon?":" ballonnen?"),target,choices,correctIndex);
+        }
+        if(choices.size()!=count*2||correctIndex!=-1||mask<0||(mask&~((1<<choices.size())-1))!=0||open<-1||open>=choices.size())
+            throw new IllegalArgumentException("saved memory layout");
+        PlaylumiMiniChallenge saved=new PlaylumiMiniChallenge(kind,level,"Zoek twee dezelfde diertjes","🐾",choices,-1);
+        for(int i=0;i<choices.size();i++){
+            String value=choices.get(i);
+            if(!java.util.Arrays.asList(MEMORY_ICONS).contains(value)||Collections.frequency(choices,value)!=2)
+                throw new IllegalArgumentException("saved memory pair");
+            boolean marked=(mask&(1<<i))!=0;
+            for(int j=0;j<choices.size();j++)if(value.equals(choices.get(j))&&marked!=((mask&(1<<j))!=0))
+                throw new IllegalArgumentException("half pair");
+            saved.matched[i]=marked;
+        }
+        if(open>=0&&saved.matched[open])throw new IllegalArgumentException("open matched card");
+        saved.matchedPairs=Integer.bitCount(mask)/2;saved.first=open;
+        return saved;
+    }
     private static List<Integer> uniqueIndices(Random r,int count,int range) {
         if(count>range)throw new IllegalArgumentException("too many");
         List<Integer> values=new ArrayList<>();

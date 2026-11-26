@@ -28,6 +28,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         void onSolved();
         void onMistake();
         void onMatch();
+        default void onStateChanged(){}
     }
     private final PlaylumiMiniChallenge question;
     private final Listener listener;
@@ -277,8 +278,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         }
     }
     public void restoreSolvedShape(){
-        if(question.kind!=PlaylumiMiniChallenge.DRAG)return;
         solved=true;
+        if(question.kind==PlaylumiMiniChallenge.MEMORY){renderMemory();status.setText("🎉 Alle diertjes gevonden!");return;}
         if(shapeGate!=null)shapeGate.setCompleted(true);
         status.setText("🌟 Joepie! Goed gedaan!");
         status.setTextColor(0xff276748);
@@ -308,6 +309,7 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         int result=question.flip(index);
         if(result==0)return;
         renderMemory();
+        if(result!=3)listener.onStateChanged();
         if(index<cards.size())PlaylumiDelight.flip(cards.get(index));
         if(result==2 || result==3) {
             listener.onMatch();
