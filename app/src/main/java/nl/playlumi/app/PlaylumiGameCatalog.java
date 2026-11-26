@@ -1,0 +1,106 @@
+package nl.playlumi.app;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+/** Stable, age-filtered routes shared by the game library and native game screens. */
+public final class PlaylumiGameCatalog {
+    public static final int OVERVIEW=-1,FAVORITES=-2,ALL=-3;
+    public static final int QUIZ=0,MINI=1,MUSIC=2,BUBBLES=3,STARS=4,DRAW=5;
+    public static final class Entry {
+        public final int world,kind,mode,variant;
+        public final String id,title,description,icon;
+        Entry(int w,int k,int m,int v,String t,String d,String i){
+            world=w;kind=k;mode=m;variant=v;title=t;description=d;icon=i;
+            id=w+":"+k+":"+m+":"+v;
+        }
+    }
+    private PlaylumiGameCatalog(){}
+    private static void q(List<Entry> list,int w,int m,int v,String title,String desc,String icon){
+        list.add(new Entry(w,QUIZ,m,v,title,desc,icon));
+    }
+    private static void g(List<Entry> list,int w,int kind,int mode,String title,String desc,String icon){
+        list.add(new Entry(w,kind,mode,0,title,desc,icon));
+    }
+    public static List<Entry> entries(int age){
+        int a=PlaylumiRocketCurriculum.level(age);
+        ArrayList<Entry> list=new ArrayList<>();
+        for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(a))
+            q(list,0,m.mode,m.variant,m.title,m.description,"✦");
+        if(a>=1){
+            q(list,0,16,0,"Klokkijken","Lees een echte wijzerklok","◷");
+            q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Maak de getallenrij af","123");
+        }
+        if(a>=2){
+            q(list,0,16,1,"Een uur later","Reken met hele uren","◷");
+            q(list,0,16,3,"Tijd in minuten","Schrijf de juiste tijd","◷");
+            q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
+            q(list,0,22,0,"Meten","Vergelijk de lengte van linten","↔");
+            q(list,0,23,2,"Even of oneven","Ontdek getallenpatronen","123");
+        }
+        q(list,1,LearningGame.LETTERS,0,"Kleine letters","Vind de kleine letter","Aa");
+        q(list,1,LearningGame.LETTERS,1,"Hoofdletters","Vind de grote letter","Aa");
+        if(a>=1){
+            q(list,1,LearningGame.WORDS,0,"Woorden maken","Vul de ontbrekende letter in","Ab");
+            q(list,1,ExtraGames.FIRST_LAST,0,"Beginletter","Kies de eerste letter","A");
+            q(list,1,ExtraGames.PICTURES,0,"Woord en plaatje","Lees het woord bij het dier","🐾");
+            q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","✦");
+        }
+        if(a>=2){
+            q(list,1,ExtraGames.SPELLING,0,"Spelling","Kies het goed geschreven woord","Ab");
+            q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Kies de laatste letter","Z");
+            q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
+            q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","✦");
+        }
+        g(list,2,MINI,PlaylumiMiniChallenge.DRAG,"Sleep de vormen","Breng vormen naar hun poort","◆");
+        q(list,2,LearningGame.SHAPES,0,"Vormen zoeken","Vind dezelfde vorm","▲");
+        q(list,2,LearningGame.SHAPES,1,"Vormen benoemen","Herken de vorm","●");
+        q(list,2,LearningGame.PATTERNS,0,"Patronen afmaken","Wat komt hierna?","◆");
+        if(a>=1){
+            q(list,2,18,0,"Links of rechts","Ontdek waar de ster staat","↔");
+            q(list,2,18,1,"Boven of onder","Waar staat de ster?","↕");
+        }
+        if(a>=2)q(list,2,23,0,"Slim nadenken","Maak de logische reeks af","✦");
+        g(list,3,MUSIC,0,"Speel het deuntje","Speel de melodie na","♪");
+        g(list,4,MINI,PlaylumiMiniChallenge.MEMORY,"Dierenmemory","Vind gelijke dieren","🐾");
+        g(list,4,MINI,PlaylumiMiniChallenge.BALLOONS,"Tel de ballonnen","Tel echte ballonnen","🎈");
+        g(list,4,BUBBLES,0,"Bellenfeest","Prik de zeepbellen","○");
+        g(list,4,STARS,0,"Vang de sterren","Verzamel alleen gouden sterren","★");
+        q(list,4,21,1,"Dierenwereld","Herken de dieren","🐾");
+        q(list,4,ExtraGames.CATEGORIES,0,"Wat hoort erbij?","Zoek het passende plaatje","✦");
+        if(a>=1){
+            q(list,4,20,1,"Fruit herkennen","Welk fruit zie je?","🍎");
+            q(list,4,20,2,"Groente herkennen","Ontdek de groente","🥕");
+            q(list,4,19,0,"Dagelijkse dingen","Herken bekende voorwerpen","🏠");
+        }
+        if(a>=2){
+            q(list,4,21,2,"Dieren en hun huis","Waar woont dit dier?","🐾");
+            q(list,4,19,4,"Veilig kiezen","Wat is een veilige keuze?","✦");
+        }
+        q(list,5,LearningGame.COLORS,0,"Kleuren herkennen","Welke kleur zie je?","●");
+        q(list,5,LearningGame.COLORS,1,"Kleuren zoeken","Vind de gevraagde kleur","●");
+        g(list,5,DRAW,0,"Mijn kunstwerk","Teken en kleur vrij","✎");
+        if(a>=1){
+            q(list,5,17,2,"Weer herkennen","Ontdek het weer","☀");
+            q(list,5,17,0,"Seizoenen","Welk seizoen zie je?","✿");
+            q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Maak de kleurenreeks af","✦");
+        }
+        return Collections.unmodifiableList(list);
+    }
+    public static Entry find(int age,String id){
+        if(id==null)return null;
+        for(Entry e:entries(age))if(id.equals(e.id))return e;
+        return null;
+    }
+    public static Entry route(int age,int world,int kind,int mode,int variant){
+        return find(age,world+":"+kind+":"+mode+":"+variant);
+    }
+    public static List<Entry> filter(int age,int filter,Set<String> favorites){
+        ArrayList<Entry> out=new ArrayList<>();
+        for(Entry e:entries(age))
+            if(filter==ALL||filter==e.world||(filter==FAVORITES&&favorites!=null&&favorites.contains(e.id)))out.add(e);
+        return out;
+    }
+}

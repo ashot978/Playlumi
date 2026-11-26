@@ -42,7 +42,7 @@ public final class PlaylumiVillageView extends View {
     private static final String[] NAMES={
             "Rekenraket","Letterhuis","Vormkasteel","Muziekstudio",
             "Speelplein","Kleurentuin","Maatje","Ouderzone",
-            "Missies","Beloningen","Home","Collectie","Profiel","Instellingen",
+            "Spellen","Beloningen","Home","Collectie","Profiel","Instellingen",
             "Sterren","Ontdekte gebouwen","Maatje"
     };
     private static final float[][] DISCOVERED_AT={
@@ -89,7 +89,7 @@ public final class PlaylumiVillageView extends View {
     private void updateDescription() {
         setContentDescription("Magisch Playlumi-dorp met zes speelgebouwen. "+
                 PlaylumiVillageProgress.visitedCount(discovered)+
-                " gebouwen bezocht. Tik op een gebouw om het spel te starten.");
+                " gebouwen bezocht. Tik op een gebouw of op Spellen linksonder.");
     }
     private void paintColor(int c) {
         pen.reset();
@@ -133,6 +133,23 @@ public final class PlaylumiVillageView extends View {
         PlaylumiAvatar.draw(c,12,103,126,avatar);
         text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
         text(c,"Kies je maatje",225,192,21,Color.WHITE);
+    }
+    private void drawGameTab(Canvas c){
+        // Same home artwork and original hit zone. Only the former Missions label
+        // becomes a live, illustrated shortcut to the complete game library.
+        paintColor(0xff462374);
+        c.drawRoundRect(12,1480,168,1658,30,30,pen);
+        paintColor(0xffe5c4ff);
+        c.drawRoundRect(16,1484,164,1654,27,27,pen);
+        paintColor(0xff7046ad);
+        c.drawRoundRect(20,1488,160,1650,24,24,pen);
+        paintColor(0xfffce2a0);
+        c.drawRoundRect(42,1520,138,1581,22,22,pen);
+        paintColor(0xff56308e);
+        c.drawRoundRect(57,1535,83,1544,3,3,pen);
+        c.drawRoundRect(65,1527,75,1552,3,3,pen);
+        c.drawCircle(112,1536,6,pen);c.drawCircle(124,1550,6,pen);
+        text(c,"Spellen",90,1624,28,0xfffff2d0);
     }
     private void drawDiscovered(Canvas c) {
         for(int i=0;i<PlaylumiVillageProgress.BUILDINGS;i++) {
@@ -179,6 +196,7 @@ public final class PlaylumiVillageView extends View {
         canvas.drawBitmap(village,null,
                 new RectF(0,0,PlaylumiVillageHit.ART_W,PlaylumiVillageHit.ART_H),pen);
         drawRealCounters(canvas);
+        drawGameTab(canvas);
         drawDiscovered(canvas);
         drawSparkles(canvas);
         canvas.restore();
