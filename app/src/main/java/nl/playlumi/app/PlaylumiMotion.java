@@ -34,10 +34,10 @@ public final class PlaylumiMotion {
             View child = root.getChildAt(i);
             child.animate().cancel();
             child.setAlpha(0f);
-            child.setTranslationY(dp(child, 20));
+            child.setTranslationY(dp(child, 8));
             child.animate().alpha(1f).translationY(0)
-                    .setStartDelay(Math.min(i, 12) * 42L)
-                    .setDuration(300)
+                    .setStartDelay(Math.min(i, 4) * 24L)
+                    .setDuration(190)
                     .setInterpolator(new DecelerateInterpolator())
                     .start();
         }
