@@ -354,13 +354,19 @@ public class MainActivity extends Activity {
             if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
             bubbleSolved=bubbles.solved();
         }
-        // Debug-only test entrance: emulator can capture the real village directly.
-        // This is unavailable in a signed production release.
+        // Debug-only test entrance: isolate real library/quiz interactions from
+        // emulator launcher and illustrated village navigation failures.
+        // Neither entrance is available in a non-debuggable production release.
         if((getApplicationInfo().flags &
-                android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 &&
-                getIntent()!=null && getIntent().getBooleanExtra("playlumi_ci_home",false)) {
-            age=Math.max(0,Math.min(2,getIntent().getIntExtra("playlumi_ci_age",Math.max(0,age))));
-            page=HOME;
+                android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 && getIntent()!=null) {
+            int ciWorld=getIntent().getIntExtra("playlumi_ci_library",-1);
+            if(getIntent().getBooleanExtra("playlumi_ci_home",false)||PlaylumiWorldStyle.valid(ciWorld)){
+                age=Math.max(0,Math.min(2,getIntent().getIntExtra("playlumi_ci_age",Math.max(0,age))));
+                if(PlaylumiWorldStyle.valid(ciWorld)){
+                    page=LIBRARY;libraryFilter=ciWorld;libraryReturn=false;
+                    libraryScrollY=0;favoriteEditMode=false;storyStage=-1;villageLaunch=ciWorld;
+                }else page=HOME;
+            }
         }
         showPage();
     }

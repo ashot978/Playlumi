@@ -1,14 +1,18 @@
-name: Playlumi 0.104 quiz interface acceptance
+name: Playlumi 0.105 quiz interface acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.104']
+    branches: ['feature/playlumi-0.105']
   workflow_dispatch:
 jobs:
   quiz-ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [phone, fold]
     concurrency:
-      group: playlumi-quiz-qa-${{ github.ref }}
+      group: playlumi-quiz-qa-${{ github.ref }}-${{ matrix.viewport }}
       cancel-in-progress: true
     permissions:
       contents: read
@@ -24,7 +28,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug variant of exact 0.104 source
+      - name: Build debug variant of exact 0.105 source
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -42,11 +46,11 @@ jobs:
           disable-animations: true
           disable-linux-hw-accel: auto
           emulator-boot-timeout: 390
-          script: python3 ci/check-clean-quiz.py
+          script: python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }}
       - name: Save actual emulator screenshots and UI hierarchy
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0104-quiz-acceptance
+          name: playlumi-0105-quiz-acceptance-${{ matrix.viewport }}
           path: build/clean-quiz/
           if-no-files-found: warn
