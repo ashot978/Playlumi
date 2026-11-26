@@ -243,9 +243,10 @@ public final class NewWorldGames {
                 opts(correct,pool,Math.min(choiceCount(lvl),pool.length),r),r);
     }
     private static LearningGame.Round measure(int v,int lvl,Random r) {
+        if(v==0)return PlaylumiNumberChallenges.measure(lvl,r);
         int n=1+choose(r,max(lvl)),other=1+choose(r,max(lvl));
         if(other==n)other=n==max(lvl)?n-1:n+1;
-        if(v==0 || v==1 || v==3) {
+        if(v==1 || v==3) {
             String correct=v==1? (n>other?"Links":"Rechts"):(n>other?"Links":"Rechts");
             String name=v==0?"Welk lint is langer?":v==1?"Welke doos is zwaarder?":"Welke toren is groter?";
             return make(name,"⬅️ "+n+(v==1?" kg":" cm")+"    "+other+(v==1?" kg":" cm")+" ➡️",
@@ -257,17 +258,13 @@ public final class NewWorldGames {
                     ""+target,opts(""+target,numbers(1,max(lvl)*2),choiceCount(lvl),r),r);
         }
         int diff=Math.abs(n-other);
-        return make("Hoeveel is het verschil?","📏 "+Math.max(n,other)+" − "+Math.min(n,other)+" = ?",
-                ""+diff,opts(""+diff,numbers(0,max(lvl)),choiceCount(lvl),r),r);
+        return make("Hoeveel centimeter is het verschil tussen de linten?","📏 "+n+" cm   |   "+other+" cm",
+                ""+diff,PlaylumiNumberChallenges.nearby(diff,choiceCount(lvl),r),r);
     }
     private static LearningGame.Round logic(int v,int lvl,Random r) {
         int max=max(lvl);
         if(v==0 || v==1 || v==3) {
-            int step=v==0?2:v==1?3:4, first=1+choose(r,max);
-            int correct=first+2*step;
-            return make(v==0?"Maak de reeks af":v==1?"Welk getal ontbreekt?":"Welk getal past in de reeks?",
-                    first+"  →  "+(first+step)+"  →  ?", ""+correct,
-                    opts(""+correct,numbers(1,max+12),choiceCount(lvl),r),r);
+            return PlaylumiNumberChallenges.sequence(lvl,lvl==2&&r.nextBoolean()?-1:1,v!=0,lvl==2,r);
         }
         if(v==2) {
             int n=1+choose(r,max);

@@ -167,9 +167,7 @@ public final class VariantGames {
     }
     private static LearningGame.Round patterns(int v,int level,Random r) {
         if(v==1) {
-            int start=1+rand(r,max(level)-2);
-            return make("Welk getal hoort op de lege plek?",start+" → "+(start+2)+" → ?",
-                ""+(start+4),numeric(start+4,1,max(level)+3,count(level),r),r);
+            return PlaylumiNumberChallenges.sequence(level,1,true,level==2,r);
         }
         return PlaylumiPatterns.next(level,v==2?1:0,v==0,r);
     }
@@ -271,13 +269,7 @@ public final class VariantGames {
             ""+result,numeric(result,1,limit+2,count(level),r),r);
     }
     private static LearningGame.Round sequences(int v,int level,Random r) {
-        int step=v==0?2:v==2?3:1;
-        int limit=max(level)+6, start=1+rand(r,max(level));
-        int correct=start+step*(v==1?1:2);
-        String display=v==1?start+"  →  ?  →  "+(start+2):
-            start+"  →  "+(start+step)+"  →  ?";
-        return make(v==0?"Tel met sprongen van twee":v==1?"Welk getal ontbreekt?":"Tel met sprongen van drie",
-            display,""+correct,numeric(correct,1,limit+8,count(level),r),r);
+        return PlaylumiNumberChallenges.sequence(level,1,v==1,false,r,v==0?2:v==2?3:1);
     }
     private static LearningGame.Round opposites(int v,int level,Random r) {
         int pool=level==0?6:level==1?12:OPPOSITES.length, n=rand(r,pool);

@@ -1364,7 +1364,10 @@ public class MainActivity extends Activity {
             if(level<0||level>2||count<0||count>=SESSION_ROUNDS||attempts<count)return false;
             game.configure(entry.mode,entry.variant,level);
             // Preserve points and session counters, but replace the old copy-the-time question.
-            if(!(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt"))))
+            if(!(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
+                    !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
+                    !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
+                    !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4))
                 game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
                     answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
             difficulty=level;sessionSolved=count;sessionAttempts=attempts;feedback="";
@@ -2095,7 +2098,8 @@ public class MainActivity extends Activity {
         boolean centered=PlaylumiLayout.centeredMagicQuiz(width,height);
         boolean split=wide&&!centered;
         int theme=worldTheme();
-        header(mode==16&&game.variant()==3?"Tijd van de dag":LearningGame.GAME_NAMES[mode],sessionSolved+"/"+sessionGoal());
+        PlaylumiGameCatalog.Entry currentEntry=PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.QUIZ,mode,game.variant());
+        header(currentEntry!=null?currentEntry.title:mode==16&&game.variant()==3?"Tijd van de dag":LearningGame.GAME_NAMES[mode],sessionSolved+"/"+sessionGoal());
         addIllustratedPortal(theme,PlaylumiWorldStyle.NAMES[theme],118);
         addMagicProgress(sessionSolved,sessionGoal(),true);
         LinearLayout questions=root,answers=root;
@@ -2369,6 +2373,10 @@ public class MainActivity extends Activity {
             feedbackText.announceForAccessibility(feedback);
         } else {
             feedback="💛 Probeer nog eens!";
+            if(mode==ExtraGames.SEQUENCES||mode==23&&(game.variant()==0||game.variant()==1||game.variant()==3))
+                feedback="💛 Kijk naar de sprongen.";
+            if(mode==22&&game.variant()==0&&game.round().display.contains("mm"))
+                feedback="💛 1 cm = 10 mm.";
             roundHadMistake=true;
             sound.mistake();
             if(playPal!=null)playPal.react(2);

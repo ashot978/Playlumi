@@ -15,6 +15,7 @@ public final class PlaylumiMathPractice {
         int a,b,result,answer;
         String prompt,display;
         boolean subtract=variant==1 || (variant==4&&r.nextBoolean());
+        int story=r.nextInt(5);
         if(variant==3){
             a=1+r.nextInt(max/2);b=a;result=a+b;answer=result;
             prompt="Wat is het dubbele?";display=a+" + "+b+" = ?";
@@ -22,15 +23,19 @@ public final class PlaylumiMathPractice {
             a=(age==2?5:2)+r.nextInt(max-(age==2?5:2)+1);
             b=1+r.nextInt(a);
             result=a-b;answer=result;
-            prompt=variant==4?"Hoeveel sterren houdt Milo over?":"Reken uit";
-            display=variant==4?"Milo heeft "+a+" sterren.\nHij geeft er "+b+" weg.":a+" − "+b+" = ?";
+            String[] objects={"sterren","appels","ballonnen","potloden","schelpen"};
+            String object=objects[story];
+            prompt=variant==4?"Hoeveel "+object+" zijn er over?":"Reken uit";
+            display=variant==4?"Milo heeft "+a+" "+object+".\nHij geeft er "+b+" weg.":a+" − "+b+" = ?";
         }else{
             a=1+r.nextInt(max-1);b=1+r.nextInt(max-a);
             result=a+b;
             answer=variant==2?b:result;
-            prompt=variant==2?"Welk getal ontbreekt?":variant==4?"Hoeveel sterren heeft Fenna nu?":"Reken uit";
+            String[] objects={"sterren","appels","knikkers","bloemen","schelpen"};
+            String object=objects[story];
+            prompt=variant==2?"Welk getal ontbreekt?":variant==4?"Hoeveel "+object+" heeft Fenna nu?":"Reken uit";
             display=variant==2?a+" + ? = "+result:variant==4?
-                    "Fenna heeft "+a+" sterren.\nZe vindt er "+b+" bij.":a+" + "+b+" = ?";
+                    "Fenna heeft "+a+" "+object+".\nZe krijgt er "+b+" bij.":a+" + "+b+" = ?";
         }
         int count=age==0?3:4;
         ArrayList<Integer> candidates=new ArrayList<>();
