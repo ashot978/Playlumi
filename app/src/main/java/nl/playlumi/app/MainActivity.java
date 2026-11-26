@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, GAME_LIBRARY=44;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -412,6 +412,7 @@ public class MainActivity extends Activity {
             return;
         }
         if(page==HOME) {super.onBackPressed();return;}
+        if(page==GAME_LIBRARY) {move(HOME);return;}
         if(page==VILLAGE_MENU) {move(HOME);return;}
         if(storyStage<0 && PlaylumiWorldStyle.valid(villageLaunch) &&
                 (page==PLAY || page==DETAIL || page==MINI_PLAY || page==BUBBLE_PLAY ||
@@ -992,6 +993,7 @@ public class MainActivity extends Activity {
             case WORLD_PICKER: showWorldPicker();break;
             case HOME_OPTIONS: showHomeOptions();break;
             case VILLAGE_MENU: showVillageMenu();break;
+            case GAME_LIBRARY: showGameLibrary();break;
             case CATEGORIES: showCategories();break;
             case DETAIL: showDetail();break;
             case LEVEL: showLevel();break;
@@ -1123,8 +1125,7 @@ public class MainActivity extends Activity {
                     move(HOME_OPTIONS);
                     break;
                 case PlaylumiVillageView.MISSIONS:
-                    world=0;storyPage=Math.min(2,adventures.progress(world)/2);
-                    move(ADVENTURE_MAP);
+                    move(GAME_LIBRARY);
                     break;
                 case PlaylumiVillageView.REWARDS:
                     move(SHOP);
@@ -1181,12 +1182,63 @@ public class MainActivity extends Activity {
         game.configure(mode,variant,difficulty);
         prefs().edit().putInt("game_mode",mode).putInt("game_variant",variant)
                 .putInt("last_played_category",mode).putInt("last_played_variant",variant).apply();
+        prefs().edit().putInt("library_world",villageLaunch).putInt("library_mode",mode).putInt("library_variant",variant).putInt("library_age",age).apply();
         saveRecent();move(PLAY);
     }
     private void startWorldMini(int kind) {
         miniKind=kind;miniRound=0;miniSolved=false;pendingBadges.clear();
         mini=PlaylumiMiniChallenge.generate(kind,Math.max(0,age),new Random());
         move(MINI_PLAY);
+    }
+    private void libraryQuiz(int place,int mode,int variant){
+        villageLaunch=place;
+        prefs().edit().putInt("library_world",place).putInt("library_mode",mode)
+                .putInt("library_variant",variant).putInt("library_age",age).apply();
+        startWorldQuiz(mode,variant);
+    }
+    private void libraryExtra(int place,String name,String detail,int mode,int variant){
+        worldChoice(name,detail,COLORS[mode%COLORS.length],()->libraryQuiz(place,mode,variant));
+    }
+    private void showGameLibrary(){
+        header("Ontdek & speel",AGES[Math.max(0,age)]);
+        addText("Kies jouw volgende avontuur",22,TEXT,3,8);
+        int last=prefs().getInt("library_world",-1);
+        if(PlaylumiWorldStyle.valid(last)&&prefs().getInt("library_age",-1)==age){
+            int mode=prefs().getInt("library_mode",0),variant=prefs().getInt("library_variant",0);
+            worldChoice("Speel opnieuw",PlaylumiWorldStyle.NAMES[last],COLORS[3],
+                    ()->libraryQuiz(last,mode,variant));
+        }
+        for(int w=0;w<6;w++){
+            final int place=w;
+            addIllustratedPortal(w,PlaylumiWorldStyle.NAMES[w],100);
+            worldChoice(PlaylumiWorldStyle.NAMES[w],PlaylumiWorldStyle.SUBTITLES[w],COLORS[w%COLORS.length],
+                    ()->{villageLaunch=place;storyStage=-1;move(VILLAGE_MENU);});
+            if(w==PlaylumiVillageHit.ROCKET){
+                for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(age))
+                    libraryExtra(w,m.title,m.description,m.mode,m.variant);
+                if(age>=1)libraryExtra(w,"Getallenrij","Maak de reeks af",ExtraGames.SEQUENCES,0);
+            }else if(w==PlaylumiVillageHit.BOOKS){
+                libraryExtra(w,"Woord & plaatje","Zoek het juiste dier",ExtraGames.PICTURES,age==0?1:0);
+                if(age>=1){
+                    libraryExtra(w,"Beginletter","Welke letter komt eerst?",ExtraGames.FIRST_LAST,0);
+                    libraryExtra(w,"Rijmen","Vind het rijmwoord",ExtraGames.RHYMES,0);
+                }
+                if(age>=2)libraryExtra(w,"Spelling","Kies het juiste woord",ExtraGames.SPELLING,0);
+                worldChoice("Verhalenbos","Kies een verhaal",COLORS[2],()->{villageLaunch=place;storyLibraryPage=0;move(STORY_LIBRARY);});
+            }else if(w==PlaylumiVillageHit.SHAPES){
+                libraryExtra(w,"Patronen","Maak het patroon af",LearningGame.PATTERNS,0);
+            }else if(w==PlaylumiVillageHit.PLAYGROUND){
+                libraryExtra(w,"Wat hoort erbij?","Ontdek welke dingen bij elkaar horen",ExtraGames.CATEGORIES,0);
+                if(age>=1)libraryExtra(w,"Tegenstellingen","Vind het tegenovergestelde",ExtraGames.OPPOSITES,0);
+            }else if(w==PlaylumiVillageHit.COLORS){
+                worldChoice("Vrij tekenen","Maak je eigen kunstwerk",COLORS[1],()->{villageLaunch=place;move(DRAW);});
+                if(age>=1)libraryExtra(w,"Kleurenreeks","Welke kleur komt hierna?",LearningGame.COLORS,3);
+            }
+        }
+        worldChoice("Missies","Ga verder op de avonturenkaart",COLORS[2],()->{
+            villageLaunch=PlaylumiVillageView.MISSIONS;world=0;
+            storyPage=Math.min(2,adventures.progress(world)/2);move(ADVENTURE_MAP);
+        });
     }
     private void showVillageMenu() {
         if(!PlaylumiWorldStyle.valid(villageLaunch)) {villageLaunch=PlaylumiVillageHit.ROCKET;}
