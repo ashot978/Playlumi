@@ -31,16 +31,16 @@ public final class PlaylumiGameCatalog {
             q(list,0,m.mode,m.variant,m.title,m.description,"✦");
         if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
         if(a>=1){
-            q(list,0,16,0,"Klokkijken","Lees een echte wijzerklok","◷");
+            q(list,0,16,0,"Klokkijken","Lees hele en halve uren, kwartieren en minuten op de wijzerklok","◷");
             q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Ontdek de sprong tussen getallen","123");
         }
         if(a>=2){
-            q(list,0,16,1,"Een uur later","Reken met hele uren","◷");
+            q(list,0,16,1,"Een uur later","Reken een uur verder, ook met minuten","◷");
             q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
             q(list,0,22,0,"Meten","Vergelijk centimeters en millimeters","↔");
             q(list,0,22,4,"Lengteverschil","Bereken hoeveel centimeter het verschil is","↔");
-            q(list,0,16,2,"Een uur eerder","Reken terug op de klok","◷");
+            q(list,0,16,2,"Een uur eerder","Reken een uur terug, ook met minuten","◷");
             q(list,0,23,2,"Even of oneven","Ontdek getallenpatronen","123");
             q(list,0,ExtraGames.SEQUENCES,1,"Terugtellen","Ontdek de sprong en tel terug","123");
         }

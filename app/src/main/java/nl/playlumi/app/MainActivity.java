@@ -277,7 +277,9 @@ public class MainActivity extends Activity {
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
         if(state!=null && page==PLAY && state.containsKey("roundDisplay")){
             try{
-                if(!PlaylumiLetterChallenges.legacy(mode,variant,state.getString("roundDisplay"))){
+                if(!PlaylumiLetterChallenges.legacy(mode,variant,state.getString("roundDisplay"))&&
+                        !PlaylumiWeatherPractice.legacy(mode,variant,state.getString("roundPrompt"))&&
+                        !(mode==19&&variant==4&&state.getString("roundDisplay","").contains("Je steekt over bij groen licht"))){
                     game.restoreRound(state.getString("roundPrompt"),state.getString("roundDisplay"),
                             state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
                             state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
@@ -1729,6 +1731,8 @@ public class MainActivity extends Activity {
             game.configure(entry.mode,entry.variant,level);
             // Preserve points and session counters, but replace the old copy-the-time question.
             if(!PlaylumiLetterChallenges.legacy(entry.mode,entry.variant,o.getString("display"))&&
+                    !PlaylumiWeatherPractice.legacy(entry.mode,entry.variant,o.getString("prompt"))&&
+                    !(entry.mode==19&&entry.variant==4&&o.getString("display").contains("Je steekt over bij groen licht"))&&
                     !(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
                     !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
                     !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
@@ -1842,6 +1846,7 @@ public class MainActivity extends Activity {
             choice.setOnClickListener(v->{
                 if(interactive!=round||page!=INTERACTIVE||moving||round.solved())return;
                 if(round.choose(option)){
+                    stopSpeech();recordPlayDay();
                     if(round.solved())sound.collect();else sound.good();
                     interactiveMessage="Goed zo!";message.setTextColor(0xffc7ffd8);
                     if(playPal!=null)playPal.react(1);
@@ -2376,6 +2381,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
+        addText("Playlumi 0.99.0 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -3755,6 +3761,10 @@ public class MainActivity extends Activity {
                 0xffe8dcff,104);
         addTile(settings,9);
         settings.setOnClickListener(v->move(PARENT_SETTINGS));
+        Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
+        addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
+                .setTitle("Privacy en gegevens")
+                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Leeftijdskeuze, voortgang, favorieten, speelgegevens, maatje en tekeningen worden op dit toestel opgeslagen. Er is geen Playlumi-server. De optionele voorleesfunctie kiest een geïnstalleerde Nederlandse offline stem van Android. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen ook de verdiende beloningen.").setPositiveButton("Sluiten",null).show());
         Button back=tile("🌈 Terug naar spelen","",0xffd4f3e0,85);
         addTile(back,11);
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
@@ -3993,7 +4003,11 @@ public class MainActivity extends Activity {
             @Override public void onMistake(){sound.mistake();}
             @Override public void onFinished(){
                 if(page!=STAR_CATCH||moving||!autoRoundVisible||starCatchSolved)return;
-                starCatchSolved=true;
+                stopSpeech();starCatchSolved=true;
+                int category=LearningGame.COUNT;
+                ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
+                lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
+                saveWardrobe();saveScore(category);pendingBadges.addAll(badges);
                 sound.good();
                 if(playPal!=null)playPal.dance();
                 PlaylumiMotion.celebrate(stage,starCatchRound+1);

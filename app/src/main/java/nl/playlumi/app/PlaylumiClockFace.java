@@ -15,7 +15,9 @@ public final class PlaylumiClockFace extends View {
         super(c);
         this.hour=hour;this.minute=minute;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
-        setContentDescription("Wijzerklok: "+hour+" uur en "+minute+" minuten");
+        int shortHand=hour%12==0?12:hour%12;
+        int longHand=minute/5==0?12:minute/5;
+        setContentDescription("Wijzerklok. Korte wijzer "+(minute==0?"op ":"na ")+shortHand+", lange wijzer op "+longHand);
     }
     @Override protected void onMeasure(int w,int h){
         // A normal View consumes the entire AT_MOST height inside a ScrollView.
@@ -31,6 +33,13 @@ public final class PlaylumiClockFace extends View {
         p.setColor(0xffc08439);c.drawCircle(x,y,r,p);
         p.setColor(0xffffd777);c.drawCircle(x,y,r*.95f,p);
         p.setColor(0xfffff8dc);c.drawCircle(x,y,r*.87f,p);
+        for(int i=0;i<60;i++){
+            double a=i*Math.PI/30-Math.PI/2;
+            float inner=i%5==0?.81f:.85f;
+            p.setColor(i%5==0?0xff694184:0xffcdb996);p.setStrokeWidth(Math.max(1,r*(i%5==0?.016f:.007f)));
+            c.drawLine(x+(float)Math.cos(a)*r*inner,y+(float)Math.sin(a)*r*inner,
+                    x+(float)Math.cos(a)*r*.90f,y+(float)Math.sin(a)*r*.90f,p);
+        }
         p.setColor(0xff694184);p.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         p.setTextAlign(Paint.Align.CENTER);p.setTextSize(r*.19f);
         for(int i=1;i<=12;i++){

@@ -25,7 +25,7 @@ public final class PlaylumiLearningHints {
             case ExtraGames.OPPOSITES:return "Denk aan precies het tegenovergestelde.";
             case ExtraGames.CATEGORIES:return "Wat hebben de dingen met elkaar gemeen?";
             case 16:return variant==3?"Ochtend en nacht: 00–11 uur. Middag en avond: 12–23 uur.":variant==1?"Tel één uur vooruit.":variant==2?"Tel één uur terug.":variant==4?"Vergelijk eerst de uren, dan de minuten.":"Kijk eerst naar de korte wijzer, dan de lange.";
-            case 17:return "Denk aan temperatuur, regen en wind.";
+            case 17:return "Kijk goed naar het weer en bedenk wat de opdracht vraagt.";
             case 18:return "Kijk naar de positie van de ster of pijl.";
             case 19:return "Denk aan wat je in het dagelijks leven doet.";
             case 20:return "Denk aan waar het eten vandaan komt.";
