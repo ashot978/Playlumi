@@ -32,15 +32,17 @@ public final class PlaylumiGameCatalog {
         if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
         if(a>=1){
             q(list,0,16,0,"Klokkijken","Lees een echte wijzerklok","◷");
-            q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Maak de getallenrij af","123");
+            q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Ontdek de sprong tussen getallen","123");
         }
         if(a>=2){
             q(list,0,16,1,"Een uur later","Reken met hele uren","◷");
             q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
-            q(list,0,22,0,"Meten","Vergelijk de lengte van linten","↔");
+            q(list,0,22,0,"Meten","Vergelijk centimeters en millimeters","↔");
+            q(list,0,22,4,"Lengteverschil","Bereken hoeveel centimeter het verschil is","↔");
+            q(list,0,16,2,"Een uur eerder","Reken terug op de klok","◷");
             q(list,0,23,2,"Even of oneven","Ontdek getallenpatronen","123");
-            q(list,0,ExtraGames.SEQUENCES,1,"Terugtellen","Welk getal komt hiervoor?","123");
+            q(list,0,ExtraGames.SEQUENCES,1,"Terugtellen","Ontdek de sprong en tel terug","123");
         }
         q(list,1,LearningGame.LETTERS,0,"Kleine letters","Vind de kleine letter","Aa");
         q(list,1,LearningGame.LETTERS,1,"Hoofdletters","Vind de grote letter","Aa");
@@ -67,7 +69,7 @@ public final class PlaylumiGameCatalog {
             q(list,2,18,1,"Boven of onder","Waar staat de ster?","↕");
         }
         if(a>=2){
-            q(list,2,23,0,"Slim nadenken","Maak de logische reeks af","✦");
+            q(list,2,23,0,"Slim nadenken","Ontdek wisselende sprongen in een getallenreeks","✦");
             q(list,2,LearningGame.SHAPES,4,"Vorm bij het woord","Kies de vorm die bij het woord past","◆");
         }
         g(list,3,MUSIC,0,"Speel het deuntje","Speel "+(a+2)+" tonen na","♪");

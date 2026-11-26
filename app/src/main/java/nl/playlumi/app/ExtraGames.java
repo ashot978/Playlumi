@@ -201,19 +201,8 @@ public final class ExtraGames {
         return round(variant == 0 ? "Hoeveel is dit samen?" : "Hoeveel blijven er over?",
                 a + (variant == 0 ? " + " : " − ") + b + " = ?", answers, correct, random);
     }
-    private static LearningGame.Round sequences(int variant, int level, Random random) {
-        int max = numberMax(level), start = 1 + random.nextInt(max - 2);
-        String correct = String.valueOf(variant == 0 ? start + 2 : start);
-        List<String> answers = new ArrayList<>();
-        answers.add(correct);
-        while (answers.size() < bound(level)) {
-            int value = 1 + random.nextInt(max);
-            uniqueAdd(answers, String.valueOf(value));
-        }
-        String display = variant == 0 ? start + "  →  " + (start + 1) + "  →  ?" :
-                (start + 2) + "  →  " + (start + 1) + "  →  ?";
-        return round(variant == 0 ? "Welk getal komt hierna?" : "Tel terug: welk getal komt hierna?",
-                display, answers, correct, random);
+    private static LearningGame.Round sequences(int variant,int level,Random random){
+        return PlaylumiNumberChallenges.sequence(level,variant==1?-1:1,false,false,random);
     }
     private static LearningGame.Round opposites(int variant, int level, Random random) {
         int available = level == 0 ? 6 : level == 1 ? 12 : OPPOSITE_WORD_PAIRS.length;
