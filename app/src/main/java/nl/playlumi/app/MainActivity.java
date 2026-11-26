@@ -1290,54 +1290,74 @@ public class MainActivity extends Activity {
         interactiveMessage="";
         move(INTERACTIVE);
     }
+    private String interactiveBuilt(PlaylumiInteractive round){
+        if(round.kind==PlaylumiInteractive.HABITATS)
+            return round.solved()?"✓":round.target(round.progress());
+        StringBuilder built=new StringBuilder();
+        for(int i=0;i<round.total();i++){
+            String t=round.target(i);
+            built.append(i<round.progress()?(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t):"□").append(" ");
+        }
+        return (round.kind==PlaylumiInteractive.NUMBERS?"🚀 ":round.kind==PlaylumiInteractive.LETTERS?"🚂 ":"")+built;
+    }
     private void showInteractive(){
         if(interactive==null){move(LIBRARY);return;}
         final PlaylumiInteractive round=interactive;
         header(PlaylumiInteractive.TITLES[round.kind],"");
         addText(PlaylumiInteractive.INSTRUCTIONS[round.kind],18,PlaylumiMagicArt.CREAM,4,5);
         addMagicProgress(round.progress(),round.total(),false);
-        if(round.solved()){
-            addText("🌟 Knap gedaan! Alles klaar!",24,PlaylumiMagicArt.CREAM,12,8);
-            Button again=tile("Nog eens spelen!","",0xffd5f5df,64);
-            addTile(again,4);again.setOnClickListener(v->startInteractive(round.kind));
-            Button back=tile("Andere spellen","",0xffe8d9ff,64);
-            addTile(back,4);back.setOnClickListener(v->move(LIBRARY));
-            return;
-        }
-        if(round.kind==PlaylumiInteractive.HABITATS){
-            addText(round.target(round.progress()),54,PlaylumiMagicArt.CREAM,5,5);
-        }else{
-            if(round.kind!=PlaylumiInteractive.NUMBERS){
-                StringBuilder example=new StringBuilder();
-                for(int i=0;i<round.total();i++){
-                    String t=round.target(i);
-                    example.append(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t).append(" ");
-                }
-                addText("Voorbeeld: "+example,22,PlaylumiMagicArt.CREAM,4,5);
-            }
-            StringBuilder built=new StringBuilder();
+        final PlaylumiStarTrail trail=roundStars;
+        final TextView count=progressCounter;
+        if(round.kind==PlaylumiInteractive.LETTERS||round.kind==PlaylumiInteractive.MOSAIC){
+            StringBuilder example=new StringBuilder();
             for(int i=0;i<round.total();i++){
                 String t=round.target(i);
-                built.append(i<round.progress()?(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t):"□").append(" ");
+                example.append(round.kind==PlaylumiInteractive.MOSAIC?t.split(" ")[0]:t).append(" ");
             }
-            addText((round.kind==PlaylumiInteractive.NUMBERS?"🚀 ":round.kind==PlaylumiInteractive.LETTERS?"🚂 ":"")+built,26,PlaylumiMagicArt.CREAM,5,8);
+            addText("Voorbeeld: "+example,22,PlaylumiMagicArt.CREAM,4,5);
         }
-        if(!interactiveMessage.isEmpty())addText(interactiveMessage,16,PlaylumiMagicArt.CREAM,2,4);
+        final TextView built=text(interactiveBuilt(round),round.kind==PlaylumiInteractive.HABITATS?54:26,PlaylumiMagicArt.CREAM);
+        built.setMinHeight(dp(round.kind==PlaylumiInteractive.HABITATS?80:56));
+        addWidget(built,5,8);
+        final TextView message=text(round.solved()?"🌟 Knap gedaan! Alles klaar!":interactiveMessage,16,PlaylumiMagicArt.CREAM);
+        message.setMinHeight(dp(48));message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        addWidget(message,2,4);
+        final LinearLayout choices=new LinearLayout(this);
+        choices.setOrientation(LinearLayout.VERTICAL);addWidget(choices,0,0);
+        final ArrayList<Button> buttons=new ArrayList<>();
+        final LinearLayout finish=new LinearLayout(this);
+        finish.setOrientation(LinearLayout.VERTICAL);
+        final Button again=tile("Nog eens spelen!","",0xffd5f5df,64);
+        final Button back=tile("Andere spellen","",0xffe8d9ff,64);
+        finish.addView(again,new LinearLayout.LayoutParams(-1,-2));
+        finish.addView(back,new LinearLayout.LayoutParams(-1,-2));
+        again.setOnClickListener(v->startInteractive(round.kind));
+        back.setOnClickListener(v->move(LIBRARY));
         LinearLayout row=null;
         for(int i=0;i<round.options().size();i++){
             if(i%2==0){
                 row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
-                addWidget(row,3,3);
+                LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,-2);
+                rp.setMargins(dp(4),dp(3),dp(4),dp(3));choices.addView(row,rp);
             }
             final String option=round.options().get(i);
-            Button choice=tile(option,"",COLORS[i%COLORS.length],64);
+            final Button choice=tile(option,"",COLORS[i%COLORS.length],64);
             choice.setContentDescription("Kies "+option);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
-            lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(choice,lp);
+            lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(choice,lp);buttons.add(choice);
+            if(round.kind==PlaylumiInteractive.NUMBERS){
+                for(int n=0;n<round.progress();n++)if(option.equals(round.target(n))){
+                    choice.setEnabled(false);choice.setAlpha(.45f);break;
+                }
+            }
             choice.setOnClickListener(v->{
-                if(interactive!=round||page!=INTERACTIVE||round.solved())return;
+                if(interactive!=round||page!=INTERACTIVE||moving||round.solved())return;
                 if(round.choose(option)){
                     sound.good();interactiveMessage="Goed zo!";
+                    built.setText(interactiveBuilt(round));
+                    count.setText(round.progress()+"/"+round.total());
+                    trail.showProgress(round.progress());
+                    if(round.kind==PlaylumiInteractive.NUMBERS){choice.setEnabled(false);choice.setAlpha(.45f);}
                     if(round.solved()){
                         int category=round.kind==PlaylumiInteractive.NUMBERS?LearningGame.NUMBERS:
                                 round.kind==PlaylumiInteractive.LETTERS?LearningGame.WORDS:
@@ -1345,11 +1365,17 @@ public class MainActivity extends Activity {
                         ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
                         lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
                         saveWardrobe();saveScore(category);
+                        interactiveMessage="🌟 Knap gedaan! Alles klaar!";
+                        for(Button b:buttons)b.setEnabled(false);
+                        finish.setVisibility(View.VISIBLE);
                     }
                 }else{sound.mistake();interactiveMessage="Probeer nog eens!";}
-                showPage();
+                message.setText(interactiveMessage);
             });
         }
+        addWidget(finish,5,5);
+        finish.setVisibility(round.solved()?View.VISIBLE:View.GONE);
+        if(round.solved())for(Button b:buttons)b.setEnabled(false);
     }
 
     private void libraryClick(View view,String description,Runnable action){
