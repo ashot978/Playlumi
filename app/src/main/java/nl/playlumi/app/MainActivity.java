@@ -86,7 +86,6 @@ public class MainActivity extends Activity {
     private boolean autoRoundVisible,advancingAutomatically;
     private String feedback="";
     private PlaylumiAudio sound;
-    private PlaylumiSpeech speech;
     private int achievementFilter=0;
     private PlaylumiMiniChallenge mini;
     private PlaylumiAvatar playPal;
@@ -119,7 +118,8 @@ public class MainActivity extends Activity {
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
     private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5,LIBRARY_COMPLETED=-6;
     private String libraryQuery="";
-    private TextView quizTip;
+    private TextView quizNext;
+    private LinearLayout quizFeedbackRow;
     private boolean finalFeedbackPending;
     private PlaylumiPatternView questionPattern;
     private int libraryScrollY;
@@ -296,7 +296,7 @@ public class MainActivity extends Activity {
                             state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
                             state.getInt("roundFingers"),state.getBoolean("roundSolved"));
                     game.round().restoreRejected(state.getInt("roundRejected",0));
-                    feedback=state.getString("roundFeedback","");
+                    feedback=game.round().isSolved()?state.getString("roundFeedback",""):"";
                 }else{
                     // Keep earned points and completed round count; replace only the obsolete question.
                     roundHadMistake=false;feedback="";
@@ -367,7 +367,6 @@ public class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         autoAdvanceToken++;melodyPreviewToken++;
-        if(speech!=null){speech.close();speech=null;}
         if(sound!=null)sound.close();
         super.onDestroy();
     }
@@ -377,7 +376,7 @@ public class MainActivity extends Activity {
         scheduleAutoAdvance();
     }
     @Override protected void onPause() {
-        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;
+        autoAdvanceToken++;melodyPreviewToken++;
         if(melodyPreviewActive){melodyPreviewActive=false;if(melodyStatus!=null)melodyStatus.setText("Speel de melodie opnieuw af wanneer je wilt.");}
         int savedPage=page==BREAK_SCREEN?breakReturn:page;
         if(savedPage==PLAY)saveLibraryQuiz();
@@ -831,30 +830,12 @@ public class MainActivity extends Activity {
             root.addView(art,p);
         }
     }
-    private boolean autoSpeech(){return prefs().getBoolean("auto_speech",false);}
-    private void stopSpeech(){if(speech!=null)speech.stop();}
-    private void speakInstruction(String content,boolean manual){
-        if(moving||sound==null||!sound.isEnabled()||activeSince==0)return;
-        if(speech==null)speech=new PlaylumiSpeech(this);
-        speech.speak(content,manual?()->android.widget.Toast.makeText(this,
-                "Geen Nederlandse offline stem beschikbaar. Je kunt de opdracht blijven lezen.",android.widget.Toast.LENGTH_LONG).show():null);
-    }
-    private void addSpokenPrompt(LinearLayout parent,String instruction,String spoken,int size,boolean automatic){
+    private void addPrompt(LinearLayout parent,String instruction,int size){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setBackground(PlaylumiMagicArt.silkRibbon(this));row.setPadding(dp(8),dp(3),dp(4),dp(3));
+        row.setBackground(PlaylumiMagicArt.silkRibbon(this));row.setPadding(dp(8),dp(3),dp(8),dp(3));
         TextView prompt=text(instruction,size,PlaylumiMagicArt.CREAM);
         prompt.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));prompt.setPadding(dp(4),dp(5),dp(4),dp(5));prompt.setMinHeight(dp(50));
         row.addView(prompt,new LinearLayout.LayoutParams(0,-2,1f));
-        if(sound!=null&&sound.isEnabled()){
-            TextView replay=text("🔊",22,PlaylumiMagicArt.INK);
-            replay.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),PlaylumiMagicArt.creamPlate(this),null));
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(48),dp(48));lp.leftMargin=dp(3);row.addView(replay,lp);
-            final FrameLayout screen=stage;final long token=autoAdvanceToken;
-            libraryClick(replay,"Lees de opdracht voor",()->{if(stage==screen&&!moving)speakInstruction(spoken,true);});
-            if(automatic&&autoSpeech())screen.postDelayed(()->{
-                if(stage==screen&&token==autoAdvanceToken&&activeSince>0&&!moving)speakInstruction(spoken,false);
-            },180);
-        }
         addWidgetIn(parent,row,0,dp(5));
     }
     private void addQuizBanner(int theme,int mode,int variant,int height,boolean wide){
@@ -1148,14 +1129,14 @@ public class MainActivity extends Activity {
             addText(subtitle,14,SUB,0,8);
     }
     private void showPage() {
-        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;autoRoundVisible=false;
+        autoAdvanceToken++;melodyPreviewToken++;autoRoundVisible=false;
         // Restore old navigation destinations directly into the new library.
         if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
         // Retire old star wardrobe and pet pages without deleting their saved data.
         if(page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
-        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;quizTip=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;
+        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;
         final boolean villageScreen=page==HOME;
         final boolean magicScreen=worldTheme()>=0;
         final boolean darkBars=villageScreen || magicScreen;
@@ -1328,7 +1309,7 @@ public class MainActivity extends Activity {
     }
     private void move(int next) {
         if(moving)return;
-        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;
+        autoAdvanceToken++;melodyPreviewToken++;
         if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();favoriteEditMode=false;}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
         if(page==INTERACTIVE&&next!=INTERACTIVE)saveLibraryInteractive();
@@ -1779,7 +1760,7 @@ public class MainActivity extends Activity {
                     !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4)){
                 game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
                     answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
-                game.round().restoreRejected(o.optInt("rejected",0));feedback=o.optString("feedback","");
+                game.round().restoreRejected(o.optInt("rejected",0));feedback=game.round().isSolved()?o.optString("feedback",""):"";
                 roundHadMistake=o.optBoolean("hadMistake",game.round().rejectedMask()!=0);
             }else{feedback="";roundHadMistake=false;}
             difficulty=level;sessionSolved=count;sessionAttempts=attempts;
@@ -1945,7 +1926,7 @@ public class MainActivity extends Activity {
         final boolean wide=PlaylumiLayout.interactiveWide(width);
         header(PlaylumiInteractive.TITLES[round.kind],"");
         String instruction=round.instruction();
-        addSpokenPrompt(root,instruction,instruction,18,!round.solved());
+        addPrompt(root,instruction,18);
         addMagicProgress(round.progress(),round.total(),false);
         final PlaylumiStarTrail trail=roundStars;
         final TextView count=progressCounter;
@@ -2003,7 +1984,7 @@ public class MainActivity extends Activity {
             choice.setOnClickListener(v->{
                 if(interactive!=round||page!=INTERACTIVE||moving||round.solved())return;
                 if(round.choose(option)){
-                    stopSpeech();recordPlayDay();
+                    recordPlayDay();
                     if(round.solved())sound.collect();else sound.good();
                     interactiveMessage="Goed zo!";message.setTextColor(0xffc7ffd8);
                     if(playPal!=null)playPal.react(1);
@@ -2805,12 +2786,7 @@ public class MainActivity extends Activity {
             answers.setBackground(PlaylumiMagicArt.softPanel(this));
             columns.addView(questions,left);columns.addView(answers,right);
         }
-        String spoken=PlaylumiSpeechText.quiz(mode,game.variant(),round.prompt,round.display);
-        if(mode==ExtraGames.FIRST_LAST&&game.variant()<=1&&round.letterBlank()>=0){
-            String word=PlaylumiLetterChallenges.word(round.display,round.blankReplacement());
-            if(!word.isEmpty())spoken=spoken+". Het woord is "+word+".";
-        }
-        addSpokenPrompt(questions,round.prompt,spoken,wide?20:19,!round.isSolved());
+        addPrompt(questions,round.prompt,wide?20:19);
         boolean shortDisplay=round.display.codePointCount(0,round.display.length())<=3;
         int questionH=centered?PlaylumiLayout.centeredQuestionHeight(height):PlaylumiLayout.magicQuestionHeight(width,height,wide);
         if(!wide&&height<690)questionH=Math.min(questionH,110);
@@ -2848,27 +2824,24 @@ public class MainActivity extends Activity {
             updateQuestionPicture(round);
             addWidgetIn(questions,picture,0,dp(3));
         }
-        feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):feedback.isEmpty()?"Kies het juiste antwoord":feedback,15,PlaylumiMagicArt.CREAM);
+        feedbackText=text(round.isSolved()?(feedback.isEmpty()?"⭐ Goed gedaan!":feedback):"",15,PlaylumiMagicArt.CREAM);
         feedbackText.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
         feedbackText.setMinHeight(dp(40));feedbackText.setMaxLines(3);feedbackText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         feedbackText.setShadowLayer(dp(1),0,dp(1),0xff2e164c);
-        LinearLayout coach=new LinearLayout(this);coach.setGravity(Gravity.CENTER_VERTICAL);
-        coach.addView(feedbackText,new LinearLayout.LayoutParams(0,-2,1f));
-        quizTip=text("💡 Tip",14,PlaylumiMagicArt.INK);quizTip.setMinHeight(dp(48));quizTip.setPadding(dp(6),0,dp(6),0);
-        quizTip.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),PlaylumiMagicArt.creamPlate(this),null));
-        LinearLayout.LayoutParams tipParams=new LinearLayout.LayoutParams(dp(78),dp(48));tipParams.leftMargin=dp(4);
-        coach.addView(quizTip,tipParams);updateQuizCoachControl(round);
-        final FrameLayout coachScreen=stage;
-        quizTip.setOnClickListener(view->{
-            if(page!=PLAY||stage!=coachScreen||game.round()!=round||moving||activeSince<=0)return;
-            if(round.isSolved()){
-                advanceSolvedRound(PLAY,coachScreen,round);return;
-            }
-            feedback="💡 "+PlaylumiLearningHints.hint(mode,game.variant(),round.display,round.prompt);
-            feedbackText.setText(feedback);feedbackText.setTextColor(0xffffdf9a);
-            feedbackText.announceForAccessibility(feedback);
+        quizFeedbackRow=new LinearLayout(this);quizFeedbackRow.setGravity(Gravity.CENTER_VERTICAL);
+        quizFeedbackRow.addView(feedbackText,new LinearLayout.LayoutParams(0,-2,1f));
+        quizNext=text("Verder ›",14,PlaylumiMagicArt.INK);quizNext.setMinHeight(dp(48));quizNext.setPadding(dp(6),0,dp(6),0);
+        quizNext.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),PlaylumiMagicArt.creamPlate(this),null));
+        LinearLayout.LayoutParams nextParams=new LinearLayout.LayoutParams(dp(78),dp(48));nextParams.leftMargin=dp(4);
+        quizFeedbackRow.addView(quizNext,nextParams);
+        quizNext.setContentDescription("Volgende vraag");quizNext.setFocusable(true);
+        final FrameLayout quizScreen=stage;
+        quizNext.setOnClickListener(view->{
+            if(page!=PLAY||stage!=quizScreen||game.round()!=round||moving||activeSince<=0||!round.isSolved())return;
+            advanceSolvedRound(PLAY,quizScreen,round);
         });
-        addWidgetIn(answers,coach,0,dp(2));
+        addWidgetIn(answers,quizFeedbackRow,0,dp(2));
+        updateQuizFeedback(round);
         answerButtons.clear();
         boolean visualPattern=PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3);
         answerLocked=round.isSolved();
@@ -2930,11 +2903,9 @@ public class MainActivity extends Activity {
         if(answerLocked)scheduleAutoAdvance();
     }
 
-    private void updateQuizCoachControl(LearningGame.Round round){
-        if(quizTip==null)return;
-        quizTip.setText(round.isSolved()?"Verder ›":"💡 Tip");
-        quizTip.setContentDescription(round.isSolved()?"Volgende vraag":"Vraag een hint");
-        quizTip.setEnabled(true);quizTip.setClickable(true);quizTip.setFocusable(true);
+    private void updateQuizFeedback(LearningGame.Round round){
+        if(quizFeedbackRow==null)return;
+        quizFeedbackRow.setVisibility(round.isSolved()?View.VISIBLE:View.GONE);
     }
     private int quizPace(){return PlaylumiQuizPace.safe(prefs().getInt("quiz_pace",0));}
 
@@ -3044,8 +3015,8 @@ public class MainActivity extends Activity {
         boolean correct=game.round().choose(index);
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
-            stopSpeech();answerLocked=true;sessionSolved++;lifetimeCount++;
-            updateQuizCoachControl(game.round());
+            answerLocked=true;sessionSolved++;lifetimeCount++;
+            updateQuizFeedback(game.round());
             if(questionPattern!=null)questionPattern.complete(game.round().answers.get(game.round().correctIndex));
             if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23||
                     game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(game.round().display)){
@@ -3100,15 +3071,14 @@ public class MainActivity extends Activity {
             scheduleAutoAdvance();
             feedbackText.announceForAccessibility(feedback);
         } else {
-            feedback="💛 "+PlaylumiLearningHints.hint(mode,game.variant(),game.round().display,game.round().prompt);
+            feedback="";
             roundHadMistake=true;
             touched.setEnabled(false);touched.setAlpha(.52f);
             touched.setContentDescription(game.round().answers.get(index)+", al geprobeerd");
             sound.mistake();
             if(playPal!=null)playPal.react(2);
-            feedbackText.setText(feedback);feedbackText.setTextColor(0xffffdf9a);
             PlaylumiDelight.wiggle(touched);
-            feedbackText.announceForAccessibility(feedback);
+            touched.announceForAccessibility("Probeer een ander antwoord.");
         }
         saveScore(mode);saveLibraryQuiz();
     }
@@ -3555,11 +3525,11 @@ public class MainActivity extends Activity {
         }
         autoRoundVisible=true;
         String instruction=miniKind==PlaylumiMiniChallenge.MEMORY?"Vind de gelijke dieren":miniKind==PlaylumiMiniChallenge.DRAG?"Sleep naar de vormpoort":mini.question;
-        addSpokenPrompt(root,instruction,instruction,19,!miniSolved);
+        addPrompt(root,instruction,19);
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
             @Override public void onSolved() {
                 if(page!=MINI_PLAY||moving||!autoRoundVisible||miniSolved)return;
-                stopSpeech();miniSolved=true;
+                miniSolved=true;
                 if(playPal!=null)playPal.dance();
                 recordMiniAnswer();recordCompletion(specialEntry(MINI_PLAY),miniRound+1,20);saveLibrarySpecial(MINI_PLAY);
                 scheduleAutoAdvance();
@@ -4124,10 +4094,6 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        Button voice=tile(autoSpeech()?"🔊 Opdrachten voorlezen: aan":"🔊 Opdrachten voorlezen: op verzoek",
-                "Automatisch voorlezen of tik op de luidspreker bij een opdracht.",0xffd9edff,90);
-        addTile(voice,7);voice.setOnClickListener(v->{prefs().edit().putBoolean("auto_speech",!autoSpeech()).apply();showPage();});
-        addText("Voorlezen gebruikt uitsluitend een geïnstalleerde Nederlandse offline stem. Als die ontbreekt, blijft tekst beschikbaar.",14,SUB,2,7);
         Button learning=tile(catalogAdaptive()?"Adaptief oefenen: aan":"Adaptief oefenen: uit",
                 "Past quizmoeilijkheid aan binnen de leeftijdsgroep. Voortgang blijft bewaard.",0xffd5f5df,90);
         addTile(learning,7);learning.setOnClickListener(v->{prefs().edit().putBoolean("catalog_adaptive",!catalogAdaptive()).apply();showPage();});
@@ -4311,7 +4277,7 @@ public class MainActivity extends Activity {
         if(starCatch==null)starCatch=PlaylumiStarCatch.generate(Math.max(0,Math.min(2,age)),new Random());
         final PlaylumiStarCatch round=starCatch;
         String instruction="Vang "+round.target()+" gouden sterren!";
-        addSpokenPrompt(root,instruction,instruction,19,!starCatchSolved);
+        addPrompt(root,instruction,19);
         starCatchProgress=text("⭐ "+round.collected()+" / "+round.target(),21,PlaylumiMagicArt.INK);
         starCatchProgress.setBackground(PlaylumiMagicArt.creamPlate(this));
         starCatchProgress.setPadding(dp(8),dp(8),dp(8),dp(8));
@@ -4321,7 +4287,7 @@ public class MainActivity extends Activity {
             @Override public void onMistake(){sound.mistake();}
             @Override public void onFinished(){
                 if(page!=STAR_CATCH||moving||!autoRoundVisible||starCatchSolved)return;
-                stopSpeech();starCatchSolved=true;
+                starCatchSolved=true;
                 int category=LearningGame.COUNT;
                 ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
                 lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
@@ -4364,13 +4330,13 @@ public class MainActivity extends Activity {
         }
         autoRoundVisible=true;
         String instruction="Prik "+bubbles.target+" zeepbellen!";
-        addSpokenPrompt(root,instruction,instruction,19,!bubbleSolved);
+        addPrompt(root,instruction,19);
         PlaylumiBubbleBoard board=new PlaylumiBubbleBoard(this,bubbles,
                 new PlaylumiBubbleBoard.Listener() {
             @Override public void onPop() {sound.pop();if(!bubbles.solved())saveLibrarySpecial(BUBBLE_PLAY);}
             @Override public void onSolved() {
                 if(page!=BUBBLE_PLAY||moving||!autoRoundVisible||bubbleSolved)return;
-                stopSpeech();bubbleSolved=true;
+                bubbleSolved=true;
                 if(playPal!=null)playPal.dance();
                 int category=LearningGame.COUNT;
                 ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
