@@ -1761,13 +1761,15 @@ public class MainActivity extends Activity {
                 game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
                     answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
                 game.round().restoreRejected(o.optInt("rejected",0));feedback=game.round().isSolved()?o.optString("feedback",""):"";
-                roundHadMistake=o.optBoolean("hadMistake",game.round().rejectedMask()!=0);
+                roundHadMistake=o.optBoolean("hadMistake",false)||game.round().rejectedMask()!=0;
             }else{feedback="";roundHadMistake=false;}
             difficulty=level;sessionSolved=count;sessionAttempts=attempts;
             smartDifficulty=false;pendingLevel=-1;pendingBadges.clear();
             earnedBadge=-1;rewardReturn=PLAY;quickCategoryPlay=true;storyStage=-1;
-            // The solved round already earned points. Resume at the next question, never credit it twice.
-            if(game.round().isSolved()){
+            // A solved round has already earned its reward. Manual mode keeps its
+            // feedback and Next control visible; automatic modes resume on the next question.
+            finalFeedbackPending=false;
+            if(PlaylumiQuizPace.advanceRestored(quizPace(),game.round().isSolved())){
                 int next=catalogLevel(entry);
                 if(game.level()!=next){difficulty=next;game.configure(entry.mode,entry.variant,next);}else game.nextRound();
                 roundHadMistake=false;feedback="";
@@ -2487,7 +2489,7 @@ public class MainActivity extends Activity {
         }
     }
     private void startWorldQuiz(int mode,int variant) {
-        storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;
+        storyStage=-1;quickCategoryPlay=true;smartDifficulty=true;roundHadMistake=false;finalFeedbackPending=false;
         pendingLevel=-1;sessionSolved=0;sessionAttempts=0;feedback="";pendingBadges.clear();rewardReturn=PLAY;
         boolean rocket=villageLaunch==PlaylumiVillageHit.ROCKET && PlaylumiRocketCurriculum.isMathMode(mode);
         if(rocket||libraryReturn)smartDifficulty=false;

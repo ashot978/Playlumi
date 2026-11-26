@@ -7,6 +7,8 @@ public final class PlaylumiQuizPace {
     public static final String[] DETAILS={"De volgende vraag verschijnt vanzelf.","Extra leestijd na elk goed antwoord.","Tik op Verder wanneer je klaar bent."};
     private PlaylumiQuizPace(){}
     public static int safe(int value){return value>=AUTO&&value<=MANUAL?value:AUTO;}
+    /** Restoring must not bypass the manual Next action or replay a scored answer. */
+    public static boolean advanceRestored(int value,boolean solved){return solved&&safe(value)!=MANUAL;}
     public static int delay(int value,boolean retried,String feedback){
         switch(safe(value)){
             case MANUAL:return -1;

@@ -31,6 +31,25 @@ public final class PlaylumiLearningDepthTest {
             assertEquals(26,letters.size());
         }
     }
+    @Test public void manualResumePreservesSolvedRoundWithoutAcceptingAnotherAnswer(){
+        LearningGame game=new LearningGame(new Random(117));
+        game.configure(20,2,2);
+        LearningGame.Round q=game.round();
+        int wrong=(q.correctIndex+1)%q.answers.size();
+        assertFalse(q.choose(wrong));
+        assertTrue(q.choose(q.correctIndex));
+        game.restoreRound(q.prompt,q.display,q.displayColor,q.answers,q.answerColors,q.correctIndex,q.fingerCount,true);
+        game.round().restoreRejected(q.rejectedMask());
+        assertEquals(q.display,game.round().display);
+        assertEquals(q.answers,game.round().answers);
+        assertTrue(game.round().isSolved());
+        assertTrue(game.round().isRejected(wrong));
+        assertFalse(game.round().choose(game.round().correctIndex));
+        assertFalse(PlaylumiQuizPace.advanceRestored(PlaylumiQuizPace.MANUAL,true));
+        assertTrue(PlaylumiQuizPace.advanceRestored(PlaylumiQuizPace.AUTO,true));
+        assertTrue(PlaylumiQuizPace.advanceRestored(PlaylumiQuizPace.CALM,true));
+        for(int mode=0;mode<=2;mode++)assertFalse(PlaylumiQuizPace.advanceRestored(mode,false));
+    }
     @Test public void quizPaceIsBoundedAndManualDisablesTimer(){
         assertEquals(PlaylumiQuizPace.AUTO,PlaylumiQuizPace.safe(99));
         assertEquals(-1,PlaylumiQuizPace.delay(PlaylumiQuizPace.MANUAL,true,"uitleg"));

@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.100 / build 601001. Test build, not a production launch. Future builds use 0.101, 0.102, etc., and strictly increasing Android version codes.
+Status: 0.101 / build 601002. Test build, not a production launch. Future builds use 0.101, 0.102, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -75,8 +75,16 @@ Status: 0.100 / build 601001. Test build, not a production launch. Future builds
 - [x] Use the actual APK version in settings and remove obsolete voice information from the privacy dialog.
 - [x] 0.99.7 release compilation, artwork verification, tests and lint passed on Actions run 45902862452.
 - [x] Interim 1.0 (build 601000) compiled and passed unit tests/lint; superseded by the requested 0.100 numbering.
-- [ ] Repeat release and emulator checks for 0.100; verify release signature before distribution. Prior emulator test stopped at home navigation before reaching the quiz; test now uses native view bounds and wide-layout cards.
+- [x] 0.100 production APK, tests and lint passed on Actions run 45907665732; signed offline with the existing release certificate and verified ZIP alignment and payload integrity.
+- [ ] 0.100 emulator checks still pending; prior emulator test stopped at home navigation before reaching the quiz.
 - [ ] Physical-device acceptance still required. Version 0.100 is not authorization to publish.
+
+## 0.101: resume at the chosen quiz pace
+- [x] Keep the solved question and manual Next action when reopening a saved unfinished quiz in manual mode; automatic and calm modes continue to the next question.
+- [x] Restore rejected choices without showing old hints; preserve whether a wrong answer was attempted.
+- [x] Reset stale final-feedback state for new and resumed sessions.
+- [x] Regression test for restored solved questions, disabled rejected choices, and prevention of repeat answer acceptance.
+- [ ] Run full CI, verify signing and emulator acceptance.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
