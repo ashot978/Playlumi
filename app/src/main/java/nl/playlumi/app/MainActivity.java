@@ -1563,7 +1563,7 @@ public class MainActivity extends Activity {
         if(played.contains(entry.id)){TextView seen=text("✓ Gespeeld",12,0xffbaf4cb);seen.setGravity(Gravity.START);labels.addView(seen);}
         play.addView(labels,wide?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1f));
         if(!wide)play.addView(text("›",24,0xffffd47a),new LinearLayout.LayoutParams(dp(22),-2));
-        if(wide){play.setMinHeight(dp(104));play.setPadding(0,dp(3),0,dp(3));}
+        if(wide){play.setMinimumHeight(dp(104));play.setPadding(0,dp(3),0,dp(3));}
         card.addView(play,new LinearLayout.LayoutParams(0,-2,1f));
         libraryClick(play,"Speel "+entry.title,()->launchCatalog(entry,false));
         TextView star=text(favorites.contains(entry.id)?"★":"☆",26,0xffffd96b);
