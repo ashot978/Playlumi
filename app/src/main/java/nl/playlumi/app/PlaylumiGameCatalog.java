@@ -8,7 +8,7 @@ import java.util.Set;
 /** Stable, age-filtered routes shared by the game library and native game screens. */
 public final class PlaylumiGameCatalog {
     public static final int OVERVIEW=-1,FAVORITES=-2,ALL=-3;
-    public static final int QUIZ=0,MINI=1,MUSIC=2,BUBBLES=3,STARS=4,DRAW=5;
+    public static final int QUIZ=0,MINI=1,MUSIC=2,BUBBLES=3,STARS=4,DRAW=5,INTERACTIVE=6;
     public static final class Entry {
         public final int world,kind,mode,variant;
         public final String id,title,description,icon;
@@ -87,6 +87,10 @@ public final class PlaylumiGameCatalog {
             q(list,5,17,0,"Seizoenen","Welk seizoen zie je?","✿");
             q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Maak de kleurenreeks af","✦");
         }
+        g(list,0,INTERACTIVE,PlaylumiInteractive.NUMBERS,"Getallenrace","Bouw de raket in de juiste volgorde","🚀");
+        g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein","Bouw een woord met lettertegels","🚂");
+        g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
+        g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
         return Collections.unmodifiableList(list);
     }
     public static Entry find(int age,String id){
