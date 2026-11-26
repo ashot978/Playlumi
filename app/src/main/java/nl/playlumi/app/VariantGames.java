@@ -126,6 +126,7 @@ public final class VariantGames {
                 numeric(correct,0,limit+1,count(level),r),r);
     }
     private static LearningGame.Round colors(int v,int level,Random r) {
+        if(v==1)return PlaylumiPatterns.next(level,0,false,r);
         int size=level==0?3:level==1?5:6, n=rand(r,size), second=(n+1+rand(r,size-1))%size;
         String prompt=v==0?"Welke kleur hoort bij dit woord?":v==1?"Welke kleur komt hierna?":"Welke kleur heeft de eerste stip?";
         String shown=v==0?COLORS[n]:v==1?COLOR_ICONS[n]+" "+COLOR_ICONS[second]+" "+COLOR_ICONS[n]+"  ?":COLOR_ICONS[n]+" "+COLOR_ICONS[second]+" "+COLOR_ICONS[second];
@@ -165,19 +166,12 @@ public final class VariantGames {
         return make(prompt,display,""+correct,numeric(correct,1,limit+1,count(level),r),r);
     }
     private static LearningGame.Round patterns(int v,int level,Random r) {
-        int pool=level==0?3:level==1?5:6, a=rand(r,pool),b=(a+1+rand(r,pool-1))%pool;
         if(v==1) {
             int start=1+rand(r,max(level)-2);
             return make("Welk getal hoort op de lege plek?",start+" → "+(start+2)+" → ?",
                 ""+(start+4),numeric(start+4,1,max(level)+3,count(level),r),r);
         }
-        int c=(b+1+rand(r,pool-1))%pool;
-        if(c==a) c=(c+1)%pool;
-        String[] symbols=v==0?SHAPE_ICONS:COLOR_ICONS;
-        String display=v==0?symbols[a]+" "+symbols[b]+" "+symbols[a]+" ?":
-                symbols[a]+" "+symbols[b]+" "+symbols[c]+" "+symbols[a]+" "+symbols[b]+" ?";
-        String correct=symbols[v==0?b:c];
-        return make("Maak het patroon af",display,correct,choices(correct,symbols,count(level),r),r);
+        return PlaylumiPatterns.next(level,v==2?1:0,v==0,r);
     }
     private static LearningGame.Round words(int v,int level,Random r) {
         String[] a=animal(level,r);String word=a[1];

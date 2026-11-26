@@ -213,18 +213,7 @@ public final class LearningGame {
         return new Round(prompt,display,0xff237c88,answers,colors,answers.indexOf(answer),variant==0?correct:0);
     }
     private void makePatterns() {
-        int count = pool(COLOR_NAMES.length), first = pick(count), second = (first + 1 + pick(count - 1)) % count;
-        String[] emoji = {"🔴", "🔵", "🟢", "🟡", "🟣", "🟠"};
-        String pattern = variant == 0 ? emoji[first] + " " + emoji[second] + " " + emoji[first] + " ?" :
-                emoji[first] + " " + emoji[first] + " " + emoji[second] + " " + emoji[first] + " " + emoji[first] + " ?";
-        String correct = COLOR_NAMES[variant == 0 ? second : second];
-        List<String> answers = shuffled(COLOR_NAMES, count);
-        List<Integer> paints = new ArrayList<>();
-        for (String name : answers) {
-            int i = 0; while (!COLOR_NAMES[i].equals(name)) i++;
-            paints.add(COLOR_VALUES[i]);
-        }
-        make("Welke kleur komt hierna?", pattern, 0xff333e53, answers, paints, correct);
+        current=PlaylumiPatterns.next(level,variant==1?1:0,false,random);
     }
     private static final String[][] ANIMALS = {
         {"koe","kat","vis","mus","kip","mol","uil","aap","bok","das"},
