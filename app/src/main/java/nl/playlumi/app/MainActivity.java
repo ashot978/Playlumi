@@ -806,8 +806,8 @@ public class MainActivity extends Activity {
             TextView replay=text("🔊",22,PlaylumiMagicArt.INK);
             replay.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),PlaylumiMagicArt.creamPlate(this),null));
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(48),dp(48));lp.leftMargin=dp(3);row.addView(replay,lp);
-            final FrameLayout screen=stage;final int token=autoAdvanceToken;
-            libraryClick(replay,"Lees de opdracht voor",()->{if(stage==screen&&token==autoAdvanceToken)speakInstruction(spoken,true);});
+            final FrameLayout screen=stage;final long token=autoAdvanceToken;
+            libraryClick(replay,"Lees de opdracht voor",()->{if(stage==screen&&!moving)speakInstruction(spoken,true);});
             if(automatic&&autoSpeech())screen.postDelayed(()->{
                 if(stage==screen&&token==autoAdvanceToken&&activeSince>0&&!moving)speakInstruction(spoken,false);
             },180);
