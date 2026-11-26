@@ -35,7 +35,10 @@ public final class ReleaseCandidateCheck {
             Matcher digits=Pattern.compile("\\d+").matcher(q.display);
             require(digits.find(),context+" first operand");int x=Integer.parseInt(digits.group());
             require(digits.find(),context+" second operand");int y=Integer.parseInt(digits.group());
-            int expected=variant==2?y-x:variant==1||q.display.contains("weg")?x-y:x+y;
+            int expected=variant==PlaylumiAdvancedMath.TABLES?x*y:
+                    variant==PlaylumiAdvancedMath.SHARING?x/y:
+                    variant==PlaylumiAdvancedMath.TO_HUNDRED?(q.display.contains("−")?x-y:x+y):
+                    variant==2?y-x:variant==1||q.display.contains("weg")?x-y:x+y;
             require(Integer.parseInt(right)==expected,context+" arithmetic");
         }
         if(mode==16){
@@ -198,6 +201,41 @@ public final class ReleaseCandidateCheck {
             advancedInteractive++;
         }
         System.out.println("PASS: "+advancedInteractive+" versioned interactive sessions, including legacy compatibility.");
+        int advancedMath=0;
+        for(int age=0;age<3;age++){
+            for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age))
+                if(e.mode==ExtraGames.MATH&&e.kind==PlaylumiGameCatalog.QUIZ&&e.variant>=PlaylumiAdvancedMath.TABLES)
+                    require(age==2,"advanced math age boundary");
+            for(int variant=PlaylumiAdvancedMath.TABLES;variant<=PlaylumiAdvancedMath.TO_HUNDRED;variant++){
+                game.configure(ExtraGames.MATH,variant,age);
+                Set<String> variety=new HashSet<>();boolean forward=false,backward=false;
+                for(int k=0;k<400;k++){
+                    LearningGame.Round r=game.round();
+                    Matcher digits=Pattern.compile("\\d+").matcher(r.display);
+                    require(digits.find(),"advanced first operand");int x=Integer.parseInt(digits.group());
+                    require(digits.find(),"advanced second operand");int y=Integer.parseInt(digits.group());
+                    int answer=Integer.parseInt(r.answers.get(r.correctIndex));
+                    require(answer>=0&&answer<=100,"advanced bounds");
+                    if(variant==PlaylumiAdvancedMath.SHARING)require(y>0&&x%y==0&&answer==x/y,"exact division");
+                    if(variant==PlaylumiAdvancedMath.TO_HUNDRED){
+                        require(x<=100&&y<=100,"two digit bounds");
+                        if(age==2)require(x>=10&&y>=10,"advanced tens operands");
+                        forward|=r.display.contains("+");backward|=r.display.contains("−");
+                    }
+                    require(PlaylumiQuizCoach.explain(ExtraGames.MATH,variant,r).isEmpty(),"no answer before solving");
+                    int mask=(1<<((r.correctIndex+1)%r.answers.size()));
+                    r.restoreRejected(mask);
+                    require(!r.isRejected(r.correctIndex),"restored right answer remains enabled");
+                    r.restoreRejected(0);
+                    round(r,ExtraGames.MATH,variant,age,"advanced arithmetic");
+                    require(!PlaylumiQuizCoach.explain(ExtraGames.MATH,variant,r).isEmpty(),"advanced explanation");
+                    variety.add(r.display);game.nextRound();advancedMath++;
+                }
+                require(variety.size()>=5,"advanced variety");
+                if(variant==PlaylumiAdvancedMath.TO_HUNDRED)require(forward&&backward,"mixed addition and subtraction");
+            }
+        }
+        System.out.println("PASS: "+advancedMath+" additional advanced arithmetic rounds.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");

@@ -22,7 +22,9 @@ public final class PlaylumiLearningHints {
             case ExtraGames.PICTURES:return "Kijk naar het dier en lees het woord.";
             case ExtraGames.RHYMES:return variant==1?"Zeg de woorden hardop. Zoek het woord met een andere eindklank.":"Zeg de woorden hardop. Luister of de laatste klank hetzelfde is.";
             case ExtraGames.COMPARE:return "Vergelijk de hoeveelheden één voor één.";
-            case ExtraGames.MATH:return variant==1?"Begin bij het eerste getal en tel terug.":variant==2?"Tel verder tot het getal achter het = teken.":variant==4?"Krijgt iemand iets erbij of gaat er iets weg?":"Tel de getallen bij elkaar op.";
+            case ExtraGames.MATH:
+                if(variant>=PlaylumiAdvancedMath.TABLES)return PlaylumiAdvancedMath.hint(variant,display);
+                return variant==1?"Begin bij het eerste getal en tel terug.":variant==2?"Tel verder tot het getal achter het = teken.":variant==4?"Krijgt iemand iets erbij of gaat er iets weg?":"Tel de getallen bij elkaar op.";
             case ExtraGames.SEQUENCES:return "Kijk naar de sprongen tussen de getallen.";
             case ExtraGames.OPPOSITES:return "Denk aan precies het tegenovergestelde.";
             case ExtraGames.CATEGORIES:return "Wat hebben de dingen met elkaar gemeen?";

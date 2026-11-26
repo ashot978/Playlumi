@@ -17,6 +17,7 @@ public final class PlaylumiSpeechText {
     static String clean(String source){
         if(source==null)return "";
         return source.replace("−"," min ").replace("+"," plus ").replace("="," is gelijk aan ")
+                .replace("×"," keer ").replace("÷"," gedeeld door ")
                 .replace("→",", ").replace("←"," links ").replace("|"," tegenover ")
                 .replaceAll("(?<=\\d)\\s*cm\\b"," centimeter").replaceAll("(?<=\\d)\\s*mm\\b"," millimeter")
                 .replace("?", " ? ").replaceAll("[^\\p{L}\\p{N}\\p{P}\\s]"," ")
