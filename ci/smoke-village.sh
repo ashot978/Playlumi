@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Playlumi 0.83: full Android rendering, real controls and regression tests.
+# Playlumi 0.84: full Android rendering, real controls and regression tests.
 set -euo pipefail
 mkdir -p build/qa/screenshots
 app=nl.playlumi.app
@@ -373,7 +373,7 @@ for entry in \
   "muziekstudio:770:699:43" \
   "speelplein:185:1040:43" \
   "kleurentuin:785:1050:43" \
-  "missies:84:1550:15" \
+  "spellen:84:1550:44" \
   "beloningen:261:1540:11" \
   "collectie:670:1540:19" \
   "profiel:841:1540:32" \
@@ -576,6 +576,125 @@ mathRound subtract "Aftrekken"
 mathRound missing "Getal aanvullen"
 
 fi
+# Real game library: native route, age menu, persistent favorites, and exact quiz continuation.
+libraryTest(){
+  home 2
+  tapVillage 84 1550
+  assertScreen 44
+  screenshot "game-library-${mode}"
+  tapText "Open Rekenraket"
+  assertScreen 44
+  screenshot "game-library-rocket-${mode}"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q 'Speel Optellen' build/qa/ui.xml
+  ! grep -q 'Speel Vingers tellen' build/qa/ui.xml
+  if grep -q 'Bewaar favoriet Optellen' build/qa/ui.xml; then tapText "Bewaar favoriet Optellen"; fi
+  adb shell input keyevent KEYCODE_BACK
+  sleep 2
+  tapText "★ Favorieten"
+  assertScreen 44
+  screenshot "game-library-favorites-${mode}"
+  tapText "Speel Optellen"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  local xy
+  xy=$(python3 - <<'PY'
+import re,xml.etree.ElementTree as E
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+m=next(m for n in nodes if (m:=re.fullmatch(r'(\d+) \+ (\d+) = \?',n.get('content-desc',''))))
+answer=str(sum(map(int,m.groups())))
+node=next(n for n in nodes if n.get('clickable')=='true' and n.get('content-desc')==answer)
+a=list(map(int,re.findall(r'\d+',node.get('bounds',''))))
+print((a[0]+a[2])//2,(a[1]+a[3])//2)
+PY
+)
+  adb shell input tap $xy
+  sleep 3
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "1/8" build/qa/ui.xml
+  adb shell input keyevent KEYCODE_BACK
+  sleep 2
+  assertScreen 44
+  # A cold launch must preserve both the favorite and the exact session score.
+  home 2
+  tapVillage 84 1550
+  assertScreen 44
+  tapText "Verder spelen Optellen"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "1/8" build/qa/ui.xml
+  screenshot "game-library-resumed-${mode}"
+  adb shell input keyevent KEYCODE_BACK
+  sleep 2
+  assertScreen 44
+  tapText "★ Favorieten"
+  assertScreen 44
+  tapText "Verwijder favoriet Optellen"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  ! grep -q 'Speel Optellen' build/qa/ui.xml
+  # The younger menu has its own real curriculum.
+  home 0
+  tapVillage 84 1550
+  tapText "Open Rekenraket"
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q 'Speel Vingers tellen' build/qa/ui.xml
+  ! grep -q 'Speel Optellen' build/qa/ui.xml
+  screenshot "game-library-young-${mode}"
+  # Clock reading from the library, with the actual native analog face.
+  home 1
+  tapVillage 84 1550
+  tapText "Open Rekenraket"
+  local visible=0
+  for ((j=0;j<5;j++)); do
+    adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+    adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+    if grep -q 'Speel Klokkijken' build/qa/ui.xml; then visible=1;break;fi
+    adb shell input swipe $((screenW/2)) $((screenH*4/5)) $((screenW/2)) $((screenH/3)) 500
+    sleep 1
+  done
+  test "$visible" = 1
+  tapText "Speel Klokkijken"
+  assertScreen 6
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q "Wijzerklok:" build/qa/ui.xml
+  local safe
+  safe=$(adb logcat -d -s PlaylumiQA:I | grep 'gameReservedBottom=' | tail -1 | sed -nE 's/.*gameReservedBottom=([0-9]+).*/\1/p')
+  xy=$(python3 - "$screenH" "$safe" <<'PY'
+import re,sys,xml.etree.ElementTree as E
+h,safe=map(int,sys.argv[1:])
+nodes=list(E.parse('build/qa/ui.xml').iter('node'))
+clock=next(n for n in nodes if n.get('content-desc','').startswith('Wijzerklok:'))
+m=re.search(r'(\d+) uur en (\d+) minuten',clock.get('content-desc'))
+answer=f'{int(m.group(1)):02d}:{int(m.group(2)):02d}'
+def bounds(n):
+    return list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+b=bounds(clock)
+assert 0<b[3]-b[1]<=h*.42, 'Clock consumes too much viewport'
+choices=[n for n in nodes if n.get('clickable')=='true' and re.fullmatch(r'\d\d:\d\d',n.get('content-desc',''))]
+assert len(choices)==4,'All four clock answers must be present'
+for n in choices:
+    a=bounds(n)
+    assert a[3]>a[1] and a[3]<=h-safe,'Clock answer outside safe area'
+n=next(n for n in choices if n.get('content-desc')==answer)
+a=bounds(n);print((a[0]+a[2])//2,(a[1]+a[3])//2)
+PY
+)
+  screenshot "game-library-clock-${mode}"
+  adb shell input tap $xy
+  sleep 2
+  adb shell uiautomator dump /sdcard/playlumi-ui.xml >/dev/null
+  adb pull /sdcard/playlumi-ui.xml build/qa/ui.xml >/dev/null
+  grep -q '1/8' build/qa/ui.xml
+  echo "PASS: $mode library, age filter, favorites, resumed score, analog clock and safe visible answers"
+}
+libraryTest
 # The native layout must not have crashed anywhere during the recorded journeys.
 adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: nl.playlumi.app.*Exception' > build/qa/fatal.log || true
 if [[ -s build/qa/fatal.log ]]; then cat build/qa/fatal.log; exit 1; fi

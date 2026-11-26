@@ -125,9 +125,10 @@ public final class NewWorldGames {
     private static LearningGame.Round time(int v,int lvl,Random r) {
         int base=choose(r,lvl==0?12:24);
         if(v==0) {
-            String correct=hour(base);
-            String[] pool=new String[24];for(int i=0;i<24;i++)pool[i]=hour(i);
-            return make("Welke tijd staat hier?","🕒 "+correct,correct,opts(correct,pool,choiceCount(lvl),r),r);
+            String correct=hour(1+choose(r,12));
+            String[] pool=new String[12];for(int i=0;i<12;i++)pool[i]=hour(i+1);
+            return make("Hoe laat is het op de wijzerklok?","clock:"+correct,correct,
+                    opts(correct,pool,choiceCount(lvl),r),r);
         }
         if(v==1 || v==2) {
             String correct=hour(base+(v==1?1:-1));
