@@ -1693,7 +1693,7 @@ public class MainActivity extends Activity {
         org.json.JSONObject saved=readLibrarySnapshot(entry);
         if(saved==null)return null;
         int count=saved.optInt("count",-1),attempts=saved.optInt("attempts",-1);
-        if(count<0||count>=SESSION_ROUNDS||attempts<count||attempts==0)return null;
+        if(!PlaylumiResumeKeys.validQuizProgress(count,attempts,saved.optBoolean("solved",false),SESSION_ROUNDS))return null;
         return saved;
     }
     private org.json.JSONObject libraryInteractiveResume(PlaylumiGameCatalog.Entry entry){
@@ -1721,12 +1721,13 @@ public class MainActivity extends Activity {
         }catch(org.json.JSONException ignored){}
     }
     private void saveLibraryQuiz(){
-        if(game==null||storyStage>=0)return;
+        if(game==null||storyStage>=0||!libraryReturn)return;
         PlaylumiGameCatalog.Entry e=PlaylumiGameCatalog.route(age,villageLaunch,
                 PlaylumiGameCatalog.QUIZ,game.mode(),game.variant());
         PlaylumiGameCatalog.Entry last=lastCatalog();
         if(e==null||last==null||!e.id.equals(last.id))return;
-        if(sessionSolved>=sessionGoal()||sessionAttempts==0){clearLibrarySnapshot(e);return;}
+        if(sessionSolved>=sessionGoal()){clearLibrarySnapshot(e);return;}
+        if(!PlaylumiResumeKeys.validQuizProgress(sessionSolved,sessionAttempts,game.round().isSolved(),sessionGoal()))return;
         try{
             LearningGame.Round r=game.round();
             org.json.JSONObject o=new org.json.JSONObject();
@@ -1748,7 +1749,7 @@ public class MainActivity extends Activity {
             ArrayList<String> answers=new ArrayList<>();ArrayList<Integer> colors=new ArrayList<>();
             for(int i=0;i<a.length();i++)answers.add(a.getString(i));
             for(int i=0;i<c.length();i++)colors.add(c.getInt(i));
-            if(level<0||level>2||count<0||count>=SESSION_ROUNDS||attempts<count)return false;
+            if(level<0||level>2||!PlaylumiResumeKeys.validQuizProgress(count,attempts,o.getBoolean("solved"),SESSION_ROUNDS))return false;
             game.configure(entry.mode,entry.variant,level);
             // Preserve points and session counters, but replace the old copy-the-time question.
             if(!PlaylumiLetterChallenges.legacy(entry.mode,entry.variant,o.getString("display"))&&
@@ -1774,6 +1775,8 @@ public class MainActivity extends Activity {
                 if(game.level()!=next){difficulty=next;game.configure(entry.mode,entry.variant,next);}else game.nextRound();
                 roundHadMistake=false;feedback="";
             }
+            prefs().edit().putInt("game_mode",entry.mode).putInt("game_variant",entry.variant)
+                    .putInt("last_played_category",entry.mode).putInt("last_played_variant",entry.variant).apply();
             saveRecent();saveLibraryQuiz();move(PLAY);return true;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return false;}
     }
@@ -3095,7 +3098,7 @@ public class MainActivity extends Activity {
             game.configure(game.mode(),game.variant(),difficulty);
             pendingLevel=-1;
         } else game.nextRound();
-        roundHadMistake=false;finalFeedbackPending=false;
+        roundHadMistake=false;finalFeedbackPending=false;feedback="";
         saveRecent();saveLibraryQuiz();
     }
     private void continueAfterAnswer() {

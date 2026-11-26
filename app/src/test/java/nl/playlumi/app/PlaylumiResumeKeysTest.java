@@ -13,6 +13,18 @@ public final class PlaylumiResumeKeysTest {
         }
         assertNotEquals(PlaylumiResumeKeys.session(0,"0:6:0:0"),PlaylumiResumeKeys.session(2,"0:6:0:0"));
     }
+    @Test public void startedQuizIsResumableBeforeTheFirstAnswer(){
+        assertTrue(PlaylumiResumeKeys.validQuizProgress(0,0,false,8));
+        assertTrue(PlaylumiResumeKeys.validQuizProgress(0,1,false,8));
+        assertTrue(PlaylumiResumeKeys.validQuizProgress(1,2,true,8));
+        assertTrue(PlaylumiResumeKeys.validQuizProgress(7,10,false,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(0,0,true,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(8,8,true,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(3,2,false,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(-1,0,false,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(0,-1,false,8));
+        assertFalse(PlaylumiResumeKeys.validQuizProgress(0,0,false,0));
+    }
     @Test public void keysDoNotChangeWhenReopeningTheSameGame(){
         assertEquals("library_resume_v2_1_0:6:0:0",PlaylumiResumeKeys.session(1,"0:6:0:0"));
     }

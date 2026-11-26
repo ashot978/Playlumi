@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.101 / build 601002. Test build, not a production launch. Future builds use 0.101, 0.102, etc., and strictly increasing Android version codes.
+Status: 0.102 / build 601003. Test build, not a production launch. Future builds use 0.103, 0.104, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -85,6 +85,14 @@ Status: 0.101 / build 601002. Test build, not a production launch. Future builds
 - [x] Reset stale final-feedback state for new and resumed sessions.
 - [x] Regression test for restored solved questions, disabled rejected choices, and prevention of repeat answer acceptance.
 - [ ] Run full CI, verify signing and emulator acceptance.
+
+## 0.102: save a quiz from its first question
+- [x] Persist an opened catalog quiz at 0/8 even before the first answer, including the exact question and answer order.
+- [x] Validate saved quiz counts and solved flags; exclude completed and inconsistent sessions.
+- [x] Restrict quiz snapshot writes to catalog play; retain independent age/profile/route keys.
+- [x] Restore the last played game and clear outdated feedback before saving the next question.
+- [x] Add unit tests for zero-attempt, wrong-answer, solved, completed and inconsistent session states.
+- [ ] Verify full CI, signing and device acceptance.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
