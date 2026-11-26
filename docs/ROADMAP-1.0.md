@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 1.0 / build 601000. Test build, not a production launch. Future builds use 1.1, 1.2, etc., and strictly increasing Android version codes.
+Status: 0.100 / build 601001. Test build, not a production launch. Future builds use 0.101, 0.102, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -68,14 +68,15 @@ Status: 1.0 / build 601000. Test build, not a production launch. Future builds u
 - [x] Additional catalog completion and replay checks.
 - [ ] Verify full CI, signing and physical layout, including long labels and Fold.
 
-## 1.0: simplified quiz interface and versioning
+## 0.100: simplified quiz interface and versioning
 - [x] Remove the quiz hint row, including hints after incorrect answers.
 - [x] Remove spoken instructions from game screens and parent settings; keep music, feedback sounds and Android accessibility.
 - [x] Hide the quiz continuation row until a correct answer; keep manual and automatic continuation and existing progress.
 - [x] Use the actual APK version in settings and remove obsolete voice information from the privacy dialog.
 - [x] 0.99.7 release compilation, artwork verification, tests and lint passed on Actions run 45902862452.
-- [ ] Repeat release and emulator checks for 1.0; verify release signature before distribution.
-- [ ] Physical-device acceptance still required. Version 1.0 is not authorization to publish.
+- [x] Interim 1.0 (build 601000) compiled and passed unit tests/lint; superseded by the requested 0.100 numbering.
+- [ ] Repeat release and emulator checks for 0.100; verify release signature before distribution. Prior emulator test stopped at home navigation before reaching the quiz; test now uses native view bounds and wide-layout cards.
+- [ ] Physical-device acceptance still required. Version 0.100 is not authorization to publish.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.

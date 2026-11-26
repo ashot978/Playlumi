@@ -85,17 +85,39 @@ def test(viewport, manual):
     safe = re.findall(r"safeTop=(\d+).*?safeBottom=(\d+)", logs)
     assert safe, "Missing Android insets"
     top,bottom = map(int,safe[-1])
-    uh = h-top-bottom
-    # Same illustrated world hit-test geometry as the existing native smoke suite.
-    if w/uh <= .72:
-        dw,dh = w,uh
+    # Use the actual visible native view bounds, not a reconstructed window size.
+    # The unfolded layout is a grid of clickable world cards, not the village image.
+    for attempt in range(6):
+        home_nodes = ui(viewport+"-home-"+str(attempt))
+        card = next((n for n in home_nodes if n.get("clickable")=="true" and
+                    n.get("content-desc","").startswith("Open Speelplein")), None)
+        if card is not None:
+            click(card)
+        else:
+            village = next((n for n in home_nodes if
+                        n.get("content-desc","").startswith("Magisch Playlumi-dorp")), None)
+            if village is None:
+                # On a newly booted emulator a system dialog can temporarily obscure the app.
+                time.sleep(2)
+                continue
+            left,vt,right,vb = bounds(village)
+            vw,vh = right-left,vb-vt
+            assert vw>0 and vh>0, "Village is not visible"
+            if vw/vh <= .72:
+                dw,dh = vw,vh
+            else:
+                scale = min(vw/941,vh/1672)
+                dw,dh = 941*scale,1672*scale
+            x = round(left+(vw-dw)/2+185*dw/941)
+            y = round(vt+(vh-dh)/2+1040*dh/1672)
+            shell(f"input tap {x} {y}")
+            time.sleep(2)
+        pages = re.findall(r"screen=(\d+)", shell("logcat -d -s PlaylumiQA:I"))
+        if pages and int(pages[-1]) == 44:
+            break
+        time.sleep(1)
     else:
-        scale = min(w/941, uh/1672)
-        dw,dh = 941*scale,1672*scale
-    x = round((w-dw)/2+185*dw/941)
-    y = round(top+(uh-dh)/2+1040*dh/1672)
-    shell(f"input tap {x} {y}")
-    time.sleep(2)
+        raise AssertionError("Could not open Speelplein from native home layout")
     page(44)
     for attempt in range(12):
         nodes = ui(viewport+"-library")
