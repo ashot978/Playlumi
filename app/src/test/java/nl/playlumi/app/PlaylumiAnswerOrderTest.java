@@ -32,6 +32,28 @@ public final class PlaylumiAnswerOrderTest {
         assertEquals(Arrays.asList(22,11),game.round().answerColors);
         assertEquals(1,game.round().correctIndex);assertTrue(game.round().isSolved());
     }
+    @Test public void legacyReorderingKeepsRejectedChoiceAttachedToItsLabel(){
+        LearningGame game=new LearningGame(new Random(92));
+        game.restoreRound("Welke is langer?","1 cm 16 cm",0,Arrays.asList("Rechts","Links"),Arrays.asList(11,22),0,0,false,2);
+        assertEquals(1,game.round().correctIndex);
+        assertTrue(game.round().isRejected(0));
+        assertFalse(game.round().isRejected(1));
+        assertTrue(game.round().choose(1));
+    }
+    @Test public void invalidSavedChoicesDoNotReplaceTheCurrentQuestion(){
+        LearningGame game=new LearningGame(new Random(93));
+        LearningGame.Round initial=game.round();
+        try{
+            game.restoreRound("Vraag","Plaatje",0,Arrays.asList("Goed",null),Arrays.asList(11,22),0,0,false,0);
+            fail("Null choice must be rejected");
+        }catch(IllegalArgumentException expected){}
+        assertSame(initial,game.round());
+        try{
+            game.restoreRound("Vraag","Plaatje",0,Arrays.asList("Goed","Fout"),Arrays.asList(11,null),0,0,false,0);
+            fail("Null color must be rejected");
+        }catch(IllegalArgumentException expected){}
+        assertSame(initial,game.round());
+    }
     @Test public void nonSpatialOptionsKeepOriginalOrder(){
         assertArrayEquals(new int[]{0,1,2},PlaylumiAnswerOrder.indices(Arrays.asList("B","A","C")));
     }

@@ -294,8 +294,7 @@ public class MainActivity extends Activity {
                     game.restoreRound(state.getString("roundPrompt"),state.getString("roundDisplay"),
                             state.getInt("roundColor"),state.getStringArrayList("roundAnswers"),
                             state.getIntegerArrayList("roundColors"),state.getInt("roundCorrect"),
-                            state.getInt("roundFingers"),state.getBoolean("roundSolved"));
-                    game.round().restoreRejected(state.getInt("roundRejected",0));
+                            state.getInt("roundFingers"),state.getBoolean("roundSolved"),state.getInt("roundRejected",0));
                     feedback=game.round().isSolved()?state.getString("roundFeedback",""):"";
                 }else{
                     // Keep earned points and completed round count; replace only the obsolete question.
@@ -303,7 +302,7 @@ public class MainActivity extends Activity {
                 }
                 ArrayList<Integer> savedBadges=state.getIntegerArrayList("roundBadges");
                 if(savedBadges!=null)pendingBadges.addAll(savedBadges);
-            }catch(IllegalArgumentException ignored){}
+            }catch(IllegalArgumentException ignored){roundHadMistake=false;feedback="";}
         }
         if(restoredGamePage==MINI_PLAY){
             miniSolved=state!=null&&state.getBoolean("miniSolved",false);
@@ -1745,25 +1744,33 @@ public class MainActivity extends Activity {
         if(o==null)return false;
         try{
             int level=o.getInt("level"),count=o.getInt("count"),attempts=o.getInt("attempts");
-            org.json.JSONArray a=o.getJSONArray("answers"),c=o.getJSONArray("colors");
-            ArrayList<String> answers=new ArrayList<>();ArrayList<Integer> colors=new ArrayList<>();
-            for(int i=0;i<a.length();i++)answers.add(a.getString(i));
-            for(int i=0;i<c.length();i++)colors.add(c.getInt(i));
             if(level<0||level>2||!PlaylumiResumeKeys.validQuizProgress(count,attempts,o.getBoolean("solved"),SESSION_ROUNDS))return false;
             game.configure(entry.mode,entry.variant,level);
-            // Preserve points and session counters, but replace the old copy-the-time question.
-            if(!PlaylumiLetterChallenges.legacy(entry.mode,entry.variant,o.getString("display"))&&
-                    !PlaylumiWeatherPractice.legacy(entry.mode,entry.variant,o.getString("prompt"))&&
-                    !(entry.mode==19&&entry.variant==4&&o.getString("display").contains("Je steekt over bij groen licht"))&&
-                    !(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
-                    !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
-                    !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
-                    !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4)){
-                game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
-                    answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"));
-                game.round().restoreRejected(o.optInt("rejected",0));feedback=game.round().isSolved()?o.optString("feedback",""):"";
-                roundHadMistake=o.optBoolean("hadMistake",false)||game.round().rejectedMask()!=0;
-            }else{feedback="";roundHadMistake=false;}
+            feedback="";roundHadMistake=false;
+            // If only the saved question is damaged or obsolete, keep the earned
+            // score and attempts and continue with a new question at the saved level.
+            try{
+                org.json.JSONArray a=o.getJSONArray("answers"),c=o.getJSONArray("colors");
+                if(a.length()<2||a.length()>30||a.length()!=c.length())throw new IllegalArgumentException("Invalid saved choices");
+                ArrayList<String> answers=new ArrayList<>();ArrayList<Integer> colors=new ArrayList<>();
+                for(int i=0;i<a.length();i++)answers.add(a.isNull(i)?null:a.getString(i));
+                for(int i=0;i<c.length();i++)colors.add(c.isNull(i)?null:c.getInt(i));
+                if(!PlaylumiLetterChallenges.legacy(entry.mode,entry.variant,o.getString("display"))&&
+                        !PlaylumiWeatherPractice.legacy(entry.mode,entry.variant,o.getString("prompt"))&&
+                        !(entry.mode==19&&entry.variant==4&&o.getString("display").contains("Je steekt over bij groen licht"))&&
+                        !(entry.mode==16&&entry.variant==3&&"Hoe schrijf je deze tijd?".equals(o.getString("prompt")))&&
+                        !(level==2&&entry.mode==LearningGame.PATTERNS&&PlaylumiPatterns.isVisualPattern(o.getString("display"))&&PlaylumiPatterns.tokens(o.getString("display")).length<8)&&
+                        !(entry.mode==ExtraGames.SEQUENCES&&o.getString("display").split("→").length<4)&&
+                        !(entry.mode==23&&(entry.variant==0||entry.variant==1||entry.variant==3)&&o.getString("display").split("→").length<4)){
+                    game.restoreRound(o.getString("prompt"),o.getString("display"),o.getInt("color"),
+                        answers,colors,o.getInt("correct"),o.getInt("fingers"),o.getBoolean("solved"),o.optInt("rejected",0));
+                    feedback=game.round().isSolved()?o.optString("feedback",""):"";
+                    roundHadMistake=o.optBoolean("hadMistake",false)||game.round().rejectedMask()!=0;
+                }
+            }catch(org.json.JSONException|IllegalArgumentException ignored){
+                // The newly generated question is still valid; no points are awarded on restore.
+                feedback="";roundHadMistake=false;
+            }
             difficulty=level;sessionSolved=count;sessionAttempts=attempts;
             smartDifficulty=false;pendingLevel=-1;pendingBadges.clear();
             earnedBadge=-1;rewardReturn=PLAY;quickCategoryPlay=true;storyStage=-1;

@@ -1,7 +1,7 @@
-name: Playlumi 0.102 quiz interface acceptance
+name: Playlumi 0.103 quiz interface acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.102']
+    branches: ['feature/playlumi-0.103']
   workflow_dispatch:
 jobs:
   quiz-ui:
@@ -24,7 +24,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build debug variant of exact 0.102 source
+      - name: Build debug variant of exact 0.103 source
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -47,6 +47,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0102-quiz-acceptance
+          name: playlumi-0103-quiz-acceptance
           path: build/clean-quiz/
           if-no-files-found: warn

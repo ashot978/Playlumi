@@ -86,11 +86,23 @@ public final class LearningGame {
     /** Preserve the exact question and its solved state on configuration changes. */
     public void restoreRound(String prompt,String display,int displayColor,List<String> answers,
                              List<Integer> colors,int correct,int fingers,boolean solved) {
-        if(prompt==null||display==null||answers==null||colors==null||answers.isEmpty()||
-                answers.size()!=colors.size()||correct<0||correct>=answers.size()||
-                fingers<0||fingers>10||answers.get(correct)==null||answers.get(correct).isEmpty())
+        restoreRound(prompt,display,displayColor,answers,colors,correct,fingers,solved,0);
+    }
+    /** Reorder legacy spatial answers and their rejected flags as a single operation. */
+    public void restoreRound(String prompt,String display,int displayColor,List<String> answers,
+                             List<Integer> colors,int correct,int fingers,boolean solved,int rejectedMask) {
+        if(prompt==null||display==null||answers==null||colors==null||answers.size()<2||answers.size()>30||
+                answers.size()!=colors.size()||correct<0||correct>=answers.size()||fingers<0||fingers>10)
             throw new IllegalArgumentException("Invalid saved round");
+        for(int i=0;i<answers.size();i++){
+            if(answers.get(i)==null||answers.get(i).trim().isEmpty()||colors.get(i)==null)
+                throw new IllegalArgumentException("Invalid saved choice");
+        }
+        int[] order=PlaylumiAnswerOrder.indices(answers);
+        int mapped=0;
+        for(int i=0;i<order.length;i++)if((rejectedMask&(1<<order[i]))!=0)mapped|=1<<i;
         Round restored=new Round(prompt,display,displayColor,answers,colors,correct,fingers);
+        restored.restoreRejected(mapped);
         if(solved)restored.choose(restored.correctIndex);
         current=restored;
     }
