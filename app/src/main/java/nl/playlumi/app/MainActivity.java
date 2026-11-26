@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
     private TextView melodyStatus,magicHeaderProgress;
     private final Button[] melodyPads=new Button[4];
     private boolean melodyPreviewActive;
+    private long melodyPreviewToken;
     private int bubbleRound;
     private int starCatchRound;
     private PlaylumiStarCatch starCatch;
@@ -275,7 +276,8 @@ public class MainActivity extends Activity {
         game.setHistory(recent);
         game.configure(Math.max(0,Math.min(LearningGame.GAME_NAMES.length-1,mode)),
                 Math.max(0,Math.min(4,variant)), Math.max(0,Math.min(2,difficulty)));
-        if(state!=null && page==PLAY && state.containsKey("roundDisplay")){
+        final int restoredGamePage=page==BREAK_SCREEN?breakReturn:page;
+        if(state!=null && restoredGamePage==PLAY && state.containsKey("roundDisplay")){
             try{
                 if(!PlaylumiLetterChallenges.legacy(mode,variant,state.getString("roundDisplay"))&&
                         !PlaylumiWeatherPractice.legacy(mode,variant,state.getString("roundPrompt"))&&
@@ -293,9 +295,15 @@ public class MainActivity extends Activity {
                 if(savedBadges!=null)pendingBadges.addAll(savedBadges);
             }catch(IllegalArgumentException ignored){}
         }
-        if(page==MINI_PLAY){
+        if(restoredGamePage==MINI_PLAY){
             miniSolved=state!=null&&state.getBoolean("miniSolved",false);
-            if(state!=null && miniKind==PlaylumiMiniChallenge.DRAG && state.containsKey("dragTarget")){
+            if(state!=null&&state.containsKey("miniChoices"))try{
+                mini=PlaylumiMiniChallenge.restore(miniKind,state.getInt("miniLevel"),state.getString("miniTarget"),
+                        state.getStringArrayList("miniChoices"),state.getInt("miniCorrect"),
+                        state.getInt("miniMatched"),state.getInt("miniOpen",-1));
+                if(miniKind==PlaylumiMiniChallenge.MEMORY)miniSolved=mini.solved();
+            }catch(IllegalArgumentException ignored){}
+            if(mini==null&&state!=null && miniKind==PlaylumiMiniChallenge.DRAG && state.containsKey("dragTarget")){
                 try {
                     mini=PlaylumiMiniChallenge.restoreDrag(state.getInt("dragLevel"),
                             state.getString("dragTarget"),state.getStringArrayList("dragChoices"),
@@ -307,15 +315,17 @@ public class MainActivity extends Activity {
             }
             if(mini==null)mini=PlaylumiMiniChallenge.generate(miniKind,Math.max(0,age),new Random());
         }
-        if(page==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
+        if(restoredGamePage==MUSIC_PLAY && state!=null && state.getIntArray("melodyNotes")!=null) {
             try {
                 melody=PlaylumiMelody.restore(state.getIntArray("melodyNotes"),
                         state.getInt("melodyProgress",0));
             } catch(IllegalArgumentException ignored) {}
         }
-        if(page==MUSIC_PLAY && melody==null)
-            melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
-        if(page==STAR_CATCH) {
+        if(restoredGamePage==MUSIC_PLAY){
+            if(melody==null)melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());
+            melodySolved=melody.completed();
+        }
+        if(restoredGamePage==STAR_CATCH) {
             starCatchRound=state==null?0:Math.max(0,Math.min(PlaylumiStarCatch.ROUNDS,state.getInt("starCatchRound",0)));
             if(starCatchRound<PlaylumiStarCatch.ROUNDS){
                 if(state!=null && state.getInt("starCatchTotal",0)>0)try {
@@ -325,7 +335,7 @@ public class MainActivity extends Activity {
                 starCatchSolved=starCatch.finished();
             }
         }
-        if(page==BUBBLE_PLAY) {
+        if(restoredGamePage==BUBBLE_PLAY) {
             if(state!=null && state.getInt("bubbleTotal",0)>0) {
                 try {
                     bubbles=PlaylumiBubbles.restore(Math.max(0,age),state.getInt("bubbleTarget",0),
@@ -333,6 +343,7 @@ public class MainActivity extends Activity {
                 } catch(IllegalArgumentException ignored) {}
             }
             if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
+            bubbleSolved=bubbles.solved();
         }
         // Debug-only test entrance: emulator can capture the real village directly.
         // This is unavailable in a signed production release.
@@ -345,7 +356,7 @@ public class MainActivity extends Activity {
         showPage();
     }
     @Override protected void onDestroy() {
-        autoAdvanceToken++;
+        autoAdvanceToken++;melodyPreviewToken++;
         if(speech!=null){speech.close();speech=null;}
         if(sound!=null)sound.close();
         super.onDestroy();
@@ -356,23 +367,27 @@ public class MainActivity extends Activity {
         scheduleAutoAdvance();
     }
     @Override protected void onPause() {
-        stopSpeech();autoAdvanceToken++;
-        if(page==PLAY)saveLibraryQuiz();
-        if(page==INTERACTIVE)saveLibraryInteractive();
-        if(page==DRAW && drawing!=null)drawing.save();
+        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;
+        if(melodyPreviewActive){melodyPreviewActive=false;if(melodyStatus!=null)melodyStatus.setText("Speel de melodie opnieuw af wanneer je wilt.");}
+        int savedPage=page==BREAK_SCREEN?breakReturn:page;
+        if(savedPage==PLAY)saveLibraryQuiz();
+        if(savedPage==INTERACTIVE)saveLibraryInteractive();
+        saveLibrarySpecial(savedPage);
+        if(savedPage==DRAW && drawing!=null)drawing.save();
         saveUsage();
         activeSince=0;
         super.onPause();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
-        if(page==DRAW && drawing!=null)drawing.save();
+        final int savedPage=page==BREAK_SCREEN?breakReturn:page;
+        if(savedPage==DRAW && drawing!=null)drawing.save();
         out.putInt("activeProfile",activeProfile);
         out.putInt("age",age);out.putInt("mode",game.mode());out.putInt("variant",game.variant());
         out.putInt("difficulty",difficulty);out.putInt("world",world);
         out.putInt("categoryPage",categoryPage);out.putInt("variantPage",variantPage);
         out.putInt("badgePage",badgePage);out.putInt("sessionSolved",sessionSolved);
         out.putInt("sessionAttempts",sessionAttempts);out.putInt("page",page);
-        if(page==PLAY && game!=null){
+        if(savedPage==PLAY && game!=null){
             LearningGame.Round round=game.round();
             out.putString("roundPrompt",round.prompt);out.putString("roundDisplay",round.display);
             out.putInt("roundColor",round.displayColor);out.putInt("roundCorrect",round.correctIndex);
@@ -382,7 +397,12 @@ public class MainActivity extends Activity {
             out.putString("roundFeedback",feedback);
             out.putIntegerArrayList("roundBadges",new ArrayList<>(pendingBadges));
         }
-        if(page==MINI_PLAY && mini!=null && miniKind==PlaylumiMiniChallenge.DRAG){
+        if(savedPage==MINI_PLAY&&mini!=null){
+            out.putInt("miniLevel",mini.level);out.putString("miniTarget",mini.target);
+            out.putStringArrayList("miniChoices",new ArrayList<>(mini.choices));out.putInt("miniCorrect",mini.correctIndex);
+            out.putInt("miniMatched",mini.matchedMask());out.putInt("miniOpen",mini.firstOpen());
+        }
+        if(savedPage==MINI_PLAY && mini!=null && miniKind==PlaylumiMiniChallenge.DRAG){
             out.putInt("dragLevel",mini.level);out.putString("dragTarget",mini.target);
             out.putStringArrayList("dragChoices",new ArrayList<>(mini.choices));
             out.putInt("dragCorrect",mini.correctIndex);out.putBoolean("dragSolved",miniSolved);
@@ -1112,7 +1132,7 @@ public class MainActivity extends Activity {
             addText(subtitle,14,SUB,0,8);
     }
     private void showPage() {
-        stopSpeech();autoAdvanceToken++;autoRoundVisible=false;
+        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;autoRoundVisible=false;
         // Restore old navigation destinations directly into the new library.
         if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
         // Retire old star wardrobe and pet pages without deleting their saved data.
@@ -1292,11 +1312,14 @@ public class MainActivity extends Activity {
     }
     private void move(int next) {
         if(moving)return;
-        stopSpeech();autoAdvanceToken++;
+        stopSpeech();autoAdvanceToken++;melodyPreviewToken++;
         if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();favoriteEditMode=false;}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
         if(page==INTERACTIVE&&next!=INTERACTIVE)saveLibraryInteractive();
+        saveLibrarySpecial(page==BREAK_SCREEN?breakReturn:page);
         if(next==HOME)libraryReturn=false;
+        if(next!=PARENT_GATE&&next!=PARENT_HOME&&next!=PARENT_WORLDS&&next!=PARENT_STATS&&next!=PARENT_SETTINGS)
+            parentAllowed=false;
         saveUsage();
         if(usage!=null && page!=BREAK_SCREEN && next!=BREAK_SCREEN &&
                 next!=PARENT_GATE && next!=PARENT_HOME &&
@@ -1304,20 +1327,10 @@ public class MainActivity extends Activity {
                 usage.shouldSuggestBreak()) {
             breakReturn=next;next=BREAK_SCREEN;saveUsage();
         }
-        if(advancingAutomatically&&next==page){showPage();return;}
-        if(sound!=null)sound.tap();
-        if(PlaylumiMotion.isReduced()) {
-            page=next;showPage();return;
-        }
-        moving=true;
-        FrameLayout previous=stage;
-        final int destination=next;
-        previous.animate().cancel();
-        previous.animate().alpha(.82f).translationX(-dp(6)).setDuration(85)
-                .withEndAction(()->{
-                    if(stage!=previous){moving=false;return;}
-                    page=destination;moving=false;showPage();
-                }).start();
+        if(!advancingAutomatically&&sound!=null)sound.tap();
+        // Commit navigation synchronously before Android can save the Activity on fold/rotate.
+        // The existing entering animation is visual only, never responsible for committing state.
+        moving=false;page=next;showPage();
     }
     private void showAge() {
         header("🎈 Hoe oud ben jij?","Kies jouw leeftijd. We onthouden dit!");
@@ -1668,7 +1681,7 @@ public class MainActivity extends Activity {
     private org.json.JSONObject libraryResume(PlaylumiGameCatalog.Entry entry){
         if(entry==null)return null;
         if(entry.kind==PlaylumiGameCatalog.INTERACTIVE)return libraryInteractiveResume(entry);
-        if(entry.kind!=PlaylumiGameCatalog.QUIZ)return null;
+        if(entry.kind!=PlaylumiGameCatalog.QUIZ)return librarySpecialResume(entry);
         org.json.JSONObject saved=readLibrarySnapshot(entry);
         if(saved==null)return null;
         int count=saved.optInt("count",-1),attempts=saved.optInt("attempts",-1);
@@ -1751,6 +1764,108 @@ public class MainActivity extends Activity {
             saveRecent();saveLibraryQuiz();move(PLAY);return true;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return false;}
     }
+    private int specialTotal(int kind){
+        return kind==PlaylumiGameCatalog.MUSIC?PlaylumiMelody.ROUNDS:kind==PlaylumiGameCatalog.STARS?PlaylumiStarCatch.ROUNDS:
+                kind==PlaylumiGameCatalog.BUBBLES||kind==PlaylumiGameCatalog.MINI?20:0;
+    }
+    private PlaylumiGameCatalog.Entry specialEntry(int screen){
+        if(!libraryReturn)return null;
+        switch(screen){
+            case MINI_PLAY:return PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.MINI,miniKind,0);
+            case MUSIC_PLAY:return PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.MUSIC,0,melodyVariant);
+            case BUBBLE_PLAY:return PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.BUBBLES,0,0);
+            case STAR_CATCH:return PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.STARS,0,0);
+            default:return null;
+        }
+    }
+    private ArrayList<String> specialChoices(org.json.JSONArray array)throws org.json.JSONException{
+        ArrayList<String> out=new ArrayList<>();for(int i=0;i<array.length();i++)out.add(array.getString(i));return out;
+    }
+    private int[] specialNotes(org.json.JSONArray array)throws org.json.JSONException{
+        int[] out=new int[array.length()];for(int i=0;i<out.length;i++)out[i]=array.getInt(i);return out;
+    }
+    private PlaylumiMiniChallenge readMini(PlaylumiGameCatalog.Entry entry,org.json.JSONObject o)throws org.json.JSONException{
+        return PlaylumiMiniChallenge.restore(entry.mode,PlaylumiRocketCurriculum.level(age),o.getString("target"),
+                specialChoices(o.getJSONArray("choices")),o.getInt("correct"),o.getInt("matched"),o.getInt("open"));
+    }
+    private org.json.JSONObject librarySpecialResume(PlaylumiGameCatalog.Entry entry){
+        int total=specialTotal(entry.kind);if(total==0)return null;
+        org.json.JSONObject o=readLibrarySnapshot(entry);if(o==null)return null;
+        try{
+            int round=o.getInt("round"),count=o.getInt("count");boolean solved=o.getBoolean("solved");
+            if(round<0||count!=round+(solved?1:0)||count>=total||o.getInt("total")!=total)return null;
+            if(entry.kind==PlaylumiGameCatalog.MINI){
+                PlaylumiMiniChallenge restored=readMini(entry,o);
+                if(restored.kind==PlaylumiMiniChallenge.MEMORY&&restored.solved()!=solved)return null;
+            }else if(entry.kind==PlaylumiGameCatalog.MUSIC){
+                if(PlaylumiMelody.restore(specialNotes(o.getJSONArray("notes")),o.getInt("position")).completed()!=solved)return null;
+            }else if(entry.kind==PlaylumiGameCatalog.BUBBLES){
+                if(PlaylumiBubbles.restore(PlaylumiRocketCurriculum.level(age),o.getInt("target"),o.getInt("available"),o.getInt("mask")).solved()!=solved)return null;
+            }else if(entry.kind==PlaylumiGameCatalog.STARS){
+                if(PlaylumiStarCatch.restore(o.getInt("target"),o.getInt("available"),o.getInt("types"),o.getInt("mask")).finished()!=solved)return null;
+            }
+            return o;
+        }catch(org.json.JSONException|IllegalArgumentException ignored){return null;}
+    }
+    private void saveLibrarySpecial(int screen){
+        PlaylumiGameCatalog.Entry entry=specialEntry(screen);if(entry==null)return;
+        int round,total=specialTotal(entry.kind);boolean solved,partial=false;
+        try{
+            org.json.JSONObject o=new org.json.JSONObject();
+            switch(screen){
+                case MINI_PLAY:
+                    if(mini==null){clearLibrarySnapshot(entry);return;}
+                    round=miniRound;solved=miniSolved;
+                    partial=mini.matchedPairs()>0||mini.firstOpen()>=0;
+                    o.put("target",mini.target);o.put("choices",new org.json.JSONArray(mini.choices));
+                    o.put("correct",mini.correctIndex);o.put("matched",mini.matchedMask());o.put("open",mini.firstOpen());break;
+                case MUSIC_PLAY:
+                    if(melody==null){clearLibrarySnapshot(entry);return;}
+                    round=melodyRound;solved=melodySolved;partial=melody.progress()>0;
+                    org.json.JSONArray notes=new org.json.JSONArray();for(int note:melody.sequence())notes.put(note);
+                    o.put("notes",notes);o.put("position",melody.progress());break;
+                case BUBBLE_PLAY:
+                    if(bubbles==null){clearLibrarySnapshot(entry);return;}
+                    round=bubbleRound;solved=bubbleSolved;partial=bubbles.popped()>0;
+                    o.put("target",bubbles.target);o.put("available",bubbles.total);o.put("mask",bubbles.mask());break;
+                case STAR_CATCH:
+                    if(starCatch==null){clearLibrarySnapshot(entry);return;}
+                    round=starCatchRound;solved=starCatchSolved;partial=starCatch.collected()>0;
+                    o.put("target",starCatch.target());o.put("available",starCatch.total());o.put("mask",starCatch.mask());o.put("types",starCatch.starMask());break;
+                default:return;
+            }
+            int count=round+(solved?1:0);
+            if(count>=total||count==0&&!partial){clearLibrarySnapshot(entry);return;}
+            o.put("id",entry.id);o.put("age",age);o.put("round",round);o.put("count",count);
+            o.put("total",total);o.put("solved",solved);o.put("updated",System.currentTimeMillis());
+            writeLibrarySnapshot(entry,o);
+        }catch(org.json.JSONException ignored){}
+    }
+    private boolean resumeLibrarySpecial(PlaylumiGameCatalog.Entry entry){
+        org.json.JSONObject o=librarySpecialResume(entry);if(o==null)return false;
+        try{
+            int round=o.getInt("count"),level=PlaylumiRocketCurriculum.level(age),screen;
+            boolean solved=o.getBoolean("solved");Random random=new Random();
+            pendingBadges.clear();rewardReturn=PLAY;
+            // A solved round was already credited. Resume the next one, never the reward callback.
+            switch(entry.kind){
+                case PlaylumiGameCatalog.MINI:
+                    miniKind=entry.mode;miniRound=round;miniSolved=false;
+                    mini=solved?PlaylumiMiniChallenge.generate(miniKind,level,random):readMini(entry,o);screen=MINI_PLAY;break;
+                case PlaylumiGameCatalog.MUSIC:
+                    melodyVariant=entry.variant;melodyRound=round;melodySolved=false;
+                    melody=solved?PlaylumiMelody.generate(level,melodyVariant,random):PlaylumiMelody.restore(specialNotes(o.getJSONArray("notes")),o.getInt("position"));screen=MUSIC_PLAY;break;
+                case PlaylumiGameCatalog.BUBBLES:
+                    bubbleRound=round;bubbleSolved=false;
+                    bubbles=solved?PlaylumiBubbles.generate(level,random):PlaylumiBubbles.restore(level,o.getInt("target"),o.getInt("available"),o.getInt("mask"));screen=BUBBLE_PLAY;break;
+                case PlaylumiGameCatalog.STARS:
+                    starCatchRound=round;starCatchSolved=false;
+                    starCatch=solved?PlaylumiStarCatch.generate(level,random):PlaylumiStarCatch.restore(o.getInt("target"),o.getInt("available"),o.getInt("types"),o.getInt("mask"));screen=STAR_CATCH;break;
+                default:return false;
+            }
+            saveLibrarySpecial(screen);move(screen);return true;
+        }catch(org.json.JSONException|IllegalArgumentException ignored){return false;}
+    }
     private void startCatalogSpecial(int kind){
         rememberCatalog(PlaylumiGameCatalog.route(age,villageLaunch,kind,0,0));
         pendingBadges.clear();rewardReturn=PLAY;
@@ -1779,12 +1894,14 @@ public class MainActivity extends Activity {
                 interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"));
                 interactiveMessage="";move(INTERACTIVE);
             }else{rememberCatalog(entry);startInteractive(entry.mode);}
-        }else if(entry.kind==PlaylumiGameCatalog.MINI)startWorldMini(entry.mode);
+        }else if(resume&&resumeLibrarySpecial(entry))return;
+        else if(entry.kind==PlaylumiGameCatalog.MINI){clearLibrarySnapshot(entry);startWorldMini(entry.mode);}
         else if(entry.kind==PlaylumiGameCatalog.MUSIC){
+            clearLibrarySnapshot(entry);
             melodyVariant=entry.variant;rememberCatalog(entry);pendingBadges.clear();rewardReturn=PLAY;
             melodyRound=0;melodySolved=false;
             melody=PlaylumiMelody.generate(PlaylumiRocketCurriculum.level(age),melodyVariant,new Random());move(MUSIC_PLAY);
-        }else startCatalogSpecial(entry.kind);
+        }else{if(specialTotal(entry.kind)>0)clearLibrarySnapshot(entry);startCatalogSpecial(entry.kind);}
     }
     private void startInteractive(int kind){
         interactive=new PlaylumiInteractive(kind,PlaylumiRocketCurriculum.level(age),new Random().nextLong(),0);
@@ -2381,7 +2498,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.0 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.1 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -3249,9 +3366,9 @@ public class MainActivity extends Activity {
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
             @Override public void onSolved() {
                 if(page!=MINI_PLAY||moving||!autoRoundVisible||miniSolved)return;
-                miniSolved=true;
+                stopSpeech();miniSolved=true;
                 if(playPal!=null)playPal.dance();
-                recordMiniAnswer();
+                recordMiniAnswer();saveLibrarySpecial(MINI_PLAY);
                 scheduleAutoAdvance();
                 PlaylumiMotion.celebrate(stage,miniRound+1);
             }
@@ -3261,11 +3378,12 @@ public class MainActivity extends Activity {
                 // Memory pairs are practice, not a penalized test.
             }
             @Override public void onMatch() { sound.good(); }
+            @Override public void onStateChanged(){saveLibrarySpecial(MINI_PLAY);}
         });
         LinearLayout.LayoutParams boardParams=new LinearLayout.LayoutParams(-1,-2);
         boardParams.setMargins(dp(0),dp(2),dp(0),dp(4));
         root.addView(board,boardParams);
-        if(miniSolved && miniKind==PlaylumiMiniChallenge.DRAG)board.restoreSolvedShape();
+        if(miniSolved)board.restoreSolvedShape();
         if(miniSolved)scheduleAutoAdvance();
     }
     private void recordMiniAnswer() {
@@ -3999,7 +4117,7 @@ public class MainActivity extends Activity {
         starCatchProgress.setPadding(dp(8),dp(8),dp(8),dp(8));
         addWidget(starCatchProgress,2,6);
         PlaylumiStarCatchBoard board=new PlaylumiStarCatchBoard(this,round,new PlaylumiStarCatchBoard.Listener(){
-            @Override public void onStar(int count){starCatchProgress.setText("⭐ "+count+" / "+round.target());sound.pop();}
+            @Override public void onStar(int count){starCatchProgress.setText("⭐ "+count+" / "+round.target());sound.pop();if(!round.finished())saveLibrarySpecial(STAR_CATCH);}
             @Override public void onMistake(){sound.mistake();}
             @Override public void onFinished(){
                 if(page!=STAR_CATCH||moving||!autoRoundVisible||starCatchSolved)return;
@@ -4007,7 +4125,7 @@ public class MainActivity extends Activity {
                 int category=LearningGame.COUNT;
                 ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
                 lifetimeCount++;wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
-                saveWardrobe();saveScore(category);pendingBadges.addAll(badges);
+                saveWardrobe();saveScore(category);pendingBadges.addAll(badges);saveLibrarySpecial(STAR_CATCH);
                 sound.good();
                 if(playPal!=null)playPal.dance();
                 PlaylumiMotion.celebrate(stage,starCatchRound+1);
@@ -4049,10 +4167,10 @@ public class MainActivity extends Activity {
         addSpokenPrompt(root,instruction,instruction,19,!bubbleSolved);
         PlaylumiBubbleBoard board=new PlaylumiBubbleBoard(this,bubbles,
                 new PlaylumiBubbleBoard.Listener() {
-            @Override public void onPop() {sound.pop();}
+            @Override public void onPop() {sound.pop();if(!bubbles.solved())saveLibrarySpecial(BUBBLE_PLAY);}
             @Override public void onSolved() {
                 if(page!=BUBBLE_PLAY||moving||!autoRoundVisible||bubbleSolved)return;
-                bubbleSolved=true;
+                stopSpeech();bubbleSolved=true;
                 if(playPal!=null)playPal.dance();
                 int category=LearningGame.COUNT;
                 ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));
@@ -4060,7 +4178,7 @@ public class MainActivity extends Activity {
                 wardrobe.earnAnswer();
                 wardrobe.earnBadges(badges.size());
                 saveWardrobe();saveScore(category);
-                pendingBadges.addAll(badges);
+                pendingBadges.addAll(badges);saveLibrarySpecial(BUBBLE_PLAY);
                 sound.good();
                 PlaylumiMotion.celebrate(stage,bubbleRound+1);
                 scheduleAutoAdvance();
@@ -4187,19 +4305,20 @@ public class MainActivity extends Activity {
         final FrameLayout active=stage;
         if(melodyPreviewActive)return;
         melodyPreviewActive=true;
+        final long preview=++melodyPreviewToken;
         melodyStatus.setText("Luister goed ...");
         for(int i=0;i<melody.length();i++) {
             final int note=melody.noteAt(i);
             final int beat=i;
             active.postDelayed(()->{
-                if(stage!=active || page!=MUSIC_PLAY)return;
+                if(stage!=active||page!=MUSIC_PLAY||preview!=melodyPreviewToken||activeSince<=0||!melodyPreviewActive||isFinishing())return;
                 sound.note(note);
                 if(melodyPads[note]!=null)PlaylumiMotion.pop(melodyPads[note]);
                 melodyStatus.setText("Luister goed  "+(beat+1)+"/"+melody.length());
             },i*470L);
         }
         active.postDelayed(()->{
-            if(stage==active && page==MUSIC_PLAY){
+            if(stage==active&&page==MUSIC_PLAY&&preview==melodyPreviewToken&&activeSince>0){
                 melodyPreviewActive=false;
                 melodyStatus.setText("Nu jij! Tik de dierenvriendjes aan.");
             }
@@ -4269,6 +4388,7 @@ public class MainActivity extends Activity {
         sound.note(note);
         PlaylumiDelight.hop(pressed);
         int status=melody.tap(note);
+        if(status!=2)saveLibrarySpecial(MUSIC_PLAY);
         if(status==0) {
             melodyStatus.setText("💗 Oeps! Probeer de melodie nog eens.");
             if(playPal!=null)playPal.react(2);
@@ -4291,7 +4411,7 @@ public class MainActivity extends Activity {
             wardrobe.earnAnswer();
             wardrobe.earnBadges(badges.size());
             saveWardrobe();saveScore(LearningGame.PATTERNS);
-            pendingBadges.addAll(badges);
+            pendingBadges.addAll(badges);saveLibrarySpecial(MUSIC_PLAY);
             sound.good();
             PlaylumiDelight.sprinkle(stage,pressed);
             scheduleAutoAdvance();

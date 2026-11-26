@@ -111,6 +111,20 @@ public final class ReleaseCandidateCheck {
             game.configure(mode,variant,level);settings++;
             for(int i=0;i<32;i++){round(game.round(),mode,variant,level,"legacy "+mode+":"+variant+":"+level);game.nextRound();}
         }
+        int restores=0;
+        for(int age=0;age<3;age++)for(int kind=0;kind<3;kind++)for(int i=0;i<180;i++){
+            PlaylumiMiniChallenge mini=PlaylumiMiniChallenge.generate(kind,age,RNG);
+            if(kind==PlaylumiMiniChallenge.MEMORY){
+                int mate=mini.choices.lastIndexOf(mini.choices.get(0));require(mate>0,"memory pair");
+                require(mini.flip(0)==1&&mini.flip(mate)==2,"memory match");
+                int open=0;while(mini.matched(open))open++;
+                mini.flip(open);
+            }
+            PlaylumiMiniChallenge restored=PlaylumiMiniChallenge.restore(kind,age,mini.target,mini.choices,mini.correctIndex,mini.matchedMask(),mini.firstOpen());
+            require(restored.choices.equals(mini.choices)&&restored.correctIndex==mini.correctIndex&&restored.matchedMask()==mini.matchedMask()&&restored.firstOpen()==mini.firstOpen(),"mini restore");
+            restores++;
+        }
+        System.out.println("PASS: "+restores+" saved minigame state round trips.");
         PlaylumiPlayDays days=new PlaylumiPlayDays(Long.MIN_VALUE,0,0,0);
         require(days.record(100)&&!days.record(100)&&days.record(101)&&days.best==2,"daily streak duplicate");
         require(days.record(103)&&days.best==2&&days.run==1,"streak record");
