@@ -118,6 +118,7 @@ public final class ExtraGames {
         return WORDS[base + random.nextInt(10)];
     }
     private static LearningGame.Round spelling(int variant, int level, Random random) {
+        if(variant==0&&level==2)return PlaylumiSpellingPractice.next(random);
         String[] word = wordAt(level, random);
         String correct = word[1];
         List<String> options = new ArrayList<>();

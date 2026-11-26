@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
     private static final int LIBRARY_SEARCH=-4,LIBRARY_RESUME=-5;
     private String libraryQuery="";
     private TextView quizTip;
+    private PlaylumiPatternView questionPattern;
     private int libraryScrollY;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private TextView[] libraryTabs;
@@ -1144,7 +1145,7 @@ public class MainActivity extends Activity {
         if(page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
-        playPal=null;progressCounter=null;questionPicture=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;
+        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;quizTip=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;
         final boolean villageScreen=page==HOME;
         final boolean magicScreen=worldTheme()>=0;
         final boolean darkBars=villageScreen || magicScreen;
@@ -2560,7 +2561,7 @@ public class MainActivity extends Activity {
             prefs().edit().putBoolean("sound_on",sound.isEnabled()).apply();
             showPage();
         });
-        addText("Playlumi 0.99.2 · testversie",13,SUB,4,2);
+        addText("Playlumi 0.99.3 · testversie",13,SUB,4,2);
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
@@ -2778,6 +2779,7 @@ public class MainActivity extends Activity {
             addWidgetIn(questions,clock,0,dp(3));
         } else if(PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3)) {
             PlaylumiPatternView pattern=new PlaylumiPatternView(this,round.display);
+            questionPattern=pattern;if(round.isSolved())pattern.complete(round.answers.get(round.correctIndex));
             pattern.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,false));
             pattern.setMinimumHeight(dp(Math.max(questionH,112)));
             addWidgetIn(questions,pattern,0,dp(3));
@@ -2807,10 +2809,14 @@ public class MainActivity extends Activity {
         coach.addView(feedbackText,new LinearLayout.LayoutParams(0,-2,1f));
         quizTip=text("💡 Tip",14,PlaylumiMagicArt.INK);quizTip.setMinHeight(dp(48));quizTip.setPadding(dp(6),0,dp(6),0);
         quizTip.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),PlaylumiMagicArt.creamPlate(this),null));
-        LinearLayout.LayoutParams tipParams=new LinearLayout.LayoutParams(dp(66),dp(48));tipParams.leftMargin=dp(4);
-        coach.addView(quizTip,tipParams);quizTip.setEnabled(!round.isSolved());
-        libraryClick(quizTip,"Vraag een hint",()->{
-            if(page!=PLAY||game.round()!=round||round.isSolved()||moving)return;
+        LinearLayout.LayoutParams tipParams=new LinearLayout.LayoutParams(dp(78),dp(48));tipParams.leftMargin=dp(4);
+        coach.addView(quizTip,tipParams);updateQuizCoachControl(round);
+        final FrameLayout coachScreen=stage;
+        quizTip.setOnClickListener(view->{
+            if(page!=PLAY||stage!=coachScreen||game.round()!=round||moving||activeSince<=0)return;
+            if(round.isSolved()){
+                advanceSolvedRound(PLAY,coachScreen,round);return;
+            }
             feedback="💡 "+PlaylumiLearningHints.hint(mode,game.variant(),round.display,round.prompt);
             feedbackText.setText(feedback);feedbackText.setTextColor(0xffffdf9a);
             feedbackText.announceForAccessibility(feedback);
@@ -2877,14 +2883,31 @@ public class MainActivity extends Activity {
         if(answerLocked)scheduleAutoAdvance();
     }
 
+    private void updateQuizCoachControl(LearningGame.Round round){
+        if(quizTip==null)return;
+        quizTip.setText(round.isSolved()?"Verder ›":"💡 Tip");
+        quizTip.setContentDescription(round.isSolved()?"Volgende vraag":"Vraag een hint");
+        quizTip.setEnabled(true);quizTip.setClickable(true);quizTip.setFocusable(true);
+    }
+    private int quizPace(){return PlaylumiQuizPace.safe(prefs().getInt("quiz_pace",0));}
+
     private void updateQuestionPicture(LearningGame.Round round){
         if(questionPicture==null)return;
         String shown=round.visibleDisplay();
+        if(round.isSolved()&&game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display))
+            shown=shown.replace("…",round.answers.get(round.correctIndex));
         if(round.isSolved()&&((game.mode()==ExtraGames.MATH&&game.variant()!=4)||game.mode()==ExtraGames.SEQUENCES||
                 game.mode()==23&&(game.variant()==0||game.variant()==1||game.variant()==3)))
             shown=shown.replace("?",round.answers.get(round.correctIndex));
         int blank=round.letterBlank();
-        if(round.isSolved() && blank>=0){
+        if(round.isSolved()&&game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display)){
+            int start=round.display.indexOf('…');
+            int end=start+round.answers.get(round.correctIndex).length();
+            android.text.SpannableString marked=new android.text.SpannableString(shown);
+            marked.setSpan(new android.text.style.ForegroundColorSpan(0xff237b49),start,end,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            marked.setSpan(new android.text.style.UnderlineSpan(),start,end,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            questionPicture.setText(marked);
+        }else if(round.isSolved() && blank>=0){
             int end=blank+round.blankReplacement().length();
             android.text.SpannableString marked=new android.text.SpannableString(shown);
             marked.setSpan(new android.text.style.ForegroundColorSpan(0xff237b49),blank,end,
@@ -2923,26 +2946,28 @@ public class MainActivity extends Activity {
         final int expected=page;
         final FrameLayout screen=stage;
         final LearningGame.Round solved=expected==PLAY?game.round():null;
+        int delay=expected==PLAY?PlaylumiQuizPace.delay(quizPace(),roundHadMistake,feedback):700;
+        if(delay<0)return;
         screen.postDelayed(()->{
-            if(token!=autoAdvanceToken||isFinishing()||isDestroyed()||activeSince<=0||
-                    stage!=screen||page!=expected||moving||!solvedAutoRound()||
-                    (expected==PLAY&&game.round()!=solved))return;
-            autoRoundVisible=false;
-            // Awards are already persisted; no interstitial badge screen or extra tap.
-            if(!pendingBadges.isEmpty()&&expected!=PLAY)
-                android.widget.Toast.makeText(this,"🏅 Nieuwe badge verdiend!",android.widget.Toast.LENGTH_SHORT).show();
-            pendingBadges.clear();
-            advancingAutomatically=true;
-            try{
-                switch(expected){
-                    case PLAY:continueAfterAnswer();break;
-                    case MINI_PLAY:afterMiniSolve();break;
-                    case BUBBLE_PLAY:finishBubbleRound();break;
-                    case STAR_CATCH:finishStarCatchRound();break;
-                    case MUSIC_PLAY:finishMelodyRound();break;
-                }
-            }finally{advancingAutomatically=false;}
-        },expected==PLAY?PlaylumiQuizCoach.delay(roundHadMistake,feedback):700);
+            if(token==autoAdvanceToken)advanceSolvedRound(expected,screen,solved);
+        },delay);
+    }
+    private void advanceSolvedRound(int expected,FrameLayout screen,LearningGame.Round solved){
+        if(isFinishing()||isDestroyed()||activeSince<=0||stage!=screen||page!=expected||moving||!solvedAutoRound()||
+                (expected==PLAY&&game.round()!=solved))return;
+        autoAdvanceToken++;autoRoundVisible=false;
+        if(!pendingBadges.isEmpty()&&expected!=PLAY)
+            android.widget.Toast.makeText(this,"🏅 Nieuwe badge verdiend!",android.widget.Toast.LENGTH_SHORT).show();
+        pendingBadges.clear();advancingAutomatically=true;
+        try{
+            switch(expected){
+                case PLAY:continueAfterAnswer();break;
+                case MINI_PLAY:afterMiniSolve();break;
+                case BUBBLE_PLAY:finishBubbleRound();break;
+                case STAR_CATCH:finishStarCatchRound();break;
+                case MUSIC_PLAY:finishMelodyRound();break;
+            }
+        }finally{advancingAutomatically=false;}
     }
     /** Fixed completion actions, outside the scrolling game content. */
     private LinearLayout finishActions(Button again,Button back,boolean visible){
@@ -2973,8 +2998,10 @@ public class MainActivity extends Activity {
         ArrayList<Integer> newBadges=new ArrayList<>(scores.answer(mode,correct));
         if(correct) {
             stopSpeech();answerLocked=true;sessionSolved++;lifetimeCount++;
-            if(quizTip!=null)quizTip.setEnabled(false);
-            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23){
+            updateQuizCoachControl(game.round());
+            if(questionPattern!=null)questionPattern.complete(game.round().answers.get(game.round().correctIndex));
+            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23||
+                    game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(game.round().display)){
                 updateQuestionPicture(game.round());
                 if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
             }
@@ -4018,6 +4045,14 @@ public class MainActivity extends Activity {
         Button learning=tile(catalogAdaptive()?"Adaptief oefenen: aan":"Adaptief oefenen: uit",
                 "Past quizmoeilijkheid aan binnen de leeftijdsgroep. Voortgang blijft bewaard.",0xffd5f5df,90);
         addTile(learning,7);learning.setOnClickListener(v->{prefs().edit().putBoolean("catalog_adaptive",!catalogAdaptive()).apply();showPage();});
+        addText("Speeltempo voor quizzen",22,0xff58448a,10,4);
+        addText("Kies hoeveel tijd je kind krijgt voor uitleg na een goed antwoord.",15,SUB,0,5);
+        for(int i=0;i<PlaylumiQuizPace.NAMES.length;i++){
+            final int choice=i;boolean selected=quizPace()==i;
+            Button speed=tile((selected?"✓ ":"")+PlaylumiQuizPace.NAMES[i],PlaylumiQuizPace.DETAILS[i],selected?0xffcef3d9:0xffe9dcff,78);
+            addTile(speed,3);speed.setContentDescription(PlaylumiQuizPace.NAMES[i]+(selected?", geselecteerd":""));
+            speed.setOnClickListener(v->{prefs().edit().putInt("quiz_pace",choice).apply();showPage();});
+        }
         Button motion=tile(PlaylumiMotion.isReduced()?
                 "🍃 Rustige animaties: aan":"✨ Bewegingen: aan",
                 "Rustige modus beperkt beweging",0xffe6dcff,91);

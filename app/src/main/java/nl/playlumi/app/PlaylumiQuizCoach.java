@@ -23,6 +23,8 @@ public final class PlaylumiQuizCoach {
     public static String explain(int mode,int variant,LearningGame.Round round){
         if(!round.isSolved())return "";
         String right=round.answers.get(round.correctIndex);
+        if(mode==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display))
+            return PlaylumiSpellingPractice.explanation(round.display,right);
         if(mode==ExtraGames.MATH){
             Matcher digits=Pattern.compile("\\d+").matcher(round.display);
             if(digits.find()){int a=Integer.parseInt(digits.group());if(digits.find()){
