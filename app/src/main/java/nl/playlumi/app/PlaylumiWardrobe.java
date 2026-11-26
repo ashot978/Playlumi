@@ -9,7 +9,7 @@ public final class PlaylumiWardrobe {
     public static final int SLOTS=6,OPTIONS=7;
     public static final int STARS_FOR_ANSWER=3,STARS_FOR_BADGE=12,STARTER_STARS=18;
     public static final String[] SLOT_NAMES={
-            "Sterkleur","Hoedjes","Brillen","Vriendjes","Kleding","Magische gloed"
+            "Medaillonkleur","Hoedjes","Brillen","Vriendjes","Kleding","Magische gloed"
     };
     public static final String[] SLOT_ICONS={"🎨","🎩","🕶️","🐾","👗","✨"};
     public static final String[][] ITEM_NAMES={
@@ -63,6 +63,7 @@ public final class PlaylumiWardrobe {
     public int stars(){return stars;}
     public int allTimeStars(){return allTimeStars;}
     public int equipped(int slot){check(slot,0);return selected[slot];}
+    public int[] equippedItems(){return selected.clone();}
     public int ownedMask(int slot){check(slot,0);return ownedMasks[slot];}
     public boolean owned(int slot,int item) {
         check(slot,item);return (ownedMasks[slot]&(1<<item))!=0;

@@ -92,6 +92,8 @@ public final class PlaylumiAudio {
     public void pop(){cue(PlaylumiTunes.POP,ToneGenerator.TONE_PROP_BEEP);}
     public void dance(){cue(PlaylumiTunes.DANCE,ToneGenerator.TONE_PROP_ACK);}
     public void sparkle(){cue(PlaylumiTunes.SPARKLE,ToneGenerator.TONE_PROP_ACK);}
+    public void collect(){cue(PlaylumiTunes.COLLECT,ToneGenerator.TONE_PROP_ACK);}
+    public void equip(){cue(PlaylumiTunes.EQUIP,ToneGenerator.TONE_PROP_BEEP2);}
     public void note(int index){
         if(index<0 || index>=PlaylumiMelody.NOTES)throw new IllegalArgumentException("note");
         cue(PlaylumiTunes.NOTE_GREEN+index,ToneGenerator.TONE_PROP_BEEP);

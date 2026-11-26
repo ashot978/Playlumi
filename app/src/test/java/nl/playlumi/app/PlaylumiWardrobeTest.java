@@ -84,6 +84,12 @@ public class PlaylumiWardrobeTest {
         assertEquals(0,original.equipped(PlaylumiWardrobe.AURAS));
         assertTrue(original.owned(PlaylumiWardrobe.AURAS,0));
     }
+    @Test public void outfitSnapshotCannotMutateInventory(){
+        PlaylumiWardrobe wardrobe=new PlaylumiWardrobe(200);
+        wardrobe.buyOrEquip(PlaylumiWardrobe.HATS,1);
+        int[] snapshot=wardrobe.equippedItems();snapshot[PlaylumiWardrobe.HATS]=6;
+        assertEquals(1,wardrobe.equipped(PlaylumiWardrobe.HATS));
+    }
     @Test public void newMagicalAurasCanBeBoughtSavedAndEquipped() {
         PlaylumiWardrobe before=new PlaylumiWardrobe(250);
         assertEquals(PlaylumiWardrobe.PURCHASED,

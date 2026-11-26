@@ -12,8 +12,10 @@ import android.view.View;
 /** Original illustrated fantasy avatar medallions. Character choice is cosmetic. */
 public final class PlaylumiAvatar extends View {
     private final int avatar;
-    public PlaylumiAvatar(Context context,int avatar) {
-        super(context);this.avatar=PlaylumiWorldStyle.safeAvatar(avatar);
+    private final PlaylumiWardrobe wardrobe;
+    public PlaylumiAvatar(Context context,int avatar){this(context,avatar,null);}
+    public PlaylumiAvatar(Context context,int avatar,PlaylumiWardrobe wardrobe) {
+        super(context);this.avatar=PlaylumiWorldStyle.safeAvatar(avatar);this.wardrobe=wardrobe;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
     public void react(int kind) {
@@ -28,7 +30,7 @@ public final class PlaylumiAvatar extends View {
     public void twirl(){react(5);}
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);float size=Math.min(getWidth(),getHeight());
-        draw(canvas,(getWidth()-size)/2,(getHeight()-size)/2,size,avatar);
+        draw(canvas,(getWidth()-size)/2,(getHeight()-size)/2,size,avatar,wardrobe==null?null:wardrobe.equippedItems());
     }
     private static void oval(Canvas c,Paint p,float l,float t,float r,float b,int color) {
         p.setColor(color);c.drawOval(l,t,r,b,p);
@@ -38,17 +40,35 @@ public final class PlaylumiAvatar extends View {
         for(int i=2;i<xy.length;i+=2)path.lineTo(xy[i],xy[i+1]);
         path.close();p.setColor(color);c.drawPath(path,p);
     }
-    public static void draw(Canvas c,float x,float y,float size,int choice) {
+    public static void draw(Canvas c,float x,float y,float size,int choice){draw(c,x,y,size,choice,null);}
+    private static int item(int[] outfit,int slot){
+        return outfit!=null&&outfit.length>slot?Math.max(0,Math.min(PlaylumiWardrobe.OPTIONS-1,outfit[slot])):0;
+    }
+    private static void accessory(Canvas c,Paint p,String icon,float x,float y,float size){
+        p.setShader(null);p.setColor(0xffffffff);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(size);
+        p.setTypeface(android.graphics.Typeface.DEFAULT);c.drawText(icon,x,y,p);
+    }
+    public static void draw(Canvas c,float x,float y,float size,int choice,int[] outfit) {
         choice=PlaylumiWorldStyle.safeAvatar(choice);
         c.save();c.translate(x,y);c.scale(size/100f,size/100f);
         Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
         oval(c,p,1,1,99,99,0xff432270);
-        oval(c,p,3,3,97,97,0xffffdf94);
+        int color=item(outfit,PlaylumiWardrobe.COLORS);
+        oval(c,p,3,3,97,97,color==0?0xffffdf94:PlaylumiWardrobe.BODY_COLORS[color]);
         p.setShader(new LinearGradient(0,6,0,94,0xfff8dcff,0xff8a5fd5,Shader.TileMode.CLAMP));
         c.drawCircle(50,50,44,p);p.setShader(null);
         for(int i=0;i<6;i++) {
             float sx=15+(i*23)%72,sy=16+(i*29)%67;
             polygon(c,p,0x99fff1c5,sx,sy-4,sx+1,sy-1,sx+4,sy,sx+1,sy+1,sx,sy+4,sx-1,sy+1,sx-4,sy,sx-1,sy-1);
+        }
+        int aura=item(outfit,PlaylumiWardrobe.AURAS);
+        if(aura>0){
+            int glow=PlaylumiWardrobe.BODY_COLORS[aura];
+            p.setColor(glow);p.setStrokeWidth(3f);p.setStyle(Paint.Style.STROKE);c.drawCircle(50,50,41,p);p.setStyle(Paint.Style.FILL);
+            for(int n=0;n<8;n++){
+                double angle=n*Math.PI/4;float sx=50+(float)Math.cos(angle)*37,sy=50+(float)Math.sin(angle)*37;
+                polygon(c,p,glow,sx,sy-4,sx+3,sy,sx,sy+4,sx-3,sy);
+            }
         }
         switch(choice) {
             case 1:
@@ -80,6 +100,17 @@ public final class PlaylumiAvatar extends View {
         oval(c,p,28,61,36,66,0x88ee7899);oval(c,p,64,61,72,66,0x88ee7899);
         p.setColor(0xff583153);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.8f);p.setStrokeCap(Paint.Cap.ROUND);
         c.drawArc(new RectF(43,57,57,71),8,164,false,p);p.setStyle(Paint.Style.FILL);
+        int hat=item(outfit,PlaylumiWardrobe.HATS),glasses=item(outfit,PlaylumiWardrobe.GLASSES),friend=item(outfit,PlaylumiWardrobe.FRIENDS),clothes=item(outfit,PlaylumiWardrobe.OUTFITS);
+        if(clothes>0)accessory(c,p,PlaylumiWardrobe.ITEM_ICONS[PlaylumiWardrobe.OUTFITS][clothes],50,90,23);
+        if(glasses>0){
+            int ink=glasses==1?0xff372a55:PlaylumiWardrobe.BODY_COLORS[glasses];
+            p.setColor(ink);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2.5f);
+            c.drawOval(31,46,47,61,p);c.drawOval(53,46,69,61,p);c.drawLine(47,52,53,52,p);p.setStyle(Paint.Style.FILL);
+            if(glasses==1){oval(c,p,33,48,45,59,0xc0382851);oval(c,p,55,48,67,59,0xc0382851);}
+            if(glasses>=3)accessory(c,p,PlaylumiWardrobe.ITEM_ICONS[PlaylumiWardrobe.GLASSES][glasses],50,56,13);
+        }
+        if(hat>0)accessory(c,p,PlaylumiWardrobe.ITEM_ICONS[PlaylumiWardrobe.HATS][hat],50,34,32);
+        if(friend>0)accessory(c,p,PlaylumiWardrobe.ITEM_ICONS[PlaylumiWardrobe.FRIENDS][friend],79,86,24);
         c.restore();
     }
 }

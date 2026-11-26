@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45, COLLECTIBLES=46;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -445,6 +445,7 @@ public class MainActivity extends Activity {
         if(page==REWARD) { continueAfterBadge();return; }
         if(page==AVATAR) {move(HOME);return;}
         if(page==CLOSET) {move(AVATAR);return;}
+        if(page==COLLECTIBLES) {move(HOME);return;}
         if(page==SHOP) {move(HOME);return;}
         if(page==FRIEND_CARE) {move(AVATAR);return;}
         if(page==FRIEND_ALBUM) {move(FRIEND_CARE);return;}
@@ -462,7 +463,7 @@ public class MainActivity extends Activity {
         if(page==ROOM) {move(AVATAR);return;}
         if(page==ROOM_CATS) {move(ROOM);return;}
         if(page==ROOM_ITEMS) {move(ROOM_CATS);return;}
-        if(page==TROPHY_WORLDS) {move(villageLaunch==PlaylumiVillageView.COLLECTION?HOME:AVATAR);return;}
+        if(page==TROPHY_WORLDS) {move(villageLaunch==PlaylumiVillageView.COLLECTION?COLLECTIBLES:AVATAR);return;}
         if(page==TROPHY_CATS) {move(TROPHY_WORLDS);return;}
         if(page==STORY_LIBRARY) {move(WORLD_HUB);return;}
         if(page==STORY_PLAY || page==STORY_REACTION || page==STORY_END) {move(STORY_LIBRARY);return;}
@@ -516,10 +517,37 @@ public class MainActivity extends Activity {
     private void saveScore(int mode) {
         PlaylumiScores.Score s=scores.get(mode);
         String prefix="score_"+mode+"_";
+        int gained=Math.max(0,s.correct-prefs().getInt(prefix+"good",0));
         prefs().edit().putInt(prefix+"good",s.correct).putInt(prefix+"tries",s.attempts)
                 .putInt(prefix+"best",s.bestStreak).putInt(prefix+"streak",s.currentStreak)
                 .putInt(prefix+"sessions",s.completedSessions)
                 .putInt("completed_all",lifetimeCount).apply();
+        if(gained>0){
+            int w=page==MUSIC_PLAY?3:page==DRAW?5:page==BUBBLE_PLAY||page==STAR_CATCH?4:
+                    page==MINI_PLAY?(miniKind==PlaylumiMiniChallenge.DRAG?2:4):
+                    PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:portalForMode(mode);
+            recordWorldProgress(w,gained);
+        }
+    }
+    private int collectionProgress(int world){
+        return PlaylumiCollection.clamp(prefs().getInt("collection_world_"+world,0));
+    }
+    private int collectionTotal(){
+        int total=0;
+        for(int i=0;i<6;i++)total+=PlaylumiCollection.unlocked(collectionProgress(i));
+        return total;
+    }
+    private void recordWorldProgress(int world,int gained){
+        if(!PlaylumiWorldStyle.valid(world)||gained<=0)return;
+        int before=collectionProgress(world);
+        int after=PlaylumiCollection.advance(before,gained);
+        if(after==before)return;
+        prefs().edit().putInt("collection_world_"+world,after).apply();
+        if(PlaylumiCollection.unlocked(after)>PlaylumiCollection.unlocked(before)){
+            String treasure=PlaylumiCollection.NAMES[world][PlaylumiCollection.unlocked(after)-1];
+            android.widget.Toast.makeText(this,"✦ Nieuwe schat: "+treasure,android.widget.Toast.LENGTH_SHORT).show();
+            if(playPal!=null)PlaylumiDelight.sprinkle(stage,playPal);
+        }
     }
     private void saveWardrobe() {
         SharedPreferences.Editor edit=prefs().edit()
@@ -741,7 +769,7 @@ public class MainActivity extends Activity {
         holder.setGravity(Gravity.CENTER);
         int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),false,
                 getResources().getConfiguration().screenHeightDp);
-        PlaylumiAvatar star=new PlaylumiAvatar(this,chosenAvatar());
+        PlaylumiAvatar star=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
         holder.addView(star,new LinearLayout.LayoutParams(dp(actual),dp(actual)));
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(actual+5));
         p.setMargins(0,dp(2),0,dp(3));
@@ -751,7 +779,7 @@ public class MainActivity extends Activity {
     private void characterHero(int size) {
         LinearLayout holder=new LinearLayout(this);
         holder.setGravity(Gravity.CENTER);
-        character=new PlaylumiAvatar(this,chosenAvatar());
+        character=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
         character.setContentDescription("Jouw maatje. Tik voor een magische verrassing.");
         character.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         character.setOnClickListener(v->{
@@ -765,7 +793,7 @@ public class MainActivity extends Activity {
             PlaylumiMotion.pop(v);
             PlaylumiDelight.sprinkle(stage,character);
         });
-        boolean showFull=page==AVATAR || page==STAR_STAGE || page==STORY_END ||
+        boolean showFull=page==AVATAR || page==CLOSET || page==COLLECTIBLES || page==STAR_STAGE || page==STORY_END ||
                 page==REWARD || page==BREAK_SCREEN || page==SHOP;
         int actual=PlaylumiLayout.heroHeight(size,landscapeScreen(),showFull,
                 getResources().getConfiguration().screenHeightDp);
@@ -790,7 +818,7 @@ public class MainActivity extends Activity {
     private void companion(int size) {
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER);
-        playPal=new PlaylumiAvatar(this,chosenAvatar());
+        playPal=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
         row.addView(playPal,new LinearLayout.LayoutParams(dp(size),dp(size)));
         playPal.setContentDescription("Je maatje. Tik om te zwaaien.");
         playPal.setOnClickListener(v->{playPal.wave();sound.tap();});
@@ -869,14 +897,14 @@ public class MainActivity extends Activity {
                 row.addView(status,new LinearLayout.LayoutParams(-2,dp(45)));
             }
             if(wardrobe!=null) {
-                playPal=new PlaylumiAvatar(this,chosenAvatar());
+                playPal=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
                 playPal.setContentDescription("Je maatje reageert op je antwoord");
                 LinearLayout.LayoutParams tiny=new LinearLayout.LayoutParams(dp(32),dp(32));
                 tiny.setMargins(dp(4),0,0,0);
                 row.addView(playPal,tiny);
             }
         } else {
-            View star=wardrobe==null?mascot(37):new PlaylumiAvatar(this,chosenAvatar());
+            View star=wardrobe==null?mascot(37):new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
             LinearLayout.LayoutParams iconParams=
                     new LinearLayout.LayoutParams(dp(39),dp(39));
             iconParams.setMargins(dp(5),0,0,0);
@@ -906,7 +934,7 @@ public class MainActivity extends Activity {
         // Restore old navigation destinations directly into the new library.
         if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
         // Retire old star wardrobe and pet pages without deleting their saved data.
-        if(page==CLOSET || page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
+        if(page==FRIEND_CARE || page==FRIEND_ALBUM)page=AVATAR;
         if(!parentAllowed && (page==PARENT_HOME || page==PARENT_WORLDS ||
                 page==PARENT_STATS || page==PARENT_SETTINGS))page=PARENT_GATE;
         playPal=null;progressCounter=null;questionPicture=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;
@@ -940,7 +968,7 @@ public class MainActivity extends Activity {
         if(theme>=0) {
             stage.addView(PlaylumiMagicArt.backdrop(this,theme),new FrameLayout.LayoutParams(-1,-1));
         } else if(page==WORLD_PICKER || page==WORLD_HUB ||
-                page==AVATAR || page==CLOSET || page==ROOM ||
+                page==AVATAR || page==CLOSET || page==ROOM || page==COLLECTIBLES || page==SHOP ||
                 page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
                 page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
             stage.addView(new PlaylumiSkyView(this),
@@ -1038,6 +1066,7 @@ public class MainActivity extends Activity {
             case ROOM_CATS: showRoomCats();break;
             case ROOM_ITEMS: showRoomItems();break;
             case TROPHY_WORLDS: showTrophyWorlds();break;
+            case COLLECTIBLES: showCollectibles();break;
             case TROPHY_CATS: showTrophyCats();break;
             case STORY_LIBRARY: showStoryLibrary();break;
             case STORY_PLAY: showStoryPlay();break;
@@ -1181,14 +1210,14 @@ public class MainActivity extends Activity {
                     // Already in the village.
                     break;
                 case PlaylumiVillageView.COLLECTION:
-                    move(TROPHY_WORLDS);
+                    move(COLLECTIBLES);
                     break;
                 case PlaylumiVillageView.PROFILE:
                     move(PROFILES);
                     break;
                 default:break;
             }
-        },activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar());
+        },activeProfile,wardrobe==null?0:wardrobe.stars(),chosenAvatar(),wardrobe==null?null:wardrobe.equippedItems());
         // The world takes the complete usable screen; no ScrollView, blank strip,
         // clipped bottom buttons, or duplicate white space below the illustration.
         stage.removeView(scroller);
@@ -1391,7 +1420,8 @@ public class MainActivity extends Activity {
             choice.setOnClickListener(v->{
                 if(interactive!=round||page!=INTERACTIVE||moving||round.solved())return;
                 if(round.choose(option)){
-                    sound.good();interactiveMessage="Goed zo!";
+                    if(round.solved())sound.collect();else sound.good();interactiveMessage="Goed zo!";
+                    if(playPal!=null)playPal.react(1);
                     built.setText(interactiveBuilt(round));
                     count.setText(round.progress()+"/"+round.total());
                     trail.showProgress(round.progress());saveLibraryInteractive();
@@ -1406,8 +1436,9 @@ public class MainActivity extends Activity {
                         interactiveMessage="🌟 Knap gedaan! Alles klaar!";
                         for(Button b:buttons)b.setEnabled(false);
                         finish.setVisibility(View.VISIBLE);
+                        PlaylumiDelight.sprinkle(stage,built);
                     }
-                }else{sound.mistake();interactiveMessage="Probeer nog eens!";}
+                }else{sound.mistake();interactiveMessage="Probeer nog eens!";PlaylumiDelight.wiggle(choice);}
                 message.setText(interactiveMessage);
             });
         }
@@ -1501,6 +1532,7 @@ public class MainActivity extends Activity {
                     title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setMinHeight(dp(28));card.addView(title);
                     int n=PlaylumiGameCatalog.filter(age,worldIndex,favorites).size();
                     card.addView(text(n+(n==1?" spel":" spellen")+"  ›",13,0xffffde9e));
+                    card.addView(text("✦ "+PlaylumiCollection.unlocked(collectionProgress(worldIndex))+"/3 schatten",12,0xffe8d6ff));
                     libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[worldIndex]+" "+n+" spellen",()->libraryFilter(worldIndex));
                     LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
                     lp.setMargins(dp(4),dp(4),dp(4),dp(4));row.addView(card,lp);
@@ -2239,6 +2271,8 @@ public class MainActivity extends Activity {
         characterHero(194);
         addText(PlaylumiWorldStyle.AVATAR_NAMES[chosenAvatar()],24,0xff57308c,1,5);
         addText("🌟 "+wardrobe.stars()+" speelsterren",20,0xff715021,2,9);
+        Button style=tile("Mijn kledingkast","Kies kleuren, hoedjes en accessoires",0xffe9dcff,88);
+        addTile(style,5);style.setOnClickListener(v->move(CLOSET));
         Button choose=tile("Kies je maatje","Verander alleen je karakter",0xffe4d4ff,88);
         addTile(choose,6);choose.setOnClickListener(v->move(PROFILES));
         Button stageButton=tile("🎭 Danspodium","Laat je maatje bewegen",0xffffe8b8,96);
@@ -2247,14 +2281,147 @@ public class MainActivity extends Activity {
         home.setOnClickListener(v->move(ROOM));
         addTwo(stageButton,home,96);
         Button trophies=tile("🏆 Mijn badges","Bekijk al jouw beloningen",0xffffeab9,84);
-        addTile(trophies,6);trophies.setOnClickListener(v->move(TROPHY_WORLDS));
+        addTile(trophies,6);trophies.setOnClickListener(v->{villageLaunch=PlaylumiVillageView.FRIEND;move(TROPHY_WORLDS);});
+        Button album=tile("✦ Mijn schatten",collectionTotal()+" van 18 verzameld",0xffffe4bd,82);
+        addTile(album,5);album.setOnClickListener(v->move(COLLECTIBLES));
     }
-    private void showCloset() {showAvatar();}
+    private void invalidateAvatars(View view){
+        if(view instanceof PlaylumiAvatar)view.invalidate();
+        if(view instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)view;
+            for(int i=0;i<group.getChildCount();i++)invalidateAvatars(group.getChildAt(i));
+        }
+    }
+    private void showCloset(){
+        header("Mijn kledingkast","Maak jouw maatje helemaal uniek.");
+        characterHero(180);
+        final TextView balance=text("★ "+wardrobe.stars()+" speelsterren",22,0xff715021);
+        addWidget(balance,2,4);
+        final TextView owned=text((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld",14,SUB);
+        addWidget(owned,0,5);
+        final TextView feedback=text("Kies een kledingstuk. Gratis wisselen als je het al hebt!",15,SUB);
+        feedback.setMinHeight(dp(44));feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        addWidget(feedback,0,4);
+        final LinearLayout items=new LinearLayout(this);items.setOrientation(LinearLayout.VERTICAL);
+        final Button[] tabs=new Button[PlaylumiWardrobe.SLOTS];
+        final Runnable render=()->{
+            for(int i=0;i<tabs.length;i++)if(tabs[i]!=null){
+                tabs[i].setAlpha(i==selectedSlot?1f:.82f);
+                tabs[i].setSelected(i==selectedSlot);
+                tabs[i].setContentDescription(PlaylumiWardrobe.SLOT_NAMES[i]+(i==selectedSlot?", geselecteerd":""));
+            }
+            renderClosetItems(items,balance,owned,feedback);
+        };
+        for(int first=0;first<PlaylumiWardrobe.SLOTS;first+=3){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
+            for(int i=first;i<first+3;i++){
+                final int slot=i;
+                Button tab=tile(PlaylumiWardrobe.SLOT_ICONS[i]+" "+PlaylumiWardrobe.SLOT_NAMES[i],"",COLORS[i],60);
+                tabs[i]=tab;tab.setTextSize(14);
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(tab,lp);
+                tab.setOnClickListener(v->{selectedSlot=slot;sound.tap();feedback.setText("Kies jouw favoriet.");render.run();});
+            }
+            addWidget(row,0,0);
+        }
+        addWidget(items,5,8);selectedSlot=Math.max(0,Math.min(PlaylumiWardrobe.SLOTS-1,selectedSlot));render.run();
+        Button done=tile("Klaar!","Terug naar je maatje",0xffd5f5df,70);
+        addTile(done,5);done.setOnClickListener(v->move(AVATAR));
+    }
+    private void renderClosetItems(LinearLayout items,TextView balance,TextView owned,TextView feedback){
+        items.removeAllViews();
+        final int slot=selectedSlot,columns=getResources().getConfiguration().screenWidthDp>=600?3:2;
+        final Button[] choices=new Button[PlaylumiWardrobe.OPTIONS];
+        final Runnable refresh=()->{
+            balance.setText("★ "+wardrobe.stars()+" speelsterren");
+            owned.setText((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld");
+            for(int i=0;i<choices.length;i++){
+                Button button=choices[i];if(button==null)continue;
+                String label=PlaylumiWardrobe.ITEM_ICONS[slot][i]+" "+PlaylumiWardrobe.ITEM_NAMES[slot][i];
+                boolean equipped=wardrobe.equipped(slot)==i,unlocked=wardrobe.owned(slot,i);
+                String detail=equipped?"✓ In gebruik":unlocked?"In bezit":"★ "+wardrobe.price(slot,i)+" sterren";
+                button.setText(PlaylumiType.tileText(label,detail,false));
+                button.setContentDescription(label+" "+detail);
+                button.setSelected(equipped);button.setAlpha(equipped?1f:unlocked?.95f:.84f);
+            }
+            invalidateAvatars(root);
+        };
+        for(int first=0;first<PlaylumiWardrobe.OPTIONS;first+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+            for(int j=0;j<columns;j++){
+                int i=first+j;
+                if(i>=PlaylumiWardrobe.OPTIONS){row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));continue;}
+                final int item=i;
+                Button b=tile(PlaylumiWardrobe.ITEM_NAMES[slot][item],"",COLORS[slot],86);
+                b.setMinHeight(dp(88));b.setTextSize(16);choices[item]=b;
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(4),dp(3),dp(4));row.addView(b,lp);
+                final Runnable equip=()->{
+                    if(page!=CLOSET||selectedSlot!=slot)return;
+                    int result=wardrobe.buyOrEquip(slot,item);
+                    if(result==PlaylumiWardrobe.NOT_ENOUGH){feedback.setText("Nog niet genoeg speelsterren. Speel rustig verder!");return;}
+                    saveWardrobe();refresh.run();
+                    feedback.setText(result==PlaylumiWardrobe.PURCHASED?"✨ Nieuw accessoire vrijgespeeld!":"✨ Wat staat dat mooi!");
+                    sound.equip();
+                    if(character!=null){character.wave();PlaylumiDelight.sprinkle(stage,character);}
+                };
+                b.setOnClickListener(v->{
+                    if(wardrobe.owned(slot,item)){equip.run();return;}
+                    int price=wardrobe.price(slot,item);
+                    if(wardrobe.stars()<price){feedback.setText("Je hebt nog "+(price-wardrobe.stars())+" speelsterren nodig.");return;}
+                    new android.app.AlertDialog.Builder(this).setTitle(PlaylumiWardrobe.ITEM_NAMES[slot][item])
+                            .setMessage("Vrijspelen voor "+price+" speelsterren?").setNegativeButton("Nog niet",null)
+                            .setPositiveButton("Vrijspelen",(d,which)->equip.run()).show();
+                });
+            }
+            items.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+        refresh.run();
+    }
+    private void showCollectibles(){
+        header("Mijn schatten","Ontdek de zes werelden en verzamel magische schatten.");
+        addText("✦ "+collectionTotal()+" van 18 schatten",23,0xff715021,6,5);
+        addText("Verdien ze met goede antwoorden en voltooide opdrachten. Geen sterren uitgeven!",15,SUB,0,8);
+        int columns=getResources().getConfiguration().screenWidthDp>=600?2:1;
+        for(int first=0;first<6;first+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+            for(int i=first;i<Math.min(first+columns,6);i++){
+                final int w=i,progress=collectionProgress(w);
+                LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
+                panel.setPadding(dp(9),dp(7),dp(9),dp(8));
+                GradientDrawable bg=rounded(0xfffff6ed,18);bg.setStroke(dp(2),0xffc5a4e3);panel.setBackground(bg);
+                panel.addView(PlaylumiMagicArt.hero(this,w),new LinearLayout.LayoutParams(-1,dp(86)));
+                panel.addView(text(PlaylumiWorldStyle.NAMES[w],19,TEXT));
+                panel.addView(text(PlaylumiCollection.unlocked(progress)+" van 3 schatten",14,0xff7651a4));
+                LinearLayout treasures=new LinearLayout(this);treasures.setGravity(Gravity.CENTER);
+                for(int n=0;n<3;n++){
+                    boolean unlocked=progress>=PlaylumiCollection.GOALS[n];
+                    LinearLayout tile=new LinearLayout(this);tile.setOrientation(LinearLayout.VERTICAL);tile.setGravity(Gravity.CENTER);
+                    tile.setPadding(dp(3),dp(5),dp(3),dp(5));
+                    tile.setBackground(rounded(unlocked?0xffffe6b2:0xffeee7f5,12));
+                    tile.addView(text(unlocked?PlaylumiCollection.ICONS[w][n]:"◇",29,unlocked?0xff9c651c:0xffb4a5c3));
+                    tile.addView(text(unlocked?PlaylumiCollection.NAMES[w][n]:progress+"/"+PlaylumiCollection.GOALS[n],12,TEXT));
+                    tile.setContentDescription(PlaylumiCollection.NAMES[w][n]+(unlocked?", verzameld":", nog "+(PlaylumiCollection.GOALS[n]-progress)+" goede antwoorden"));
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);treasures.addView(tile,lp);
+                    if(unlocked)tile.setOnClickListener(v->{sound.collect();PlaylumiDelight.sprinkle(stage,v);});
+                }
+                panel.addView(treasures,new LinearLayout.LayoutParams(-1,-2));
+                Button play=tile("Speel in deze wereld","",COLORS[w],58);panel.addView(play,new LinearLayout.LayoutParams(-1,-2));
+                play.setOnClickListener(v->openLibrary(w));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1f);cp.setMargins(dp(4),dp(5),dp(4),dp(5));row.addView(panel,cp);
+            }
+            addWidget(row,0,0);
+        }
+        Button badges=tile("🏆 Mijn badges","Bekijk jouw bestaande prestaties",0xffffe8b8,78);
+        addTile(badges,5);badges.setOnClickListener(v->{villageLaunch=PlaylumiVillageView.COLLECTION;move(TROPHY_WORLDS);});
+    }
     private void showShop() {
         header("Mijn beloningen","Speel en verzamel sterren!");
         characterHero(166);
         addText("★ "+wardrobe.stars()+" speelsterren",30,0xff715021,3,7);
-        addText("Gebruik je sterren voor de inrichting van je kamer.",16,SUB,2,10);
+        addText("Gebruik je speelsterren voor je maatje en kamer.",16,SUB,2,10);
+        Button closet=tile("Mijn kledingkast","Personaliseer je maatje met accessoires",0xffe8dcff,88);
+        addTile(closet,6);closet.setOnClickListener(v->move(CLOSET));
+        Button treasures=tile("✦ Mijn schatten",collectionTotal()+" van 18 verzameld",0xffffe4bd,88);
+        addTile(treasures,6);treasures.setOnClickListener(v->move(COLLECTIBLES));
         Button roomButton=tile("🏠 Mijn kamer","Versier jouw kamer met speelsterren",0xffd9ecff,92);
         addTile(roomButton,7);roomButton.setOnClickListener(v->move(ROOM));
         Button badges=tile("🏆 Mijn badges","Bekijk jouw prestaties",0xffffe8b8,84);
@@ -2762,7 +2929,7 @@ public class MainActivity extends Activity {
             boolean first=!prefs().getBoolean("drawing_saved_once",false);
             if(first) {
                 prefs().edit().putBoolean("drawing_saved_once",true).apply();
-                wardrobe.earnCreativeBonus();saveWardrobe();
+                wardrobe.earnCreativeBonus();saveWardrobe();recordWorldProgress(5,1);
                 drawingInfo.setText("🌟 Kunstwerk bewaard! +9 speelsterren!");
                 FrameLayout current=stage;
                 current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,10);});
@@ -2924,7 +3091,7 @@ public class MainActivity extends Activity {
     private void showProfiles() {
         header("Mijn maatje","Kies wie je meeneemt op avontuur.");
         int current=chosenAvatar();
-        PlaylumiAvatar preview=new PlaylumiAvatar(this,current);
+        PlaylumiAvatar preview=new PlaylumiAvatar(this,current,wardrobe);
         LinearLayout.LayoutParams hero=new LinearLayout.LayoutParams(dp(162),dp(162));
         hero.gravity=Gravity.CENTER;hero.setMargins(0,dp(4),0,dp(4));
         root.addView(preview,hero);
@@ -2944,7 +3111,7 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1);
                 cp.setMargins(dp(4),dp(4),dp(4),dp(4));
                 row.addView(card,cp);
-                PlaylumiAvatar icon=new PlaylumiAvatar(this,choice);
+                PlaylumiAvatar icon=new PlaylumiAvatar(this,choice,wardrobe);
                 card.addView(icon,new LinearLayout.LayoutParams(dp(92),dp(92)));
                 TextView name=text(PlaylumiWorldStyle.AVATAR_NAMES[choice],18,TEXT);
                 card.addView(name,new LinearLayout.LayoutParams(-1,-2));
