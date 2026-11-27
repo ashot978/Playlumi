@@ -22,6 +22,7 @@ public final class PlaylumiQuizCoach {
     }
     public static String explain(int mode,int variant,LearningGame.Round round){
         if(!round.isSolved())return "";
+        if(mode==PlaylumiOddOneOut.MODE&&variant==PlaylumiOddOneOut.VARIANT)return PlaylumiOddOneOut.explain(round);
         if(mode==PlaylumiFocusedCounting.MODE&&variant==PlaylumiFocusedCounting.VARIANT)return PlaylumiFocusedCounting.explain(round);
         if(mode==PlaylumiWeekdays.MODE&&variant==PlaylumiWeekdays.VARIANT)return PlaylumiWeekdays.explain(round);
         if(mode==PlaylumiReadingPractice.MODE&&variant==PlaylumiReadingPractice.VARIANT)return PlaylumiReadingPractice.explain(round);

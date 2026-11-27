@@ -8,12 +8,12 @@ De app werkt lokaal en zonder accounts, advertenties, trackers of extra toestemm
 
 | Bouw | Status |
 | --- | --- |
-| **0.109 · 601010** | Laatst geverifieerde test-APK, gebouwd vanaf [c314008](https://github.com/ashot978/Playlumi/commit/c31400887005acd24c1d418eb6084f8156dbe9b5), privé ondertekend met het oorspronkelijke releasecertificaat. |
-| **0.110 · 601011** | In ontwikkeling: meer tekengereedschap, drie aanvullende leerroutes en gerichte interface-afwerking. De definitieve bron krijgt eigen build-, test-, update- en handtekeningcontroles. |
+| **0.110 · 601011** | Laatst geverifieerde testbouw, vanaf [50230b8](https://github.com/ashot978/Playlumi/commit/50230b814b6ac9af35fbb1d6464aa831e37e5123): uitgebreid tekenen, drie nieuwe leerroutes en interface-afwerking. |
+| **0.111 · 601012** | Android-bouw geverifieerd: drie lokale spelers via de ouderzone, een eigen leeftijd en voortgang per speler, en ‘Wat hoort er niet bij?’. Native acceptatie loopt; de definitieve resultaten staan in [PR #95](https://github.com/ashot978/Playlumi/pull/95). |
 
-Voor 0.109 zijn de [Android-build en volledige tests](https://github.com/ashot978/Playlumi/actions/runs/46014835510) en de [telefoon- en Fold-emulatorproeven](https://github.com/ashot978/Playlumi/actions/runs/46014835542) geslaagd: **230 unit-tests in 53 suites**, **0 lintfouten en 168 waarschuwingen**, en **43 emulatorchecks**. [PR 93](https://github.com/ashot978/Playlumi/pull/93) is een concept. Een emulatorproef is geen bediening op een fysiek Samsung Fold-toestel; die acceptatie staat nog open. Dit project bevindt zich in testontwikkeling. Een test-APK geeft geen opdracht tot een merge of Play Store-publicatie.
+Voor 0.110 zijn de [Android-build en volledige tests](https://github.com/ashot978/Playlumi/actions/runs/46038701981) en de [telefoon- en Fold-emulatorproeven](https://github.com/ashot978/Playlumi/actions/runs/46038701925) geslaagd: **264 unit-tests in 56 suites**, **0 lintfouten en 176 waarschuwingen**, en **56 native acceptatiegroepen**. Daarbij zijn echt gumwerk, Undo/Redo, aparte profielbestanden en behoud van oude tekeningen gecontroleerd. Fysieke Samsung Fold-acceptatie staat nog open. Dit project bevindt zich in testontwikkeling; een test-APK geeft geen opdracht tot een merge of Play Store-publicatie.
 
-Zie [de geverifieerde wijzigingen in 0.109](docs/RELEASE-0.109.md), [het werk aan 0.110](docs/RELEASE-0.110.md) en [de roadmap met bewijs en open controles](docs/ROADMAP-1.0.md).
+Zie [de geverifieerde wijzigingen in 0.110](docs/RELEASE-0.110.md), [het werk aan 0.111](docs/RELEASE-0.111.md) en [de roadmap met bewijs en open controles](docs/ROADMAP-1.0.md).
 
 ## Spelen en ontdekken
 
@@ -26,11 +26,11 @@ Zie [de geverifieerde wijzigingen in 0.109](docs/RELEASE-0.109.md), [het werk aa
 | Speelplein | Interactieve spellen en oefeningen met handelingen en alledaagse situaties. |
 | Kleurentuin | Kleuren, tekenen en creatieve activiteiten. |
 
-De geverifieerde catalogus van 0.109 bevat **25, 43 en 68 spelroutes** voor de drie leeftijdsgroepen. Zoeken, favorieten en een lijst van begonnen spellen helpen bij het kiezen. Speelideeën geeft drie concrete keuzes uit de werkelijke speelgeschiedenis, met voorrang voor een begonnen ronde. Bestaande spelcodes en opgeslagen rondes blijven bij uitbreiding behouden.
+De geverifieerde catalogus van 0.110 bevat **26, 45 en 71 spelroutes** voor de drie leeftijdsgroepen. Zoeken, favorieten en een lijst van begonnen spellen helpen bij het kiezen. Speelideeën geeft drie concrete keuzes uit de werkelijke speelgeschiedenis, met voorrang voor een begonnen ronde. Bestaande spelcodes en opgeslagen rondes blijven bij uitbreiding behouden.
 
 Lumi's stad toont zeven verschillende plekken als gebouw, park, podium, brug of monument zodra de bijbehorende prestatie daadwerkelijk verdiend is. Kleding en vriendjes gebruiken de bestaande eigendomslijst. Drie optionele dagopdrachten wijzen naar passende spellen; behaalde cadeaus verdwijnen niet wanneer een dag wordt overgeslagen. Opnieuw spelen telt mee voor zichtbare herhalingsmijlpalen zonder oude, niet geregistreerde rondes te verzinnen.
 
-Tekeningen worden lokaal per profiel bewaard, ook bij het huisje of achtergrondgebruik. De actieve tekenlijnen blijven na bewaren terug te draaien. Automatisch bewaren geeft geen extra sterren. Het ouderoverzicht toont werkelijk getelde rondes en begonnen oefeningen; de ouderpoort sluit opnieuw na achtergrondgebruik of opnieuw maken van het scherm.
+Tekeningen worden lokaal per profiel bewaard, ook bij het huisje of achtergrondgebruik. Potlood, gum en drie lijndiktes werken op nieuwe en bewaarde tekeningen. De laatste 32 acties blijven op het actieve tekenblad terug te draaien en opnieuw uit te voeren, ook na bewaren. Automatisch bewaren geeft geen extra sterren. Het ouderoverzicht toont werkelijk getelde rondes en begonnen oefeningen; de ouderpoort sluit opnieuw na achtergrondgebruik of opnieuw maken van het scherm.
 
 De oorspronkelijke geïllustreerde startpagina blijft behouden. Native Android-bediening maakt gebouwen en acties afzonderlijk bereikbaar. Brede schermen hebben een aangepaste indeling; de stadskaart houdt rekening met de beschikbare breedte en tekstgrootte. De app voegt geen gesproken instructies toe. Muziek, instelbare feedback en Android-toegankelijkheid blijven afzonderlijke functies.
 

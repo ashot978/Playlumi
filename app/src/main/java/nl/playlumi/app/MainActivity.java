@@ -111,8 +111,9 @@ public class MainActivity extends Activity {
     private PlaylumiUsage usage;
     private long activeSince;
     private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
-    // Keep the last-used legacy storage slot; changing a character never switches data.
+    // This Activity keeps one storage identity until it is recreated for another player.
     private int activeProfile;
+    private boolean profileSwitchPending;
     // Tracks which village building started a screen, so Back returns logically.
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
@@ -169,7 +170,8 @@ public class MainActivity extends Activity {
         activeProfile=getSharedPreferences("playlumi-global",MODE_PRIVATE)
                 .getInt("active_profile",0);
         activeProfile=PlaylumiProfiles.safe(activeProfile);
-        if(state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile)
+        final boolean changedProfile=state!=null && state.getInt("activeProfile",activeProfile)!=activeProfile;
+        if(changedProfile)
             state=null; // Switching children must not restore the former child's state.
         SharedPreferences prefs=prefs();
         sound=new PlaylumiAudio(this,prefs.getBoolean("sound_on",true));
@@ -184,6 +186,7 @@ public class MainActivity extends Activity {
         adultA=10+new Random().nextInt(8);
         adultB=8+new Random().nextInt(8);
         age=prefs.getInt("chosen_age",-1);
+        if(!PlaylumiProfiles.hasChosenAge(age))age=-1;
         lifetimeCount=prefs.getInt("completed_all",0);
         int mode=prefs.getInt("game_mode",0);
         int variant=prefs.getInt("game_variant",0);
@@ -191,7 +194,8 @@ public class MainActivity extends Activity {
         world=Math.max(0,Math.min(2,mode/8));
         page=age<0?AGE:HOME;
         if(state!=null) {
-            age=state.getInt("age",age);
+            int restoredAge=state.getInt("age",age);
+            if(PlaylumiProfiles.hasChosenAge(restoredAge))age=restoredAge;
             mode=state.getInt("mode",mode);
             variant=state.getInt("variant",variant);
             difficulty=state.getInt("difficulty",difficulty);
@@ -377,7 +381,7 @@ public class MainActivity extends Activity {
         // Debug-only test entrance: isolate real library/quiz interactions from
         // emulator launcher and illustrated village navigation failures.
         // Neither entrance is available in a non-debuggable production release.
-        if(state==null&&(getApplicationInfo().flags &
+        if(state==null&&!changedProfile&&(getApplicationInfo().flags &
                 android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0 && getIntent()!=null) {
             int ciWorld=getIntent().getIntExtra("playlumi_ci_library",-1);
             if(getIntent().getBooleanExtra("playlumi_ci_home",false)||PlaylumiWorldStyle.valid(ciWorld)){
@@ -511,7 +515,7 @@ public class MainActivity extends Activity {
     }
     @Override public void onBackPressed() {
         if(page==AGE) {
-            if(prefs().contains("chosen_age"))move(HOME_OPTIONS);
+            if(PlaylumiProfiles.hasChosenAge(prefs().getInt("chosen_age",-1)))move(HOME_OPTIONS);
             else super.onBackPressed();
             return;
         }
@@ -569,7 +573,7 @@ public class MainActivity extends Activity {
         if(page==PARENT_WORLDS || page==PARENT_SETTINGS) {move(PARENT_HOME);return;}
         if(page==PARENT_STATS) {move(PARENT_WORLDS);return;}
         if(page==BREAK_SCREEN) {move(HOME);return;}
-        if(page==PROFILES) {move(personalReturn==AVATAR?AVATAR:HOME);return;}
+        if(page==PROFILES) {move(PARENT_HOME);return;}
         if(page==BADGES && badgesFromTrophy) {move(TROPHY_CATS);return;}
         if(page==PLAY && storyStage>=0) {move(ADVENTURE_MAP);return;}
         if(page==PLAY && quickCategoryPlay) {move(DETAIL);return;}
@@ -585,7 +589,10 @@ public class MainActivity extends Activity {
         return c.get(Calendar.YEAR)*10000+(c.get(Calendar.MONTH)+1)*100+c.get(Calendar.DAY_OF_MONTH);
     }
     private void saveUsage() {
-        if(usage==null)return;
+        saveUsage(false);
+    }
+    private boolean saveUsage(boolean synchronous) {
+        if(usage==null)return true;
         int day=dayStamp();
         if(prefs().getInt("usage_day",-1)!=day)usage.startNewDay();
         if(activeSince>0) {
@@ -594,13 +601,19 @@ public class MainActivity extends Activity {
             usage.addSeconds((int)Math.min(86400L,elapsed));
             activeSince=now;
         }
-        prefs().edit().putInt("usage_day",day).putInt("usage_seconds",usage.seconds())
+        SharedPreferences.Editor edit=prefs().edit().putInt("usage_day",day).putInt("usage_seconds",usage.seconds())
                 .putInt("usage_limit",usage.limit())
-                .putBoolean("usage_break_shown",usage.breakShown()).apply();
+                .putBoolean("usage_break_shown",usage.breakShown());
+        if(synchronous)return edit.commit();
+        edit.apply();return true;
     }
     private SharedPreferences prefs() {
-        return activeProfile==0?getPreferences(MODE_PRIVATE):
-                getSharedPreferences(PlaylumiProfiles.preferences(activeProfile),MODE_PRIVATE);
+        return profilePrefs(activeProfile);
+    }
+    private SharedPreferences profilePrefs(int profile) {
+        PlaylumiProfiles.validate(profile);
+        return profile==0?getPreferences(MODE_PRIVATE):
+                getSharedPreferences(PlaylumiProfiles.preferences(profile),MODE_PRIVATE);
     }
     private void saveRecent() { prefs().edit().putString("recent_questions",recent.serialize()).apply(); }
     private void stageAdaptive(SharedPreferences.Editor edit,int cat) {
@@ -1174,7 +1187,7 @@ public class MainActivity extends Activity {
         barBg.setStroke(dp(2),0xffd4b3f2);
         row.setBackground(theme>=0?PlaylumiMagicArt.primary(this):barBg);
         row.setElevation(dp(5));
-        if(page!=HOME && (page!=AGE || prefs().contains("chosen_age"))) {
+        if(page!=HOME && (page!=AGE || PlaylumiProfiles.hasChosenAge(prefs().getInt("chosen_age",-1)))) {
             TextView back=text("❮",22,0xffffe6a7);
             back.setGravity(Gravity.CENTER);
             back.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),
@@ -1256,6 +1269,7 @@ public class MainActivity extends Activity {
     private void showPage() {
         autoAdvanceToken++;melodyPreviewToken++;autoRoundVisible=false;
         renderedCalendarDay=PlaylumiPlayDays.today();
+        if(page==HOME&&!PlaylumiProfiles.hasChosenAge(age))page=AGE;
         // Restore old navigation destinations directly into the new library.
         if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
         // Preserve the old avatar choice in storage but always play as Lumi.
@@ -1442,7 +1456,8 @@ public class MainActivity extends Activity {
         }
     }
     private void move(int next) {
-        if(moving)return;
+        if(moving||profileSwitchPending)return;
+        if(next==HOME&&!PlaylumiProfiles.hasChosenAge(age))next=AGE;
         if(next==DAILY&&(page==HOME||page==CITY||page==AVATAR||page==LIBRARY))dailyReturn=page;
         if(next==IDEAS&&(page==LIBRARY||page==CITY))ideasReturn=page;
         autoAdvanceToken++;melodyPreviewToken++;
@@ -1457,12 +1472,12 @@ public class MainActivity extends Activity {
             return;
         }
         if(next==HOME)libraryReturn=false;
-        if(next!=PARENT_GATE&&next!=PARENT_HOME&&next!=PARENT_WORLDS&&next!=PARENT_STATS&&next!=PARENT_SETTINGS)
+        if(next!=PARENT_GATE&&next!=PARENT_HOME&&next!=PARENT_WORLDS&&next!=PARENT_STATS&&next!=PARENT_SETTINGS&&next!=PROFILES)
             parentAllowed=false;
         saveUsage();
         if(usage!=null && page!=BREAK_SCREEN && next!=BREAK_SCREEN &&
                 next!=PARENT_GATE && next!=PARENT_HOME &&
-                next!=PARENT_WORLDS && next!=PARENT_STATS && next!=PARENT_SETTINGS &&
+                next!=PARENT_WORLDS && next!=PARENT_STATS && next!=PARENT_SETTINGS && next!=PROFILES &&
                 usage.shouldSuggestBreak()) {
             breakReturn=next;next=BREAK_SCREEN;saveUsage();
         }
@@ -1472,7 +1487,7 @@ public class MainActivity extends Activity {
         moving=false;page=next;showPage();
     }
     private void showAge() {
-        header("🎈 Hoe oud ben jij?","Kies jouw leeftijd. We onthouden dit!");
+        header("🎈 Hoe oud ben jij?",PlaylumiProfiles.label(activeProfile)+" · Kies jouw leeftijd. We onthouden dit!");
         hero(105);
         String[] descriptions={"Ontdek vormen en kleuren","Leer woorden en tellen","Meer uitdaging en puzzels"};
         String[] emoji={"🐣","🦋","🚀"};
@@ -1485,6 +1500,11 @@ public class MainActivity extends Activity {
                 prefs().edit().putInt("chosen_age",age).apply();
                 move(HOME);
             });
+        }
+        if(activeProfile>0&&!PlaylumiProfiles.hasChosenAge(prefs().getInt("chosen_age",-1))){
+            Button players=tile("Andere speler (voor ouders)","Een ouder kan terug naar een andere speler",0xffe8dcff,72);
+            players.setContentDescription("Andere speler (voor ouders)");addTile(players,8);
+            players.setOnClickListener(v->requestParents());
         }
     }
     private void startEasyPlay() {
@@ -1524,10 +1544,7 @@ public class MainActivity extends Activity {
                 move(AVATAR);
                 break;
             case PlaylumiVillageView.PARENTS:
-                parentAllowed=false;
-                adultA=10+new Random().nextInt(8);
-                adultB=8+new Random().nextInt(8);
-                move(PARENT_GATE);
+                requestParents();
                 break;
             case PlaylumiVillageView.SETTINGS:
                 move(HOME_OPTIONS);
@@ -1701,7 +1718,7 @@ public class MainActivity extends Activity {
     }
     private LinearLayout wideHomeProfile(int width,int stars,int discovered){
         LinearLayout panel=homePanel();panel.setGravity(Gravity.CENTER_HORIZONTAL);
-        homeAdd(panel,text("Lumi",17,PlaylumiMagicArt.GOLD),0,3);
+        homeAdd(panel,text(PlaylumiProfiles.ICONS[activeProfile]+" "+PlaylumiProfiles.label(activeProfile),17,PlaylumiMagicArt.GOLD),0,3);
         PlaylumiAvatar pal=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
         int size=width<650?80:width<1100?96:112;
         LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(size),dp(size));pp.gravity=Gravity.CENTER;
@@ -2843,8 +2860,8 @@ public class MainActivity extends Activity {
         }
     }
     private void showHomeOptions() {
-        header("⚙️ Instellingen","Kies wat bij jou past.");
-        Button ageButton=tile("🎂 Leeftijd: "+AGES[age],"Kies je leeftijd",0xfff1e9ff,91);
+        header("⚙️ Instellingen",PlaylumiProfiles.label(activeProfile)+" · Kies wat bij jou past.");
+        Button ageButton=tile("🎂 Leeftijd: "+PlaylumiProfiles.ageLabel(age),"Kies je leeftijd",0xfff1e9ff,91);
         addTile(ageButton,6);
         ageButton.setOnClickListener(v->move(AGE));
         Button profile=tile("✦ Lumi de superster","Kleding, huis en vriendjes",0xffdeeeff,91);
@@ -2862,12 +2879,7 @@ public class MainActivity extends Activity {
         Button parents=tile("👨‍👩‍👧 Voor ouders","Voortgang en extra instellingen",
                 0xffffe9ca,91);
         addTile(parents,6);
-        parents.setOnClickListener(v->{
-            parentAllowed=false;
-            adultA=10+new Random().nextInt(8);
-            adultB=8+new Random().nextInt(8);
-            move(PARENT_GATE);
-        });
+        parents.setOnClickListener(v->requestParents());
     }
     private void showCategories() {
         header(WORLD_ICONS[world]+" "+WORLDS[world],"Kies één spelletje");
@@ -3083,8 +3095,9 @@ public class MainActivity extends Activity {
             boolean reading=mode==PlaylumiReadingPractice.MODE&&game.variant()==PlaylumiReadingPractice.VARIANT;
             boolean countingShapes=mode==PlaylumiFocusedCounting.MODE&&game.variant()==PlaylumiFocusedCounting.VARIANT;
             boolean weekdays=mode==PlaylumiWeekdays.MODE&&game.variant()==PlaylumiWeekdays.VARIANT;
+            boolean oddOneOut=mode==PlaylumiOddOneOut.MODE&&game.variant()==PlaylumiOddOneOut.VARIANT;
             boolean shortStory=reading||mode==PlaylumiThinkingPractice.DAILY_THINGS&&game.variant()==PlaylumiThinkingPractice.AFTER;
-            int glyphSize=shortStory?22:countingShapes?(game.level()==0?38:30):weekdays?28:shortDisplay?(wide?70:58):
+            int glyphSize=shortStory?22:countingShapes?(game.level()==0?38:30):weekdays?28:oddOneOut?(round.display.length()>15?22:26):shortDisplay?(wide?70:58):
                     mode==ExtraGames.MATH&&game.variant()!=4?(game.variant()>=PlaylumiAdvancedMath.TABLES?(wide?42:32):(wide?48:36)):
                     round.display.length()>22?25:round.display.length()>12?31:40;
             TextView picture=text(round.visibleDisplay(),glyphSize,PlaylumiMagicArt.INK);
@@ -4351,7 +4364,12 @@ public class MainActivity extends Activity {
                 drawingInfo.setText(names[selected]+" gekozen. Teken maar!");sound.tap();
             });
         }
-        drawingRows(controls,panelWidth>=270&&fontScale<=1.25f?3:2,drawingColors);
+        // Fit complete colour names, including the selected checkmark, at the user's text size.
+        float widestColor=0;
+        for(int i=0;i<names.length;i++)
+            widestColor=Math.max(widestColor,drawingColors[i].getPaint().measureText("✓ "+names[i]));
+        int colorWidth=(int)Math.ceil(widestColor/getResources().getDisplayMetrics().density)+24;
+        drawingRows(controls,Math.max(1,Math.min(3,panelWidth/Math.max(1,colorWidth))),drawingColors);
         drawingPencil=drawingChoice("✎ Potlood",0xffe6dfff);
         drawingEraser=drawingChoice("▱ Gum",0xffffe8d3);
         drawingPencil.setOnClickListener(v->{
@@ -4478,7 +4496,13 @@ public class MainActivity extends Activity {
 
 
     private boolean protectedParentPage(){
-        return page==PARENT_HOME||page==PARENT_WORLDS||page==PARENT_STATS||page==PARENT_SETTINGS;
+        return page==PARENT_HOME||page==PARENT_WORLDS||page==PARENT_STATS||page==PARENT_SETTINGS||page==PROFILES;
+    }
+    private void requestParents(){
+        parentAllowed=false;
+        adultA=10+new Random().nextInt(8);
+        adultB=8+new Random().nextInt(8);
+        move(PARENT_GATE);
     }
     private void showParentGate() {
         header("🔐 Alleen voor ouders","Een kleine rekensom om verder te gaan.");
@@ -4539,8 +4563,11 @@ public class MainActivity extends Activity {
         }
     }
     private void showParentHome() {
-        header("👨‍👩‍👧 Voor ouders","Inzicht en instellingen, alles blijft op dit toestel.");
+        header("👨‍👩‍👧 Voor ouders",PlaylumiProfiles.label(activeProfile)+" · "+PlaylumiProfiles.ageLabel(age)+". Alles blijft op dit toestel.");
         saveUsage();
+        Button players=tile("Spelers op dit toestel",PlaylumiProfiles.label(activeProfile)+" is actief · kies uit 3 eigen speelplekken",0xffe8dcff,88);
+        players.setContentDescription("Spelers op dit toestel");addTile(players,6);
+        players.setOnClickListener(v->move(PROFILES));
         int correct=0,attempts=0,badges=0;
         for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
             correct+=scores.get(i).correct;
@@ -4562,7 +4589,7 @@ public class MainActivity extends Activity {
         Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
         addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
                 .setTitle("Privacy en gegevens")
-                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Leeftijdskeuze, voortgang, favorieten, speelgegevens, Lumi's uiterlijk, daguitdagingen en tekeningen worden op dit toestel opgeslagen. Er is geen Playlumi-server. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen ook de verdiende beloningen.").setPositiveButton("Sluiten",null).show());
+                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Er zijn drie lokale spelers, elk met een eigen leeftijdskeuze, voortgang, favorieten, speelgegevens, Lumi's uiterlijk, daguitdagingen, instellingen en tekening. Wisselen kan via de ouderzone. Er is geen Playlumi-server. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen de gegevens en beloningen van alle spelers.").setPositiveButton("Sluiten",null).show());
         Button back=tile("🌈 Terug naar spelen","",0xffd4f3e0,85);
         addTile(back,11);
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
@@ -4602,7 +4629,7 @@ public class MainActivity extends Activity {
         });
     }
     private void showParentSettings() {
-        header("⚙️ Instellingen","Pas de speelervaring rustig aan.");
+        header("⚙️ Instellingen",PlaylumiProfiles.label(activeProfile)+" · Deze instellingen gelden voor deze speler.");
         Button soundButton=tile(sound.isEnabled()?"🔊 Geluid: aan":"🔇 Geluid: uit",
                 "Tik om te veranderen",0xffd6efff,90);
         addTile(soundButton,7);
@@ -4666,11 +4693,50 @@ public class MainActivity extends Activity {
 
 
     private void showProfiles() {
-        header("Lumi de superster","Lumi gaat altijd met je mee.");
-        personalSummary(false);
-        Button style=tile("🎀 Kledingkast","Kies Lumi's outfit",0xffe9dcff,82);addTile(style,5);
-        style.setOnClickListener(v->{closetReturn=AVATAR;move(CLOSET);});
-        Button city=tile("⌂ Naar Lumi's stad","Huis, vriendjes en prestaties",0xffd9f2d8,82);addTile(city,5);city.setOnClickListener(v->move(AVATAR));
+        header("Spelers op dit toestel","Elke speler heeft een eigen leeftijd, voortgang, kleding, instellingen en tekening.");
+        TextView status=text("Nu speelt "+PlaylumiProfiles.label(activeProfile)+". Kies een andere speler om te wisselen.",16,SUB);
+        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        addWidget(status,4,9);
+        for(int i=0;i<PlaylumiProfiles.COUNT;i++){
+            final int selected=i;
+            SharedPreferences stored=profilePrefs(i);
+            Integer stars=stored.contains("wardrobe_stars")?Integer.valueOf(stored.getInt("wardrobe_stars",0)):null;
+            String summary=PlaylumiProfiles.summary(stored.getInt("chosen_age",-1),stars);
+            boolean active=i==activeProfile;
+            Button player=tile((active?"✓ ":PlaylumiProfiles.ICONS[i]+" ")+PlaylumiProfiles.label(i),
+                    (active?"Nu actief · ":"")+summary,active?0xffd5f5df:COLORS[i],98);
+            player.setMaxLines(6);player.setSelected(active);player.setEnabled(!active);
+            player.setContentDescription(PlaylumiProfiles.label(i)+(active?", actief":", kies deze speler")+". "+summary);
+            addTile(player,7);
+            player.setOnClickListener(v->switchProfile(selected,status));
+        }
+        addText("Je huidige speler blijft bewaard. Je kunt hier altijd terugwisselen; er wordt niets gewist.",14,SUB,9,5);
+        Button back=tile("Terug naar de ouderzone","",0xffe9dcff,72);addTile(back,7);
+        back.setOnClickListener(v->move(PARENT_HOME));
+    }
+    private void switchProfile(int selected,TextView status){
+        PlaylumiProfiles.validate(selected);
+        if(profileSwitchPending||selected==activeProfile)return;
+        if(!parentAllowed||page!=PROFILES){requestParents();return;}
+        // All games save on the way into the parent zone. Flush this player's final
+        // usage and pending preference writes before publishing the next identity.
+        if(!saveUsage(true)){
+            status.setText("Bewaren lukte nog niet. Je huidige speler staat nog open. Probeer het opnieuw.");
+            return;
+        }
+        SharedPreferences global=getSharedPreferences("playlumi-global",MODE_PRIVATE);
+        if(!global.edit().putInt("active_profile",selected).commit()){
+            global.edit().putInt("active_profile",activeProfile).apply();
+            status.setText("Wisselen lukte nog niet. Je huidige speler blijft actief. Probeer het opnieuw.");
+            return;
+        }
+        profileSwitchPending=true;parentAllowed=false;
+        autoAdvanceToken++;melodyPreviewToken++;
+        calendarHandler.removeCallbacks(calendarRefresh);
+        activeSince=0;
+        // Never change activeProfile here: old lifecycle saves must keep their old
+        // destination. onCreate reads the new identity and rejects the old Bundle.
+        recreate();
     }
 
     /** A toy stage: children choose a single funny movement at a time. */

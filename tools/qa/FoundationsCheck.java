@@ -14,17 +14,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Independent counting, calendar and literal-text oracles for the 0.110 curriculum. */
+/** Independent counting, calendar, literal-text and category oracles for the current curriculum. */
 public final class FoundationsCheck {
     private static final String[] DAYS={"maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag","zondag"};
-    private static final String[] NEW_IDS={"0:0:0:5","0:0:16:5","1:0:6:5"};
-    // Sorted id=title pairs from the released 0.109 catalog, before these routes were added.
+    private static final String[] FOUNDATION_IDS={"0:0:0:5","0:0:16:5","1:0:6:5"};
+    private static final String ODD_ID="4:0:15:5";
+    // Sorted id=title pairs from released 0.110, before the odd-one-out route was added.
     private static final String[] LEGACY_HASHES={
-        "9ae844e52f0aef98a02744804c16a9346d381a28a0c07e7b3b9d2fdf453ba1f8",
-        "e195f1c66b7bf6e886de00110c6987aebc8340d05150808dc8c9cd28435da022",
-        "e738e7ca592521481beef58728f24649ff4d9c1d0dd2d5e2e7c3edb5bef6432e"
+        "9588952ed728ed7a6e0c03f550e73b6727b969a08cf08fbcca08e77dd3b124f6",
+        "a98f66628a728ccb4e1c9a68ee2e809b8865658743404d6dcf5639a6f5aa3786",
+        "d5a485fc3ccc80a759ce7b6e4338fd6f45740a08ba5154198bff792cc5e9b2df"
     };
-    private static int counting,calendar,reading,restores,rollovers;
+    private static int counting,calendar,reading,categories,restores,rollovers,historyRounds;
 
     private static void require(boolean okay,String message){if(!okay)throw new AssertionError(message);}
     private static void basic(LearningGame.Round q,int choices){
@@ -164,38 +165,110 @@ public final class FoundationsCheck {
         }
         require(seen.size()==24&&Arrays.equals(kinds,new int[]{8,8,8}),"literal question coverage");
     }
+    // An independent semantic fixture: birds (including penguins) belong to both animal and bird sets.
+    private static final String[] CATEGORY_NAMES={"Dieren","Fruit","Kleding","Voertuigen","Muziekinstrumenten","Vogels"};
+    private static final String[][] CATEGORY_MEMBERS={
+        {"🐱","🐶","🐮","🐰","🐷","🐭","🐔","🐓","🐧","🐦","🐤"},
+        {"🍎","🍌","🍇","🍓","🍊","🍐"},
+        {"👕","👖","👗","👚"},
+        {"🚗","🚌","🚲","🚂","🚢","✈️"},
+        {"🎸","🎺","🎷","🎻","🎹"},
+        {"🐔","🐓","🐧","🐦","🐤"}
+    };
+    private static final String[] CATEGORY_PROMPTS={"Welk plaatje is geen dier?","Welk plaatje is geen fruit?",
+        "Welk plaatje toont geen kleding?","Welk plaatje is geen voertuig?",
+        "Welk plaatje is geen muziekinstrument?","Welk plaatje is geen vogel?"};
+    private static void categories(){
+        Set<String> known=new HashSet<>();for(String[] group:CATEGORY_MEMBERS)Collections.addAll(known,group);
+        require(known.size()==32,"semantic fixture size");
+        for(int age=0;age<3;age++){
+            Set<Integer> groupsSeen=new HashSet<>();Set<String> outsidersSeen=new HashSet<>();
+            for(int seed=0;seed<12;seed++){
+                LearningGame game=new LearningGame(new Random(32452843L*(seed+1)+age));game.configure(15,5,age);
+                for(int trial=0;trial<100;trial++){
+                    LearningGame.Round q=game.round();basic(q,age==0?3:4);
+                    String[] context=q.display.split("\n");require(context.length==2,"category display structure");
+                    int group=Arrays.asList(CATEGORY_NAMES).indexOf(context[1]);
+                    require(group>=0&&group<new int[]{4,5,6}[age],"category age vocabulary");
+                    require(q.prompt.equals(CATEGORY_PROMPTS[group]),"category not explicitly stated in prompt");
+                    int outside=0;
+                    for(int at=0;at<q.answers.size();at++){
+                        String symbol=q.answers.get(at);require(known.contains(symbol),"unknown category item");
+                        require(age>0||!Arrays.asList(CATEGORY_MEMBERS[4]).contains(symbol),"young-tier instrument");
+                        if(!Arrays.asList(CATEGORY_MEMBERS[group]).contains(symbol)){
+                            outside++;require(at==q.correctIndex,"a member was accepted or outsider rejected");
+                        }
+                    }
+                    require(outside==1,"category has more than one defensible outsider");
+                    require(PlaylumiQuizCoach.explain(15,5,q).isEmpty(),"early category explanation");
+                    groupsSeen.add(group);outsidersSeen.add(q.answers.get(q.correctIndex));
+                    if(trial==0)restore(q,15,age);
+                    require(q.choose(q.correctIndex),"outsider not accepted");
+                    String feedback=PlaylumiQuizCoach.explain(15,5,q);
+                    require(!feedback.isEmpty()&&feedback.length()<=72,"missing or oversized category feedback");
+                    if(q.answers.get(q.correctIndex).equals("🍇"))require(feedback.startsWith("Druiven zijn fruit,"),"plural fruit feedback");
+                    if(group==5&&Arrays.asList(CATEGORY_MEMBERS[0]).subList(0,6).contains(q.answers.get(q.correctIndex)))
+                        require(feedback.contains("een zoogdier, geen vogel"),"animal/bird hierarchy misstated");
+                    categories++;game.nextRound();
+                }
+            }
+            require(groupsSeen.size()==new int[]{4,5,6}[age],"category coverage");
+            require(outsidersSeen.size()==(age==0?27:32),"outsider vocabulary coverage");
+        }
+    }
     private static void histories(){
-        for(int[] config:new int[][]{{0,0},{16,1},{6,2}}){
+        for(int[] config:new int[][]{{0,0},{16,1},{6,2},{15,0},{15,1},{15,2}}){
             LearningGame game=new LearningGame(new Random(110+config[0]));
             QuestionHistory history=new QuestionHistory();game.configure(config[0],5,config[1]);game.setHistory(history);
             Set<String> seen=new HashSet<>();
             for(int i=0;i<8;i++){game.nextRound();require(seen.add(history.fingerprint(game.round())),"repeat inside first round");}
             require(new QuestionHistory(history.serialize()).size()==8,"question history not persisted");
+            historyRounds++;
         }
+    }
+    private static String sha256(String text)throws Exception{
+        byte[] digest=MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex=new StringBuilder();for(byte b:digest)hex.append(String.format(Locale.ROOT,"%02x",b&255));
+        return hex.toString();
+    }
+    private static void legacyCategories()throws Exception{
+        StringBuilder stream=new StringBuilder();
+        for(int age=0;age<3;age++)for(int variant=0;variant<5;variant++){
+            LearningGame game=new LearningGame(new Random(1111500L+100*age+variant));game.configure(15,variant,age);
+            for(int trial=0;trial<40;trial++){
+                LearningGame.Round q=game.round();
+                stream.append(q.prompt).append('\n').append(q.display).append('\n').append(q.answers).append('\n')
+                        .append(q.answerColors).append('\n').append(q.correctIndex).append('\n');
+                game.nextRound();
+            }
+        }
+        require(sha256(stream.toString()).equals("1a15c2de320a8203ed535d926e38eddc98f5e245be3d5c0241c08705c43c59f6"),
+                "released category variants 0–4 changed behavior");
     }
     private static void catalog()throws Exception{
         for(int age=0;age<3;age++){
             List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
-            require(entries.size()==new int[]{26,45,71}[age],"catalog size");
+            require(entries.size()==new int[]{27,46,72}[age],"catalog size");
             Set<String> ids=new HashSet<>();List<String> legacy=new ArrayList<>();
             for(PlaylumiGameCatalog.Entry entry:entries){
                 require(ids.add(entry.id),"duplicate route");
-                if(!Arrays.asList(NEW_IDS).contains(entry.id))legacy.add(entry.id+"="+entry.title);
+                if(!ODD_ID.equals(entry.id))legacy.add(entry.id+"="+entry.title);
             }
-            require(ids.contains(NEW_IDS[0])&&ids.contains(NEW_IDS[1])==(age>=1)&&ids.contains(NEW_IDS[2])==(age==2),"route age boundary");
+            require(ids.contains(FOUNDATION_IDS[0])&&ids.contains(FOUNDATION_IDS[1])==(age>=1)&&ids.contains(FOUNDATION_IDS[2])==(age==2),"route age boundary");
+            require(ids.contains(ODD_ID)&&PlaylumiGameCatalog.find(age,ODD_ID).world==4,"missing category route");
             Collections.sort(legacy);
-            byte[] digest=MessageDigest.getInstance("SHA-256").digest(String.join("\n",legacy).getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex=new StringBuilder();for(byte b:digest)hex.append(String.format(Locale.ROOT,"%02x",b&255));
-            require(hex.toString().equals(LEGACY_HASHES[age]),"released route ID/title changed");
+            require(sha256(String.join("\n",legacy)).equals(LEGACY_HASHES[age]),"released route ID/title changed");
         }
         require(PlaylumiLearningProfile.minimum(2,6,5)==2,"reading difficulty dropped below approved tier");
         require(PlaylumiScores.CATEGORIES==24&&LearningGame.GAME_NAMES.length==24,"score category migration");
     }
     public static void main(String[] args)throws Exception{
-        catalog();counting();calendar();reading();histories();
+        catalog();counting();calendar();reading();categories();histories();legacyCategories();
         System.out.println("PASS: "+counting+" selective-counting questions; every target/count and youngest spacing bounds.");
         System.out.println("PASS: "+calendar+" calendar questions; all 14/14/84 day shifts, including "+rollovers+" week-boundary crossings.");
         System.out.println("PASS: "+reading+" literal-reading questions; all 24 stories independently resolved (8 who, 8 what, 8 where).");
-        System.out.println("PASS: "+restores+" exact rejected/solved restores, no early explanations, three fresh eight-question histories, and all released route IDs/titles.");
+        System.out.println("PASS: "+categories+" explicit-category questions across 4/5/6 groups and 32 objects; exactly one outsider and birds remain animals.");
+        System.out.println("PASS: "+restores+" exact rejected/solved restores, no early explanations, "+historyRounds+" fresh eight-question histories, and all released route IDs/titles.");
+        System.out.println("PASS: all 600 seeded legacy category questions retain their 0.110 content, choices and correct answers.");
     }
 }
