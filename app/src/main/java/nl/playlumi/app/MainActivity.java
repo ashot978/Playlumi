@@ -524,7 +524,11 @@ public class MainActivity extends Activity {
         if(page==HOME) {super.onBackPressed();return;}
         if(page==DAILY){move(dailyReturn==CITY?CITY:dailyReturn==AVATAR?AVATAR:dailyReturn==LIBRARY?LIBRARY:HOME);return;}
         if(page==CITY){move(HOME);return;}
-        if(page==EXPEDITION){libraryReturn=false;move(expeditionReturn==CITY?CITY:expeditionReturn==HOME?HOME:LIBRARY);return;}
+        if(page==EXPEDITION){
+            libraryReturn=false;
+            if(expeditionReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;}
+            move(expeditionReturn==CITY?CITY:expeditionReturn==HOME?HOME:LIBRARY);return;
+        }
         if(page==IDEAS){move(ideasReturn==CITY?CITY:LIBRARY);return;}
         if(page==INTERACTIVE){move(catalogReturnPage());return;}
         if(page==LIBRARY){
@@ -3291,7 +3295,8 @@ public class MainActivity extends Activity {
         describeCatalogReturn(back);
         LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER);bar.setPadding(dp(6),dp(4),dp(6),dp(4));
         bar.setBackground(PlaylumiMagicArt.primary(this));
-        for(Button b:new Button[]{again,back}){
+        boolean expedition=libraryReturn&&catalogReturn==EXPEDITION&&storyStage<0;
+        for(Button b:expedition?new Button[]{back}:new Button[]{again,back}){
             b.setMinHeight(dp(56));b.setMaxLines(2);b.setTextSize(15);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1f);
             lp.setMargins(dp(3),0,dp(3),0);bar.addView(b,lp);
@@ -3452,6 +3457,18 @@ public class MainActivity extends Activity {
         homeAdd(card,text("Je sterren zijn al opgeslagen. Extra bonussen en badges zitten ook in je sterrenpot.",12,0xff60446f),2,1);
         PlaylumiGameCatalog.Entry entry=completedPanelEntry();
         if(entry!=null){
+            int mission=expeditionProgress();
+            if(catalogReturn==EXPEDITION&&mission>0&&entry.id.equals(PlaylumiExpedition.routeId(age,mission-1))){
+                LinearLayout adventure=personalPanel();
+                homeAdd(adventure,homeLabel("✦ Expeditieopdracht "+mission+" van 30 afgerond",18,0xff27684d,true),0,3);
+                if(mission%PlaylumiExpedition.STAGES_PER_CHAPTER==0){
+                    int chapter=mission/PlaylumiExpedition.STAGES_PER_CHAPTER-1;
+                    homeAdd(adventure,homeLabel("✓ "+PlaylumiExpedition.STAMPS[chapter]+" verdiend",17,TEXT,true),0,2);
+                    homeAdd(adventure,homeLabel(mission==30?"🏆 Alle zes zegels! +45 extra sterren.":"Hoofdstuk klaar! +15 extra sterren.",15,0xff715021,true),0,2);
+                }else homeAdd(adventure,homeLabel("De volgende opdracht is vrijgespeeld.",14,SUB,false),0,2);
+                parentProgressBar(adventure,30,mission,0xff9670cf,mission+" van 30 expeditieopdrachten afgerond");
+                homeAdd(card,adventure,5,3);
+            }
             int rounds=roundsPlayed(entry);
             if(rounds>0){
                 homeAdd(card,text("🏅 "+PlaylumiCompletion.mastery(rounds)+" · "+rounds+(rounds==1?" ronde gespeeld":" rondes gespeeld"),18,0xff583477),7,3);
@@ -3502,7 +3519,7 @@ public class MainActivity extends Activity {
         addWidget(completionPanel(entry==null?LearningGame.GAME_NAMES[game.mode()]:entry.title,
                 PlaylumiPremiumLayout.emblem(game.mode(),game.variant()),sessionGoal(),sessionGoal()),3,6);
         characterHero(102);
-        addText("Elke nieuwe ronde heeft nieuwe vragen. Speel nog eens voor sterren en meesterschap, of kies een ander avontuur.",15,PlaylumiMagicArt.CREAM,0,8);
+        addText(libraryReturn&&catalogReturn==EXPEDITION?"Keer terug naar je avonturenkaart. Je voortgang is bewaard.":"Elke nieuwe ronde heeft nieuwe vragen. Speel nog eens voor sterren en meesterschap, of kies een ander avontuur.",15,PlaylumiMagicArt.CREAM,0,8);
         Button again=tile("🔄 Opnieuw spelen","Nieuwe ronde, nieuwe sterren",0xffcbf1d9,92);
         PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{
