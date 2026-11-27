@@ -35,14 +35,18 @@ public final class PlaylumiSkillPractice {
         return mode==LearningGame.COUNT||mode==LearningGame.NUMBERS||mode==LearningGame.LETTERS||
                 mode==LearningGame.SHAPES||mode==LearningGame.PATTERNS||mode==19||mode==LearningGame.COLORS;
     }
-    public static boolean supports(int mode,int variant){return variant==VARIANT&&supportsMode(mode);}
+    public static boolean supports(int mode,int variant){
+        // Variant 5 is already used by counting and daily things. On other
+        // skill modes it is a safe alias for internal maxVariant enumeration.
+        return supportsMode(mode)&&(variant==VARIANT||variant==5&&mode!=LearningGame.COUNT&&mode!=19);
+    }
     public static boolean offered(int age,int mode){
         return supportsMode(mode)&&(age>=1||mode==LearningGame.COUNT||mode==LearningGame.SHAPES||mode==LearningGame.PATTERNS);
     }
     public static boolean revealsBlank(int mode,int variant){
         return supports(mode,variant)&&(mode==LearningGame.NUMBERS||mode==LearningGame.LETTERS||mode==LearningGame.PATTERNS);
     }
-    public static boolean colorChoices(int mode,int variant){return mode==LearningGame.COLORS&&variant==VARIANT;}
+    public static boolean colorChoices(int mode,int variant){return mode==LearningGame.COLORS&&supports(mode,variant);}
     private static LearningGame.Round round(String prompt,String display,String correct,List<String> choices,List<Integer> paints){
         return new LearningGame.Round(prompt,display,0xff3d195f,choices,paints,choices.indexOf(correct));
     }
