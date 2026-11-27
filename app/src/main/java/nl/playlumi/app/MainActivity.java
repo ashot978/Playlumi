@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
             PARENT_SETTINGS=30, BREAK_SCREEN=31, PROFILES=32, STAR_STAGE=33,
             BUBBLE_PLAY=34, FRIEND_CARE=35, FRIEND_ALBUM=36,
             MUSIC_PLAY=37, GARDEN_MENU=38, GARDEN_PLANT=39,
-            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45, COLLECTIBLES=46, ACHIEVEMENTS=47, DAILY=48, CITY=49, IDEAS=50, EXPEDITION=51;
+            WORLD_PICKER=40, HOME_OPTIONS=41, STAR_CATCH=42, VILLAGE_MENU=43, LIBRARY=44, INTERACTIVE=45, COLLECTIBLES=46, ACHIEVEMENTS=47, DAILY=48, CITY=49, IDEAS=50, EXPEDITION=51, BUILDER_HOME=52, BUILDER_PLAY=53;
     private static final int SESSION_ROUNDS=PlaylumiLayout.SHORT_ROUND_QUESTIONS;
     private static final int TEXT=0xff3c315d, SUB=0xff6a6390;
     private static final int[] COLORS={0xffd9f3ff,0xffffe4bd,0xffe8d9ff,
@@ -129,6 +129,8 @@ public class MainActivity extends Activity {
     private int dailyReturn=HOME,catalogReturn=LIBRARY,friendReturn=AVATAR,ideasReturn=LIBRARY;
     private int expeditionReturn=LIBRARY,expeditionChapter=-1;
     private boolean expeditionScrollToChapter;
+    private int builderReturn=CITY,builderSlot=0;
+    private char builderPiece=PlaylumiBuilder.HOUSE;
     private long renderedCalendarDay=Long.MIN_VALUE;
     private final android.os.Handler calendarHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable calendarRefresh=new Runnable(){
@@ -254,6 +256,9 @@ public class MainActivity extends Activity {
             catalogReturn=catalogReturnPage();
             expeditionReturn=state.getInt("expeditionReturn",LIBRARY);
             expeditionChapter=state.getInt("expeditionChapter",-1);
+            builderReturn=state.getInt("builderReturn",CITY);builderSlot=state.getInt("builderSlot",0);
+            char restoredPiece=(char)state.getInt("builderPiece",PlaylumiBuilder.HOUSE);
+            builderPiece=PlaylumiBuilder.validPiece(restoredPiece)?restoredPiece:PlaylumiBuilder.HOUSE;
             ideasReturn=state.getInt("ideasReturn",LIBRARY)==CITY?CITY:LIBRARY;
             friendReturn=state.getInt("friendReturn",AVATAR)==CITY?CITY:AVATAR;
             achievementFilter=Math.max(0,Math.min(2,state.getInt("achievementFilter",0)));
@@ -435,6 +440,7 @@ public class MainActivity extends Activity {
         out.putInt("activeProfile",activeProfile);
         out.putInt("dailyReturn",dailyReturn);out.putInt("catalogReturn",catalogReturn);out.putInt("friendReturn",friendReturn);out.putInt("ideasReturn",ideasReturn);
         out.putInt("expeditionReturn",expeditionReturn);out.putInt("expeditionChapter",expeditionChapter);
+        out.putInt("builderReturn",builderReturn);out.putInt("builderSlot",builderSlot);out.putInt("builderPiece",builderPiece);
         out.putInt("age",age);out.putInt("mode",game.mode());out.putInt("variant",game.variant());
         out.putInt("difficulty",difficulty);out.putInt("world",world);
         out.putInt("categoryPage",categoryPage);out.putInt("variantPage",variantPage);
@@ -529,6 +535,11 @@ public class MainActivity extends Activity {
             libraryReturn=false;
             if(expeditionReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;}
             move(expeditionReturn==CITY?CITY:expeditionReturn==HOME?HOME:LIBRARY);return;
+        }
+        if(page==BUILDER_PLAY){move(BUILDER_HOME);return;}
+        if(page==BUILDER_HOME){
+            if(builderReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;}
+            move(builderReturn==HOME?HOME:builderReturn==LIBRARY?LIBRARY:CITY);return;
         }
         if(page==IDEAS){move(ideasReturn==CITY?CITY:LIBRARY);return;}
         if(page==INTERACTIVE){move(catalogReturnPage());return;}
@@ -843,6 +854,211 @@ public class MainActivity extends Activity {
         addTile(classic,4);classic.setOnClickListener(v->{
             libraryReturn=false;villageLaunch=PlaylumiVillageView.MISSIONS;world=0;storyPage=Math.min(2,adventures.progress(world)/2);move(ADVENTURE_MAP);
         });
+    }
+    private int builderAge(){return PlaylumiRocketCurriculum.level(age);}
+    private int builderProgress(){return PlaylumiBuilder.safe(prefs().getInt(PlaylumiBuilder.progressKey(builderAge()),0));}
+    private PlaylumiBuilder.State builderState(int slot){
+        return new PlaylumiBuilder.State(builderAge(),slot,prefs().getString(PlaylumiBuilder.key(builderAge(),slot),""));
+    }
+    private void openBuilder(){
+        builderReturn=page==HOME?HOME:page==LIBRARY?LIBRARY:CITY;
+        libraryReturn=false;storyStage=-1;move(BUILDER_HOME);
+    }
+    private void addBuilderShortcut(boolean magic){
+        LinearLayout card=magic?libraryPanel():personalPanel();
+        if(magic)card.setBackground(libraryCardSurface(5));
+        int ink=magic?PlaylumiMagicArt.CREAM:TEXT,sub=magic?PlaylumiMagicArt.GOLD:SUB;
+        homeAdd(card,homeLabel("🏡 Lumi’s bouwatelier",20,ink,true),0,3);
+        homeAdd(card,homeLabel(builderProgress()+"/12 bouwtekeningen · 3 eigen ontwerpen",14,sub,false),0,3);
+        parentProgressBar(card,12,builderProgress(),0xff77b68d,builderProgress()+" van 12 bouwopdrachten");
+        libraryClick(card,"Open Lumi’s bouwatelier",this::openBuilder);
+        addWidget(card,2,5);
+    }
+    private void startBuilder(int slot){
+        if(page!=BUILDER_HOME||moving||!PlaylumiBuilder.available(builderProgress(),slot))return;
+        builderSlot=slot;builderPiece=PlaylumiBuilder.HOUSE;move(BUILDER_PLAY);
+    }
+    private void showBuilderHome(){
+        libraryReturn=false;
+        final int done=builderProgress();
+        header("Lumi’s bouwatelier","Bouw een eigen wijk");
+        LinearLayout summary=personalPanel();
+        homeAdd(summary,homeLabel(done==12?"🏅 Meesterbouwer!":"🏡 Welkom, bouwer!",23,TEXT,true),0,4);
+        homeAdd(summary,homeLabel(done+" van 12 bouwtekeningen · ★ "+PlaylumiBuilder.rewardTotal(done)+"/"+PlaylumiBuilder.totalReward()+" extra sterren",16,0xff715021,true),0,4);
+        parentProgressBar(summary,12,done,0xff79b48d,done+" van 12 bouwtekeningen voltooid");
+        homeAdd(summary,homeLabel("Leg wegen aan, draai bochten en bruggen, en verbind huizen met het station. Er is geen tijdslimiet.",15,SUB,false),0,4);
+        if(done<12){
+            PlaylumiBuilder.State draft=builderState(done);
+            Button play=tile(draft.placed()>0?"Verder bouwen":"Start bouwopdracht "+(done+1),PlaylumiBuilder.title(done),0xffd5f5df,75);
+            play.setContentDescription("Bouwopdracht "+(done+1)+" openen");
+            summary.addView(play,new LinearLayout.LayoutParams(-1,-2));play.setOnClickListener(v->startBuilder(done));
+        }else homeAdd(summary,homeLabel("Alle bouwtekeningen voltooid. Je kunt ze opnieuw maken of vrij bouwen.",15,0xff27684d,false),0,2);
+        addWidget(summary,2,5);
+        addText("Mijn eigen ontwerpen",21,TEXT,4,3);
+        addText("Drie vrije bouwterreinen. Elk ontwerp en de laatste wijzigingen blijven lokaal bewaard.",14,SUB,0,3);
+        int width=getResources().getConfiguration().screenWidthDp;
+        int columns=width>=690&&getResources().getConfiguration().fontScale<1.2f?3:1;
+        int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-24);
+        for(int start=0;start<PlaylumiBuilder.PLOTS;start+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
+            for(int i=start;i<Math.min(start+columns,PlaylumiBuilder.PLOTS);i++){
+                final int slot=PlaylumiBuilder.FREE+i;PlaylumiBuilder.State saved=builderState(slot);
+                LinearLayout card=personalPanel();
+                homeAdd(card,homeLabel(PlaylumiBuilder.title(slot),18,TEXT,true),0,3);
+                LinearLayout content=new LinearLayout(this);content.setGravity(Gravity.CENTER_VERTICAL);
+                PlaylumiBuilderGrid miniature=new PlaylumiBuilderGrid(this,saved.size,Math.min(126,usable/columns-24),saved.cells(),false,null);
+                miniature.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+                content.addView(miniature,new LinearLayout.LayoutParams(-2,-2));
+                LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);
+                homeAdd(info,homeLabel(saved.placed()==0?"Leeg bouwterrein":saved.placed()+" onderdelen",14,SUB,false),0,3);
+                if(saved.network().houses>0)homeAdd(info,homeLabel(saved.network().connected+"/"+saved.network().houses+" huizen verbonden",13,0xff27684d,false),0,1);
+                content.addView(info,new LinearLayout.LayoutParams(0,-2,1f));card.addView(content);
+                Button edit=tile(saved.placed()==0?"Vrij bouwen":"Open ontwerp","",0xffd5f5df,54);
+                edit.setContentDescription("Open eigen ontwerp "+(i+1));card.addView(edit,new LinearLayout.LayoutParams(-1,-2));edit.setOnClickListener(v->startBuilder(slot));
+                LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1f);cp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(card,cp);
+            }
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+        addText("Alle bouwtekeningen",21,TEXT,6,3);
+        for(int group=0;group<3;group++){
+            LinearLayout chapter=personalPanel();
+            int progress=Math.max(0,Math.min(4,done-group*4));
+            homeAdd(chapter,homeLabel(PlaylumiBuilder.CHAPTERS[group]+" · "+progress+"/4",19,PlaylumiWorldStyle.deep(group*2),true),0,3);
+            parentProgressBar(chapter,4,progress,0xffa788d3,progress+" van 4 ontwerpen");
+            for(int i=group*4;i<group*4+4;i++){
+                final int slot=i;boolean open=PlaylumiBuilder.available(done,slot),complete=i<done;
+                Button plan=tile((complete?"✓ ":open?"▶ ":"🔒 ")+(i+1)+". "+PlaylumiBuilder.title(slot),
+                    complete?"Voltooid · opnieuw bouwen":open?"Bouw volgens het voorbeeld":"Speel de vorige opdracht uit",open?0xffffedc5:0xffe7e4eb,65);
+                plan.setContentDescription("Bouwtekening "+(i+1)+": "+PlaylumiBuilder.title(slot)+(open?"":", nog op slot"));
+                plan.setEnabled(open);plan.setOnClickListener(v->startBuilder(slot));
+                homeAdd(chapter,plan,3,1);
+            }
+            addWidget(chapter,3,4);
+        }
+    }
+    private void saveBuilderEdit(PlaylumiBuilder.State state){
+        SharedPreferences.Editor edit=prefs().edit().putString(PlaylumiBuilder.key(state.age,state.slot),state.snapshot());
+        stagePlayDay(edit);edit.apply();
+    }
+    private void showBuilderPlay(){
+        if(!PlaylumiBuilder.available(builderProgress(),builderSlot)){move(BUILDER_HOME);return;}
+        libraryReturn=false;final PlaylumiBuilder.State state=builderState(builderSlot);
+        final boolean free=PlaylumiBuilder.free(state.slot);
+        header(PlaylumiBuilder.title(state.slot),"");
+        addText(free?"Maak je eigen wijk. Kies een onderdeel en tik op een bouwvak.":"Bouw het voorbeeld na. Draai wegen en bruggen tot ze precies aansluiten.",15,SUB,2,4);
+        int width=getResources().getConfiguration().screenWidthDp;
+        int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-30);
+        boolean wide=!free&&width>=650;
+        LinearLayout workspace=new LinearLayout(this);workspace.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);workspace.setGravity(Gravity.TOP);
+        final LinearLayout target=personalPanel(),boardPanel=personalPanel();
+        final TextView message=homeLabel("Kies een onderdeel om te beginnen.",15,TEXT,true);
+        message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        final TextView current=homeLabel("",16,TEXT,true),status=homeLabel("",14,SUB,false);
+        final Button rotate=tile("↻ Draaien","",0xffe8dcff,52);
+        final Button undo=tile("Ongedaan maken","",0xffe8dcff,52),redo=tile("Opnieuw uitvoeren","",0xffe8dcff,52);
+        final Button check=tile(free?"Controleer je route":"Controleer bouwtekening","",0xffd5f5df,62);
+        check.setContentDescription(free?"Controleer je route":"Controleer bouwtekening");
+        final PlaylumiBuilderGrid[] grid=new PlaylumiBuilderGrid[1];
+        final char[] palette=PlaylumiBuilder.palette();final Button[] parts=new Button[palette.length];
+        final Runnable refresh=()->{
+            if(page!=BUILDER_PLAY||builderSlot!=state.slot)return;
+            grid[0].refresh(state.cells());
+            for(int i=0;i<parts.length;i++){
+                char base=palette[i];boolean chosen=base==builderPiece||
+                    base==PlaylumiBuilder.ROAD_H&&(builderPiece==PlaylumiBuilder.ROAD_H||builderPiece==PlaylumiBuilder.ROAD_V)||
+                    base==PlaylumiBuilder.ROAD_NE&&builderPiece>=PlaylumiBuilder.ROAD_NE&&builderPiece<=PlaylumiBuilder.ROAD_WN||
+                    base==PlaylumiBuilder.BRIDGE_H&&(builderPiece==PlaylumiBuilder.BRIDGE_H||builderPiece==PlaylumiBuilder.BRIDGE_V);
+                char show=chosen?builderPiece:base;
+                parts[i].setText(PlaylumiBuilder.icon(show)+(chosen?" ✓":""));
+                parts[i].setSelected(chosen);parts[i].setAlpha(chosen?1f:.90f);
+                GradientDrawable face=new GradientDrawable();face.setColor(PlaylumiBuilder.color(show));face.setCornerRadius(dp(12));
+                face.setStroke(dp(chosen?3:1),chosen?0xff7350b5:0xff99b28c);
+                parts[i].setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),face,null));
+                parts[i].setContentDescription("Kies "+PlaylumiBuilder.name(base)+(chosen?", gekozen":""));
+            }
+            current.setText("Gekozen: "+PlaylumiBuilder.icon(builderPiece)+" "+PlaylumiBuilder.name(builderPiece));
+            rotate.setEnabled(PlaylumiBuilder.rotatable(builderPiece));
+            undo.setEnabled(state.canUndo());redo.setEnabled(state.canRedo());
+            PlaylumiBuilder.Network route=state.network();
+            status.setText((free?state.placed()+" onderdelen geplaatst":state.different()+" vakjes verschillen van het voorbeeld")+
+                    " · "+route.connected+"/"+route.houses+" huizen verbonden");
+        };
+        // Full plan preview stays visible above the workspace on a phone, next to it on a tablet.
+        if(!free){
+            homeAdd(target,homeLabel("Bouwtekening",18,TEXT,true),0,3);
+            homeAdd(target,new PlaylumiBuilderGrid(this,state.size,wide?usable/2-16:Math.min(235,usable),PlaylumiBuilder.blueprint(state.age,state.slot),false,null),0,2);
+            homeAdd(target,homeLabel(state.slot<builderProgress()?"Deze opdracht is al voltooid.":"Maak ieder vak precies gelijk aan dit voorbeeld.",13,SUB,false),0,2);
+            if(wide){LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,-2,1f);tp.setMargins(0,0,dp(5),0);workspace.addView(target,tp);}
+            else{workspace.addView(target,new LinearLayout.LayoutParams(-1,-2));}
+        }
+        homeAdd(boardPanel,current,0,3);
+        int perRow=3;
+        for(int start=0;start<palette.length;start+=perRow){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
+            for(int j=start;j<Math.min(start+perRow,palette.length);j++){
+                final int index=j;Button part=new Button(this);
+                part.setAllCaps(false);part.setMinWidth(0);part.setMinimumWidth(0);part.setMinHeight(dp(48));part.setPadding(dp(2),dp(2),dp(2),dp(2));
+                part.setTextSize(25);part.setTextColor(TEXT);part.setMaxLines(1);
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(52),1f);lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(part,lp);parts[j]=part;
+                part.setOnClickListener(v->{builderPiece=palette[index];sound.tap();refresh.run();});
+            }
+            boardPanel.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+        rotate.setContentDescription("Draai gekozen onderdeel");
+        homeAdd(boardPanel,rotate,3,4);
+        rotate.setOnClickListener(v->{if(PlaylumiBuilder.rotatable(builderPiece)){builderPiece=PlaylumiBuilder.rotate(builderPiece);sound.tap();refresh.run();}});
+        homeAdd(boardPanel,homeLabel("Jouw bouwterrein",18,TEXT,true),0,2);
+        grid[0]=new PlaylumiBuilderGrid(this,state.size,wide?usable/2-18:usable,state.cells(),true,index->{
+            if(page!=BUILDER_PLAY||builderSlot!=state.slot||moving)return;
+            if(state.place(index,builderPiece)){saveBuilderEdit(state);sound.tap();message.setText("Opgeslagen. Bouw rustig verder.");refresh.run();}
+        });
+        homeAdd(boardPanel,grid[0],0,3);
+        homeAdd(boardPanel,status,2,3);
+        LinearLayout edits=new LinearLayout(this);edits.setGravity(Gravity.CENTER);
+        undo.setContentDescription("Laatste bouwbewerking ongedaan maken");redo.setContentDescription("Bouwbewerking opnieuw uitvoeren");
+        for(Button b:new Button[]{undo,redo}){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);edits.addView(b,lp);
+        }
+        homeAdd(boardPanel,edits,0,4);
+        undo.setOnClickListener(v->{if(state.undo()){saveBuilderEdit(state);sound.tap();message.setText("Laatste wijziging ongedaan gemaakt.");refresh.run();}});
+        redo.setOnClickListener(v->{if(state.redo()){saveBuilderEdit(state);sound.tap();message.setText("Wijziging opnieuw uitgevoerd.");refresh.run();}});
+        homeAdd(boardPanel,check,1,3);
+        check.setOnClickListener(v->{
+            if(page!=BUILDER_PLAY||builderSlot!=state.slot)return;
+            PlaylumiBuilder.Network network=state.network();
+            if(free){
+                message.setText(network.houses==0||network.stations==0?"Plaats minstens één huis en één station.":network.complete()?"Alle "+network.houses+" huizen zijn verbonden!":"Nog "+(network.houses-network.connected)+" huizen hebben geen route naar een station.");
+                if(network.complete())sound.good();
+                return;
+            }
+            if(!state.matches()){
+                message.setText("Nog "+state.different()+" vakjes verschillen. Kijk naar het voorbeeld en draai de onderdelen indien nodig.");sound.mistake();return;
+            }
+            int old=builderProgress();PlaylumiBuilder.Completion completed=PlaylumiBuilder.complete(old,state);
+            if(completed.after>old){
+                SharedPreferences.Editor edit=prefs().edit().putString(PlaylumiBuilder.key(state.age,state.slot),state.snapshot())
+                        .putInt(PlaylumiBuilder.progressKey(state.age),completed.after);
+                wardrobe.earnChallengeStars(completed.bonus);stageWardrobe(edit);stagePlayDay(edit);edit.apply();
+                sound.good();message.setText(completed.after==12?"Meesterbouwer! Alle ontwerpen voltooid. +"+completed.bonus+" sterren!":"Bouwtekening klaar! +"+completed.bonus+" sterren. De volgende opdracht is open.");
+                PlaylumiMotion.celebrate(stage,8);
+            }else{message.setText("Je ontwerp klopt! De sterren van deze opdracht heb je al verdiend.");sound.good();}
+            refresh.run();
+        });
+        homeAdd(boardPanel,message,0,3);
+        Button clear=tile("Maak terrein leeg","",0xfff0e2ec,52);
+        clear.setContentDescription("Maak bouwterrein leeg");
+        clear.setOnClickListener(v->new android.app.AlertDialog.Builder(this).setTitle("Terrein leegmaken?")
+                .setMessage("Je kunt dit daarna nog ongedaan maken.").setNegativeButton("Annuleren",null)
+                .setPositiveButton("Leegmaken",(dialog,which)->{
+                    if(page==BUILDER_PLAY&&builderSlot==state.slot&&state.clear()){saveBuilderEdit(state);message.setText("Terrein leeggemaakt.");refresh.run();}
+                }).show());
+        homeAdd(boardPanel,clear,3,1);
+        if(wide){LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,-2,1.3f);bp.setMargins(dp(5),0,0,0);workspace.addView(boardPanel,bp);}
+        else{LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.topMargin=dp(6);workspace.addView(boardPanel,bp);}
+        addWidget(workspace,3,5);
+        Button back=tile("Naar het bouwatelier","Alles wordt automatisch bewaard",0xffe8dcff,65);
+        back.setOnClickListener(v->move(BUILDER_HOME));addTile(back,4);
+        refresh.run();
     }
     private void showDailyChallenges(){
         PlaylumiDailyChallenges daily=dailyChallenges();
@@ -1456,7 +1672,7 @@ public class MainActivity extends Activity {
         if(theme>=0) {
             stage.addView(PlaylumiMagicArt.backdrop(this,theme),new FrameLayout.LayoutParams(-1,-1));
         } else if(page==WORLD_PICKER || page==WORLD_HUB ||
-                page==AVATAR || page==CITY || page==DAILY || page==EXPEDITION || page==IDEAS || page==CLOSET || page==ROOM || page==COLLECTIBLES || page==ACHIEVEMENTS || page==SHOP ||
+                page==AVATAR || page==CITY || page==DAILY || page==EXPEDITION || page==BUILDER_HOME || page==BUILDER_PLAY || page==IDEAS || page==CLOSET || page==ROOM || page==COLLECTIBLES || page==ACHIEVEMENTS || page==SHOP ||
                 page==MINI_MENU || page==STORY_LIBRARY || page==STORY_END ||
                 page==REWARD || page==GARDEN_MENU || page==TROPHY_WORLDS) {
             stage.addView(new PlaylumiSkyView(this),
@@ -1566,6 +1782,8 @@ public class MainActivity extends Activity {
             case DAILY: showDailyChallenges();break;
             case CITY: showCity();break;
             case EXPEDITION: showExpedition();break;
+            case BUILDER_HOME: showBuilderHome();break;
+            case BUILDER_PLAY: showBuilderPlay();break;
             case TROPHY_CATS: showTrophyCats();break;
             case STORY_LIBRARY: showStoryLibrary();break;
             case STORY_PLAY: showStoryPlay();break;
@@ -1881,6 +2099,7 @@ public class MainActivity extends Activity {
         homeAdd(panel,homeLabel("Snel spelen",19,PlaylumiMagicArt.GOLD,true),0,5);
         homeAdd(panel,homeAction("☀ Daguitdagingen "+dailyChallenges().completed()+"/3",true,()->move(DAILY)),0,5);
         homeAdd(panel,homeAction("✦ Expeditie "+expeditionProgress()+"/30",false,this::openExpedition),3,3);
+        homeAdd(panel,homeAction("Bouwatelier",false,this::openBuilder),3,3);
         homeAdd(panel,homeAction("Werelden",false,()->openLibrary(PlaylumiGameCatalog.OVERVIEW)),3,3);
         homeAdd(panel,homeAction("Mijn schatten",false,()->visitVillagePlace(PlaylumiVillageView.COLLECTION)),2,0);
         return panel;
@@ -2603,6 +2822,7 @@ public class MainActivity extends Activity {
                 }
                 root.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
+            addBuilderShortcut(true);
             Button daily=tile("☀ Daguitdagingen",dailyChallenges().completed()+"/3 vandaag",0xffffe4bd,72);
             addTile(daily,7);daily.setOnClickListener(v->move(DAILY));
             // The original missions remain accessible from the expedition page.
@@ -3685,6 +3905,7 @@ public class MainActivity extends Activity {
         addExpeditionShortcut(false);
         PlaylumiCityMapView map=new PlaylumiCityMapView(this,mask,PlaylumiMotion.isReduced(),this::showCityLandmark);
         addWidget(map,0,5);
+        addBuilderShortcut(false);
         int next=PlaylumiCityProgress.next(mask,stats);
         if(next>=0){
             PlaylumiCityRewards.Landmark landmark=PlaylumiCityRewards.ALL[next];
@@ -4627,6 +4848,7 @@ public class MainActivity extends Activity {
         homeAdd(overviewCard,homeLabel("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",15,SUB,false),0,2);
         homeAdd(overviewCard,homeLabel("Daguitdagingen vandaag: "+dailyChallenges().completed()+"/3",15,SUB,false),0,2);
         homeAdd(overviewCard,homeLabel("Expeditie: "+expeditionProgress()+"/30 opdrachten · "+PlaylumiExpedition.stamps(expeditionProgress())+"/6 hoofdstukken",15,SUB,false),0,2);
+        homeAdd(overviewCard,homeLabel("Bouwatelier: "+builderProgress()+"/12 bouwtekeningen voltooid",15,SUB,false),0,2);
         addWidget(overviewCard,3,5);
         Button overview=tile("📊 Bekijk de voortgang","Zes speelwerelden, per spel",
                 0xffd7eefe,104);

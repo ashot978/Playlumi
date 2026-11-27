@@ -322,7 +322,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.120" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.121" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -374,7 +374,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.121" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.122" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -408,7 +408,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.120", "candidateVersion": "0.121",
+        "baselineVersion": "0.121", "candidateVersion": "0.122",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -418,7 +418,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.120 → 0.121 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.121 → 0.122 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1478,6 +1478,60 @@ def test_expedition(viewport):
     pass_check(viewport + ": expedition saves a real unfinished puzzle, advances exactly one mission, awards a chapter seal atomically, and restores without duplicate bonus")
 
 
+def open_builder(label):
+    click(find_control(description_prefix("Rekenraket"), label + "-world", False))
+    page(44)
+    click(find_control(description_prefix("Werelden"), label + "-worlds-tab", False))
+    page(44)
+    click_named("Open Lumi’s bouwatelier", label + "-open")
+    page(52)
+
+
+def test_builder(viewport):
+    label = viewport + "-builder"
+    seed({})
+    launch_native_home()
+    open_builder(label + "-initial")
+    click_named("Bouwopdracht 1 openen", label + "-plan")
+    page(53)
+    click_named("Bouwvak 1: Leeg gras", label + "-house")
+    key = "builder_v1_board_0_0"
+    progress = "builder_v1_progress_0"
+    state = wait_prefs(lambda p: key in p and p[key].startswith("H........|"), "First house saved")
+    assert state.get(progress, 0) == 0 and state["wardrobe_stars"] == 18
+    launch_native_home()
+    open_builder(label + "-restored")
+    click_named("Bouwopdracht 1 openen", label + "-resume")
+    page(53)
+    assert prefs()[key].startswith("H........|")
+    click_named("Laatste bouwbewerking ongedaan maken", label + "-undo")
+    wait_prefs(lambda p: p[key].startswith(".........|"), "Persisted undo")
+    click_named("Bouwbewerking opnieuw uitvoeren", label + "-redo")
+    wait_prefs(lambda p: p[key].startswith("H........|"), "Persisted redo")
+    scroll_top()
+    click_named("Kies Weg horizontaal", label + "-road")
+    click_named("Bouwvak 2: Leeg gras", label + "-place-road")
+    scroll_top()
+    click_named("Kies Station", label + "-station")
+    click_named("Bouwvak 3: Leeg gras", label + "-place-station")
+    click_named("Controleer bouwtekening", label + "-check")
+    result = wait_prefs(lambda p: p.get(progress) == 1, "First building completed")
+    assert result["wardrobe_stars"] == 24 and result[key].startswith("HaS......|"), "Incorrect plan reward or board"
+    click_named("Controleer bouwtekening", label + "-repeat", False)
+    assert prefs()["wardrobe_stars"] == 24, "Plan bonus duplicated"
+    screenshot(label + "-completed")
+    shell("input keyevent KEYCODE_BACK")
+    page(52)
+    click_named("Open eigen ontwerp 1", label + "-free")
+    page(53)
+    click_named("Bouwvak 1: Leeg gras", label + "-free-house")
+    free_key = "builder_v1_board_0_12"
+    wait_prefs(lambda p: free_key in p and p[free_key].startswith("H"), "Independent creative plot")
+    assert prefs()[key].startswith("HaS......|") and prefs()[progress] == 1 and prefs()["wardrobe_stars"] == 24
+    screenshot(label + "-free")
+    pass_check(viewport + ": real construction plan, persistent undo/redo after relaunch, once-only reward and separate creative plot")
+
+
 def test_simplified_navigation(viewport):
     label = viewport + "-navigation"
     # Start with an empty profile. Every completion and unfinished game below is
@@ -1616,7 +1670,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.120 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.121 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1641,6 +1695,7 @@ if __name__ == "__main__":
         test_memory_refresh(args.viewport)
         test_puzzle_board(args.viewport)
         test_expedition(args.viewport)
+        test_builder(args.viewport)
         test_cosmetic_fixture(args.viewport)
         test_drawing_lifecycle(args.viewport)
         test_drawing_tools(args.viewport)
