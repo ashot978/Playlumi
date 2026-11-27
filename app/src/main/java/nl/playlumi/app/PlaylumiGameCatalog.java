@@ -115,8 +115,8 @@ public final class PlaylumiGameCatalog {
         }
         g(list,0,INTERACTIVE,PlaylumiInteractive.NUMBERS,"Getallenrace",a==2?"Tel met sprongen vooruit en terug":a==1?"Tel verder en kies de juiste tegels":"Bouw de raket in de juiste volgorde","🚀");
         g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein",a==0?"Bouw een woord met lettertegels":"Los woordraadsels op met lettertegels","🚂");
-        g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
-        g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
+        g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng "+PlaylumiHandsOn.habitatSteps(a)+" dieren naar hun leefomgeving","🐾");
+        g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw een kleurvoorbeeld met "+PlaylumiHandsOn.mosaicSteps(a)+" vakken na","🔷");
         // New independent routes; never change previously published ids.
         int skill=PlaylumiSkillPractice.VARIANT;
         q(list,0,LearningGame.COUNT,skill,"Eentje erbij of eraf","Tel één meer of één minder","±1");

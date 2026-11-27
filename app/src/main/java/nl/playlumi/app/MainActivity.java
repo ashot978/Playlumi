@@ -2162,6 +2162,14 @@ public class MainActivity extends Activity {
             final String option=round.options().get(i);
             final Button choice=tile(option,"",COLORS[i%COLORS.length],72);
             choice.setMinHeight(dp(wide?80:66));choice.setTextSize(round.kind==PlaylumiInteractive.NUMBERS||round.kind==PlaylumiInteractive.LETTERS?25:17);
+            if(round.kind==PlaylumiInteractive.MOSAIC||round.kind==PlaylumiInteractive.HABITATS){
+                int paint=round.kind==PlaylumiInteractive.MOSAIC?PlaylumiHandsOn.color(option):PlaylumiHandsOn.habitatColor(option);
+                GradientDrawable face=new GradientDrawable();face.setColor(paint);face.setCornerRadius(dp(18));face.setStroke(dp(2),0xffffdfa0);
+                choice.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),face,null));
+                choice.setTextColor(PlaylumiWorldStyle.contrastingInk(paint));
+                if(round.kind==PlaylumiInteractive.MOSAIC)choice.setText(PlaylumiHandsOn.name(option));
+                choice.setMaxLines(3);
+            }
             choice.setContentDescription("Kies "+option);
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(choice,lp);buttons.add(choice);
             if(round.kind==PlaylumiInteractive.NUMBERS)for(int n=0;n<round.progress();n++)if(option.equals(round.target(n))){
@@ -2169,11 +2177,12 @@ public class MainActivity extends Activity {
             }
             choice.setOnClickListener(v->{
                 if(interactive!=round||page!=INTERACTIVE||moving||round.solved())return;
+                final int previousStep=round.progress();
                 if(round.choose(option)){
                     SharedPreferences.Editor progressEdit=prefs().edit();
                     stagePlayDay(progressEdit);
                     if(round.solved())sound.collect();else sound.good();
-                    interactiveMessage="Goed zo!";message.setTextColor(0xffc7ffd8);
+                    interactiveMessage=round.kind==PlaylumiInteractive.HABITATS&&!round.animalName(previousStep).isEmpty()?round.animalName(previousStep)+" → "+PlaylumiHandsOn.name(option):"Goed zo!";message.setTextColor(0xffc7ffd8);
                     if(playPal!=null)playPal.react(1);
                     board.refresh();count.setText(round.progress()+"/"+round.total());
                     trail.showProgress(round.progress());stageLibraryInteractive(progressEdit);
@@ -2196,9 +2205,9 @@ public class MainActivity extends Activity {
                         showFinishActions(finish,true);PlaylumiDelight.sprinkle(stage,board);
                     }else progressEdit.apply();
                 }else{
-                    sound.mistake();interactiveMessage=round.kind==PlaylumiInteractive.NUMBERS&&round.version==PlaylumiInteractive.CURRENT&&round.level>0?
+                    sound.mistake();interactiveMessage=round.kind==PlaylumiInteractive.NUMBERS&&round.version>=PlaylumiInteractive.PREVIOUS&&round.level>0?
                             "Tel "+Math.abs(round.step())+(round.step()<0?" terug.":" verder."):
-                            round.wordPuzzle()?"Zeg het woord langzaam. Welke letter hoor je nu?":"Probeer nog eens!";
+                            round.wordPuzzle()?"Zeg het woord langzaam. Welke letter hoor je nu?":round.kind==PlaylumiInteractive.MOSAIC?"Kijk naar het volgende vak in het voorbeeld.":round.kind==PlaylumiInteractive.HABITATS?"Kijk naar het dier. Probeer een ander huisje.":"Probeer nog eens!";
                     message.setTextColor(PlaylumiMagicArt.GOLD);PlaylumiDelight.wiggle(choice);
                 }
                 message.setText(interactiveMessage);

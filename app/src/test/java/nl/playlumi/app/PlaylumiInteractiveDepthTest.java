@@ -34,4 +34,27 @@ public final class PlaylumiInteractiveDepthTest {
             for(int j=0;j<r.total();j++)assertEquals(r.target(j),r.example(j,false));
         }
     }
+    @Test public void newMosaicAndHabitatsHaveAgeSpecificBoards(){
+        for(int age=0;age<3;age++)for(int seed=0;seed<100;seed++){
+            PlaylumiInteractive mosaic=PlaylumiInteractive.start(PlaylumiInteractive.MOSAIC,age,seed);
+            assertTrue(mosaic.realMosaic());
+            assertEquals(new int[]{4,6,9}[age],mosaic.total());
+            assertEquals(new int[]{2,3,3}[age],mosaic.mosaicColumns());
+            assertEquals(new int[]{2,3,5}[age],mosaic.options().size());
+            java.util.Set<String> used=new java.util.HashSet<>();
+            for(int i=0;i<mosaic.total();i++)used.add(mosaic.target(i));
+            assertEquals(new java.util.HashSet<>(mosaic.options()),used);
+            PlaylumiInteractive animals=PlaylumiInteractive.start(PlaylumiInteractive.HABITATS,age,seed);
+            assertEquals(3+2*age,animals.total());
+            assertEquals(3+age,animals.options().size());
+            java.util.Set<String> homes=new java.util.HashSet<>();
+            while(!animals.solved()){
+                assertFalse(animals.animalName(animals.progress()).isEmpty());
+                String expected=animals.expected();homes.add(expected);
+                assertEquals(PlaylumiHandsOn.homeFor(animals.target(animals.progress())),expected);
+                assertTrue(animals.choose(expected));
+            }
+            assertEquals(new java.util.HashSet<>(animals.options()),homes);
+        }
+    }
 }

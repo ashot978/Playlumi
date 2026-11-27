@@ -12,20 +12,22 @@ import android.widget.TextView;
 public final class PlaylumiInteractiveBoard extends LinearLayout {
     private final PlaylumiInteractive round;
     private final TextView[] cells;
-    private TextView animal;
+    private TextView animal,animalName,homeProgress;
     private TextView[] exampleCells;
     private boolean revealed;
     private final int columns;
     public PlaylumiInteractiveBoard(Context context,PlaylumiInteractive round,int panelWidth){
         super(context);this.round=round;
         setOrientation(VERTICAL);setGravity(Gravity.CENTER_HORIZONTAL);setPadding(dp(4),dp(4),dp(4),dp(4));
-        columns=PlaylumiLayout.interactiveCellColumns(panelWidth,round.total());
+        columns=round.realMosaic()?round.mosaicColumns():PlaylumiLayout.interactiveCellColumns(panelWidth,round.total());
         if(round.kind==PlaylumiInteractive.HABITATS){
             cells=null;
             addView(label("Waar woont dit dier?",18,PlaylumiMagicArt.CREAM));
-            animal=label("",66,PlaylumiMagicArt.INK);animal.setMinHeight(dp(126));
+            animal=label("",58,PlaylumiMagicArt.INK);animal.setMinHeight(dp(92));
             animal.setBackground(surface(0xfffff1d4,0xffffd891));
-            LayoutParams ap=new LayoutParams(-1,-2);ap.setMargins(dp(8),dp(7),dp(8),dp(7));addView(animal,ap);
+            LayoutParams ap=new LayoutParams(-1,-2);ap.setMargins(dp(8),dp(5),dp(8),dp(3));addView(animal,ap);
+            animalName=label("",18,PlaylumiMagicArt.CREAM);addView(animalName,new LayoutParams(-1,-2));
+            homeProgress=label("",14,PlaylumiMagicArt.GOLD);addView(homeProgress,new LayoutParams(-1,-2));
         }else{
             if(round.kind==PlaylumiInteractive.LETTERS||round.kind==PlaylumiInteractive.MOSAIC){
                 if(round.wordPuzzle()){
@@ -60,10 +62,13 @@ public final class PlaylumiInteractiveBoard extends LinearLayout {
             LinearLayout row=new LinearLayout(getContext());row.setGravity(Gravity.CENTER);
             for(int j=0;j<columns;j++){
                 int i=first+j;
-                LayoutParams lp=new LayoutParams(0,dp(example?38:54),1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));
+                LayoutParams lp=new LayoutParams(0,dp(round.realMosaic()?(example?36:48):example?38:54),1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));
                 if(i>=result.length){row.addView(new View(getContext()),lp);continue;}
                 TextView cell=label(example?reference(i):"",example?21:25,PlaylumiMagicArt.INK);
-                if(example){cell.setBackground(surface(0xfff5e7ff,0xffcba7ee));cell.setContentDescription("Voorbeeld "+reference(i));}
+                if(example&&round.kind==PlaylumiInteractive.MOSAIC){
+                    cell.setText("");cell.setBackground(surface(PlaylumiHandsOn.color(round.target(i)),0xffffe3a8));
+                    cell.setContentDescription("Voorbeeld vak "+(i+1)+": "+round.target(i));
+                }else if(example){cell.setBackground(surface(0xfff5e7ff,0xffcba7ee));cell.setContentDescription("Voorbeeld "+reference(i));}
                 row.addView(cell,lp);result[i]=cell;
             }
             addView(row,new LayoutParams(-1,-2));
@@ -78,13 +83,24 @@ public final class PlaylumiInteractiveBoard extends LinearLayout {
         if(animal!=null){
             animal.setText(round.solved()?"✓":round.target(round.progress()));
             animal.setContentDescription(round.solved()?"Alle dieren thuis":"Dier "+(round.progress()+1)+" van "+round.total()+": "+round.target(round.progress()));
+            animalName.setText(round.solved()?"Alle dieren zijn thuis!":round.animalName(round.progress()));
+            animalName.setVisibility(round.solved()||!round.animalName(round.progress()).isEmpty()?VISIBLE:GONE);
+            homeProgress.setText(round.progress()+" van "+round.total()+" dieren thuis");
             return;
         }
         for(int i=0;i<cells.length;i++){
             boolean complete=i<round.progress(),next=i==round.progress();
-            TextView cell=cells[i];cell.setText(complete?symbol(i):next?"·":"");
-            cell.setTextColor(complete?PlaylumiMagicArt.INK:PlaylumiMagicArt.GOLD);
-            cell.setBackground(surface(complete?0xffd4f5da:next?0xff553681:0xff3f285e,complete?0xff85c598:next?0xffffdc88:0xff8b68b2));
+            TextView cell=cells[i];
+            if(round.kind==PlaylumiInteractive.MOSAIC){
+                int fill=complete?PlaylumiHandsOn.color(round.target(i)):next?0xff553681:0xff3f285e;
+                cell.setText(complete?"✓":next?"·":"");
+                cell.setTextColor(complete?PlaylumiWorldStyle.contrastingInk(fill):PlaylumiMagicArt.GOLD);
+                cell.setBackground(surface(fill,complete?0xffffe3a8:next?0xffffdc88:0xff8b68b2));
+            }else{
+                cell.setText(complete?symbol(i):next?"·":"");
+                cell.setTextColor(complete?PlaylumiMagicArt.INK:PlaylumiMagicArt.GOLD);
+                cell.setBackground(surface(complete?0xffd4f5da:next?0xff553681:0xff3f285e,complete?0xff85c598:next?0xffffdc88:0xff8b68b2));
+            }
             cell.setContentDescription("Vak "+(i+1)+(complete?", "+round.target(i):next?", aan de beurt":", leeg"));
         }
     }

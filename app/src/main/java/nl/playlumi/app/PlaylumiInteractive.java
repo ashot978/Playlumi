@@ -14,7 +14,7 @@ public final class PlaylumiInteractive {
     private static final String[] ANIMALS={"🐠","🐄","🐒","🐬","🐑","🦜"};
     private static final String[] HOMES={"🌊 Zee","🌾 Boerderij","🌳 Bos"};
     private static final String[] COLORS={"🔴 Rood","🔵 Blauw","🟡 Geel","🟢 Groen"};
-    public static final int LEGACY=1,CURRENT=2;
+    public static final int LEGACY=1,PREVIOUS=2,CURRENT=3;
     public final int kind,level,version;
     public final long seed;
     private String clue="",picture="";
@@ -28,12 +28,12 @@ public final class PlaylumiInteractive {
         this(kind,level,seed,progress,LEGACY);
     }
     public PlaylumiInteractive(int kind,int level,long seed,int progress,int version){
-        if(kind<0||kind>3||level<0||level>2||(version!=LEGACY&&version!=CURRENT))throw new IllegalArgumentException("game");
+        if(kind<0||kind>3||level<0||level>2||(version!=LEGACY&&version!=PREVIOUS&&version!=CURRENT))throw new IllegalArgumentException("game");
         this.kind=kind;this.level=level;this.seed=seed;this.version=version;
         Random r=new Random(seed);
         ArrayList<String> opts=new ArrayList<>();
         if(kind==NUMBERS){
-            if(version==CURRENT&&level>0){
+            if(version>=PREVIOUS&&level>0){
                 int n=level==1?4:5;
                 step=level==1?1:2+r.nextInt(2);
                 if(level==2&&r.nextBoolean())step=-step;
@@ -53,7 +53,7 @@ public final class PlaylumiInteractive {
             Collections.shuffle(opts,r);
         }else if(kind==LETTERS){
             String word;
-            if(version==CURRENT&&level>0){
+            if(version>=PREVIOUS&&level>0){
                 String[][] bank=level==1?PlaylumiWordTrain.MIDDLE:PlaylumiWordTrain.OLDER;
                 String[] item=bank[r.nextInt(bank.length)];
                 word=item[0];picture=item[1];clue=item[2];wordPuzzle=true;
@@ -67,6 +67,10 @@ public final class PlaylumiInteractive {
                 for(int j=0;j<(level==1?1:2);j++)opts.add(decoys.get(j));
             }else if(!opts.contains("X"))opts.add("X");
             Collections.shuffle(opts,r);
+        }else if(kind==HABITATS&&version==CURRENT){
+            int n=PlaylumiHandsOn.habitatSteps(level);
+            targets=new String[n];answers=new String[n];
+            PlaylumiHandsOn.habitats(level,r,targets,answers,opts);
         }else if(kind==HABITATS){
             int n=3+level;targets=new String[n];answers=new String[n];
             ArrayList<Integer> indices=new ArrayList<>();
@@ -74,6 +78,10 @@ public final class PlaylumiInteractive {
             Collections.shuffle(indices,r);
             for(int i=0;i<n;i++){int index=indices.get(i);targets[i]=ANIMALS[index];answers[i]=HOMES[index%3];}
             Collections.addAll(opts,HOMES);
+        }else if(version==CURRENT){
+            int n=PlaylumiHandsOn.mosaicSteps(level);
+            targets=new String[n];answers=new String[n];
+            PlaylumiHandsOn.mosaic(level,r,targets,answers,opts);
         }else{
             int n=4+level;targets=new String[n];answers=new String[n];
             for(int i=0;i<n;i++){targets[i]=COLORS[r.nextInt(2+level)];answers[i]=targets[i];}
@@ -91,10 +99,11 @@ public final class PlaylumiInteractive {
     public int step(){return step;}
     public String instruction(){
         if(kind==NUMBERS){
-            if(version==CURRENT&&level>0)return "Begin bij "+targets[0]+". Tel steeds "+Math.abs(step)+(step<0?" terug.":" verder.");
+            if(version>=PREVIOUS&&level>0)return "Begin bij "+targets[0]+". Tel steeds "+Math.abs(step)+(step<0?" terug.":" verder.");
             return INSTRUCTIONS[kind]+" Begin bij "+targets[0]+".";
         }
         if(wordPuzzle)return "Bouw het woord. "+clue;
+        if(kind==MOSAIC&&version==CURRENT)return "Maak het kleurvoorbeeld na, van links naar rechts en rij voor rij.";
         return INSTRUCTIONS[kind];
     }
     public String example(int index,boolean revealed){
@@ -102,6 +111,9 @@ public final class PlaylumiInteractive {
         // Young readers see the first and last letter; older readers get the first.
         return index==0||(level==1&&index==total()-1)?targets[index]:"?";
     }
+    public boolean realMosaic(){return kind==MOSAIC&&version==CURRENT;}
+    public int mosaicColumns(){return realMosaic()?PlaylumiHandsOn.mosaicColumns(level):0;}
+    public String animalName(int i){return kind==HABITATS?PlaylumiHandsOn.animalName(targets[i]):"";}
     public int progress(){return progress;}
     public int total(){return targets.length;}
     public boolean solved(){return progress==total();}
