@@ -1,7 +1,7 @@
-name: Playlumi 0.110 drawing, upgrade and play acceptance
+name: Playlumi 0.111 players, upgrade and play acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.110']
+    branches: ['feature/playlumi-0.111']
   workflow_dispatch:
 jobs:
   quiz-ui:
@@ -39,24 +39,24 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build pinned 0.109 baseline with the same disposable debug key
+      - name: Build pinned 0.110 baseline with the same disposable debug key
         shell: bash
         run: |
           set -euo pipefail
-          PLAYLUMI_BASELINE_SHA=c31400887005acd24c1d418eb6084f8156dbe9b5
-          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0109-baseline"
+          PLAYLUMI_BASELINE_SHA=50230b814b6ac9af35fbb1d6464aa831e37e5123
+          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0110-baseline"
           git worktree add --detach "$PLAYLUMI_BASELINE_DIR" "$PLAYLUMI_BASELINE_SHA"
           trap 'git worktree remove --force "$PLAYLUMI_BASELINE_DIR"' EXIT
-          PLAYLUMI_BUILD_CODE=601010 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug
+          PLAYLUMI_BUILD_CODE=601011 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug
           mkdir -p build/upgrade-baseline
-          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0109-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0109-debug.apk | grep -F "versionCode='601010'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0109-debug.apk | grep -F "versionName='0.109'"
+          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0110-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0110-debug.apk | grep -F "versionCode='601011'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0110-debug.apk | grep -F "versionName='0.110'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
-          sha256sum build/upgrade-baseline/playlumi-0109-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.110 source
+          sha256sum build/upgrade-baseline/playlumi-0110-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
+      - name: Build debug variant of exact 0.111 source
         env:
-          PLAYLUMI_BUILD_CODE: '601011'
+          PLAYLUMI_BUILD_CODE: '601012'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -64,7 +64,7 @@ jobs:
             sudo chown root:kvm /dev/kvm
             sudo chmod 666 /dev/kvm
           fi
-      - name: Test upgrade, quiz, city, play ideas and drawing controls on phone and Fold
+      - name: Test upgrade, quiz, city, play ideas, drawings and players on phone and Fold
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -76,7 +76,7 @@ jobs:
           emulator-boot-timeout: 390
           script: |
             python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0109-debug.apk
+            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0110-debug.apk
       - name: Collect host diagnostics after emulator failure
         if: failure()
         shell: bash
@@ -88,7 +88,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0110-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0111-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/

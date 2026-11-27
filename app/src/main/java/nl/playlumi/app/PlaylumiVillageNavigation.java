@@ -34,6 +34,7 @@ public final class PlaylumiVillageNavigation extends FrameLayout {
             button.setText("");button.setPadding(0,0,0,0);
             button.setMinWidth(0);button.setMinHeight(0);button.setMinimumWidth(0);button.setMinimumHeight(0);
             button.setFocusable(true);button.setContentDescription(description(place,stars,daily));
+            if(i==16)button.setContentDescription(art.profileLabel()+", open Lumi");
             GradientDrawable focus=new GradientDrawable();focus.setColor(0x184c2a7f);
             focus.setCornerRadius(18*density);focus.setStroke(Math.max(2,Math.round(3*density)),0xffffdf85);
             StateListDrawable surface=new StateListDrawable();

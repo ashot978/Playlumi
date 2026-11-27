@@ -202,7 +202,7 @@ public final class PlaylumiFoundationsTest {
     }
     @Test public void catalogAgesAndExistingScoreCategoriesRemainExplicit(){
         for(int age=0;age<3;age++){
-            assertEquals(new int[]{26,45,71}[age],PlaylumiGameCatalog.entries(age).size());
+            assertEquals(new int[]{27,46,72}[age],PlaylumiGameCatalog.entries(age).size());
             assertNotNull(PlaylumiGameCatalog.find(age,"0:0:0:5"));
             assertEquals(age>=1,PlaylumiGameCatalog.find(age,"0:0:16:5")!=null);
             assertEquals(age==2,PlaylumiGameCatalog.find(age,"1:0:6:5")!=null);

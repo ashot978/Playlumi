@@ -89,6 +89,7 @@ public final class PlaylumiGameCatalog {
         g(list,4,STARS,0,"Vang de sterren","Verzamel alleen gouden sterren","★");
         q(list,4,21,1,"Dierenwereld","Herken de dieren","🐾");
         q(list,4,ExtraGames.CATEGORIES,0,"Wat hoort erbij?","Zoek het passende plaatje","✦");
+        q(list,4,PlaylumiOddOneOut.MODE,PlaylumiOddOneOut.VARIANT,"Wat hoort er niet bij?","Zoek het plaatje buiten de genoemde groep","≠");
         if(a>=1){
             q(list,4,20,1,"Fruit herkennen","Welk fruit zie je?","🍎");
             q(list,4,20,2,"Groente herkennen","Ontdek de groente","🥕");

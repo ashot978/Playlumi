@@ -77,7 +77,7 @@ public final class PlaylumiVillageView extends View {
         super(context);this.outfit=outfit==null?null:outfit.clone();this.playStreak=Math.max(0,playStreak);
         this.dailyCompleted=Math.max(0,Math.min(3,dailyCompleted));
         this.listener=listener;
-        this.profileNumber=Math.max(0,profile);
+        this.profileNumber=PlaylumiProfiles.safe(profile);
         this.starBalance=Math.max(0,stars);
         this.avatar=PlaylumiWorldStyle.safeAvatar(avatar);
         this.discoveryPrefs=context.getSharedPreferences("playlumi-village-"+profileNumber,
@@ -96,10 +96,11 @@ public final class PlaylumiVillageView extends View {
         updateDescription();
     }
     private void updateDescription() {
-        setContentDescription("Magisch Playlumi-dorp met zes speelgebouwen. "+
+        setContentDescription(profileLabel()+". Magisch Playlumi-dorp met zes speelgebouwen. "+
                 PlaylumiVillageProgress.visitedCount(discovered)+
                 " gebouwen bezocht. Daguitdagingen "+dailyCompleted+" van 3. Tik bovenaan op de zon of Lumi, of op een speelgebouw.");
     }
+    public String profileLabel(){return PlaylumiProfiles.label(profileNumber);}
     private void paintColor(int c) {
         pen.reset();
         pen.setAntiAlias(true);
@@ -131,7 +132,7 @@ public final class PlaylumiVillageView extends View {
         text(c,"★ "+Math.min(99999,starBalance),418,65,
                 starBalance>=10000?27:35,0xffffe6a2);
         text(c,"☀ "+dailyCompleted+"/3",596,65,33,0xffffe6a2);
-        text(c,"Lumi",764,65,29,Color.WHITE);
+        text(c,profileLabel(),764,65,26,Color.WHITE);
         // Replace the baked-in boy and level meter with the chosen, real character.
         paintColor(0xff48267c);
         c.drawRoundRect(0,93,325,238,38,38,pen);

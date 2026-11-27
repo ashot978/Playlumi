@@ -1,6 +1,6 @@
 # Playlumi — ontwikkeling en roadmap
 
-Laatste geverifieerde testbouw: **0.109 / 601010**. In ontwikkeling: **0.110 / 601011**. Daarna volgen 0.111, 0.112 enzovoort met steeds hogere Android-versiecodes. Versie 1.0 blijft een afzonderlijk besluit na acceptatie; een geslaagde testbouw is geen productiepublicatie.
+Laatste geverifieerde testbouw: **0.110 / 601011**. In ontwikkeling: **0.111 / 601012**. Daarna volgen 0.112, 0.113 enzovoort met steeds hogere Android-versiecodes. Versie 1.0 blijft een afzonderlijk besluit na acceptatie; een geslaagde testbouw is geen productiepublicatie.
 
 ## Vaste uitgangspunten
 
@@ -83,27 +83,32 @@ SHA-256 van de opgeleverde 0.109-APK:
 
 [PR 93](https://github.com/ashot978/Playlumi/pull/93) is een concept. De geteste bron is niet gemerged of openbaar gepubliceerd. De fletse Tekenstudio-feedback, titelafbreking op telefoon en enkelvoudstekst in het ouderoverzicht zijn bekende afwerkingspunten voor de volgende bouw. De emulatorproef vervangt geen oorspronkelijk ondertekende update op een fysiek Samsung-toestel.
 
-## 0.110 — lopend werk
+## 0.110 — afgeronde testbouw
 
-Baseline: de geverifieerde 0.109 op commit `c31400887005acd24c1d418eb6084f8156dbe9b5`. Het geplande werk en de gerichte regressieproeven staan in [RELEASE-0.110.md](RELEASE-0.110.md). Resultaten van 0.109 zijn geen geslaagde verificatie van deze nieuwe bron.
+Geverifieerde bron: [50230b814b6ac9af35fbb1d6464aa831e37e5123](https://github.com/ashot978/Playlumi/commit/50230b814b6ac9af35fbb1d6464aa831e37e5123). De beschrijving staat in [RELEASE-0.110.md](RELEASE-0.110.md).
 
-### Werkpakket
+- [x] Potlood, gum en drie lijndiktes, met native geselecteerde status en bewaarde keuzes per profiel.
+- [x] Undo/Redo voor volledige gebaren en leegmaken; maximaal 32 actieve acties, met behoud van oudere zichtbare pixels. Bewaren en kort achtergrondgebruik behouden de actieve geschiedenis.
+- [x] Gum op geladen PNG's, ongewijzigde profielbestanden, veilige opslag en eenmalige tekenbeloning.
+- [x] Tel de vormen, Dagen van de week en Lees en kies. Catalogus: **26 / 45 / 71 routes**, met bestaande routecodes behouden.
+- [x] Leesbare Tekenstudio-feedback, passende kop, enkelvoud in het ouderoverzicht, uitgelijnde stadstegels en een tekenvlak dat de gereedschappen niet overschildert.
+- [x] [Android-run 46038701981](https://github.com/ashot978/Playlumi/actions/runs/46038701981): debug/release, oorspronkelijke illustraties en vijf onafhankelijke Java-controles geslaagd; **264 unit-tests in 56 suites**, **0 lintfouten en 176 waarschuwingen**.
+- [x] [UI-run 46038701925](https://github.com/ashot978/Playlumi/actions/runs/46038701925): **56 native acceptatiegroepen** — 26 telefoon, 24 Fold en drie bestaande quizgroepen per formaat.
+- [x] Update van exacte 0.109 met dezelfde tijdelijke debughandtekening: 28 voorkeuren, 17 vraagvelden en een werkelijk getekende oude PNG behouden.
+- [x] Daadwerkelijke geladen-PNG-gum, Undo/Redo, leegmaken en 32 + 32 verdere gebaren gecontroleerd op Android-pixels. Afzonderlijk voorbereide profielen behouden hun eigen bestanden, keuzes en beloningen.
+- [x] Zichtbare gereedschappen ook met grote tekst bevestigd door pixelmetingen en beoordeling van echte screenshots; de nieuwe oefeningbeelden zijn inhoudelijk beoordeeld.
 
-- Potlood, gum en drie lijndiktes in de Tekenstudio, met native geselecteerde status en lokaal bewaarde gereedschapskeuze per profiel.
-- Undo en Redo voor volledige tekengebaren en leegmaken. Bewaren en kort achtergrondgebruik houden de actieve geschiedenis beschikbaar. De geschiedenis blijft begrensd zonder het zichtbare oudere tekenwerk weg te gooien.
-- Gum ook op een eerder opgeslagen afbeelding; dezelfde profielbestanden en veilige opslag blijven behouden.
-- Drie nieuwe vaste quizroutes: Tel de vormen voor alle leeftijden, Dagen van de week vanaf 5–6 en Lees en kies voor 7+. Beoogd aanbod: 26 / 45 / 71 routes, met ongewijzigde bestaande routecodes.
-- Leesbare Tekenstudio-feedback en een passende kop, correct enkelvoud in het ouderoverzicht en betere uitlijning van de stadstegels.
+De profielproef van 0.110 gebruikte een expliciete opslagfixture om het actieve profiel te kiezen. Een echte spelerwissel via de ouderzone volgt in 0.111. Fysieke Samsung-bediening blijft afzonderlijke open acceptatie.
 
-### Nog vóór oplevering
+## 0.111 — lopend werk
 
-- [ ] De nieuwe regels, tekengeschiedenis en catalogus controleren met onafhankelijke Java-controles en gerichte unit-tests.
-- [ ] De definitieve bron als debug en release bouwen, met volledige tests, Android Lint, versie-/pakketcontrole en oorspronkelijke artworkcontrole.
-- [ ] Alle bestaande telefoon-/Fold-proeven behouden en echte native bediening van de nieuwe tekenknoppen, gum, Undo/Redo, leegmaken en drie quizroutes toevoegen.
-- [ ] De update van exact 0.109 naar 0.110 controleren, nu ook met een werkelijk in de oude bouw getekende PNG die bytegelijk blijft na installatie.
-- [ ] Screenshots controleren van de nieuwe gereedschappen en leerinhoud, antwoordfeedback, grote tekst en de bestaande afwerkingspunten.
-- [ ] De gecontroleerde productie-APK privé ondertekenen met de oorspronkelijke sleutel; pakket, versie, certificaat, inhoud en uitlijning controleren.
-- [ ] Definitieve broncommit, workflows, resultaten, APK-hash en nog open fysieke toestelacceptatie vastleggen.
+Baseline is de hierboven geverifieerde 0.110. Het korte werkpakket staat in [RELEASE-0.111.md](RELEASE-0.111.md).
+
+- Drie vaste anonieme spelers via de ouderpoort, met eigen leeftijd, voortgang, voorkeuren en tekening. Speler 1 behoudt de oorspronkelijke opslag.
+- De bestaande profielproef vervangen door echte spelerknoppen en controleren dat een begonnen quiz en tekening na terugwisselen exact behouden blijven.
+- ‘Wat hoort er niet bij?’ voor alle leeftijdsgroepen, met beoogd catalogusaanbod **27 / 46 / 72** en uitbreiding van de bestaande inhoudscontrole.
+- De donkerblauwe kleurnaam passend tonen op de brede tekenindeling.
+- Definitieve bouw, volledige bestaande gates, update van exact 0.110, privé ondertekening en oplevering van de gecontroleerde APK met korte changelog.
 
 ## Eerdere mijlpalen
 
@@ -128,7 +133,7 @@ Bekende verificatiereferenties: 0.106 [build 45909894600](https://github.com/ash
 - [ ] Overgebleven lintmeldingen inhoudelijk beoordelen; herstel op basis van werkelijk risico en effect, zonder algemene onderdrukking.
 - [ ] Teksten, artworkrechten en de privacy-informatie laten aansluiten op de uiteindelijke app en de gekozen distributie.
 
-Nieuwe leerstof en extra geïllustreerde details volgen op basis van feedback op de geteste bouwen. Wekelijkse doelen zijn geen onderdeel van de geverifieerde 0.109 of het huidige 0.110-werkpakket. Advertenties, betaalde herstelopties, drukke terugkeermeldingen en verlies van verdiende badges passen niet binnen de uitgangspunten.
+Nieuwe leerstof en extra geïllustreerde details volgen op basis van feedback op de geteste bouwen. Wekelijkse doelen zijn geen onderdeel van de geverifieerde 0.110 of het huidige 0.111-werkpakket. Advertenties, betaalde herstelopties, drukke terugkeermeldingen en verlies van verdiende badges passen niet binnen de uitgangspunten.
 
 ## 1.0 — na afzonderlijke acceptatie
 
