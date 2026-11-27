@@ -1,4 +1,4 @@
-name: Android Playlumi 0.124 release candidate
+name: Android Playlumi 0.125 release candidate
 on:
   push:
   workflow_dispatch:
@@ -47,7 +47,7 @@ jobs:
           gradle-version: '8.9'
           cache-read-only: false
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=601025" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=601026" >> "$GITHUB_ENV"
       - name: Compile debug and production APKs
         run: gradle --no-daemon assembleDebug assembleRelease
 
@@ -74,8 +74,8 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='601025'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.124'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='601026'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.125'"
           done
           sha256sum app/build/outputs/apk/release/app-release-unsigned.apk > build-release-unsigned-sha256.txt
 
@@ -97,7 +97,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0124-unsigned-release
+          name: playlumi-0125-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -108,7 +108,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0124-offline-signing-tools
+          name: playlumi-0125-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
@@ -119,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0124-full-qa
+          name: playlumi-0125-full-qa
           path: |
             app/build/reports/tests/
             app/build/reports/lint-results-debug.*

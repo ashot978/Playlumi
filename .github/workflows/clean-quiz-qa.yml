@@ -1,7 +1,7 @@
-name: Playlumi 0.124 named screen sheets and upgrade acceptance
+name: Playlumi 0.125 named screen sheets and upgrade acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.124']
+    branches: ['feature/playlumi-0.125']
   workflow_dispatch:
 jobs:
   quiz-ui:
@@ -65,9 +65,9 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0123-debug.apk | grep -F "versionName='0.123'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
           sha256sum build/upgrade-baseline/playlumi-0123-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.124 source
+      - name: Build debug variant of exact 0.125 source
         env:
-          PLAYLUMI_BUILD_CODE: '601025'
+          PLAYLUMI_BUILD_CODE: '601026'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -99,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0124-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0125-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/

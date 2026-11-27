@@ -43,6 +43,15 @@ public final class PlaylumiPagePlanTest {
         assertEquals(2,PlaylumiPagePlan.shelfRows(740,1f));
         assertEquals(1,PlaylumiPagePlan.shelfRows(740,1.5f));
     }
+    @Test public void reflowKeepsTheVisibleBlockAndVerticalGestureStaysVertical(){
+        List<PlaylumiPagePlan.Page> pages=PlaylumiPagePlan.pack(Arrays.asList(block(0,50),block(100,160),block(200,280)),120,1);
+        assertEquals(2,PlaylumiPagePlan.resolvePage(pages,0,-1,205,-1));
+        assertEquals(1,PlaylumiPagePlan.resolvePage(pages,0,1,205,-1));
+        assertEquals(0,PlaylumiPagePlan.resolvePage(pages,2,1,205,20));
+        int axis=PlaylumiPagePlan.lockAxis(0,3,28,14);
+        assertEquals(PlaylumiPagePlan.AXIS_VERTICAL,axis);
+        assertEquals(axis,PlaylumiPagePlan.lockAxis(axis,180,4,14));
+    }
     @Test public void onlyDeliberateHorizontalSwipesChangePages(){
         assertEquals(0,PlaylumiPagePlan.swipe(0,500,48,true));
         assertEquals(0,PlaylumiPagePlan.swipe(20,500,48,true));

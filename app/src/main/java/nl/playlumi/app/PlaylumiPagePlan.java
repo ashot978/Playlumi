@@ -77,6 +77,19 @@ public final class PlaylumiPagePlan {
         for(int i=0;i<pages.size();i++)if(coordinate<pages.get(i).end)return i;
         return pages.size()-1;
     }
+    public static int resolvePage(List<Page> pages,int previous,int request,int anchor,int reveal){
+        if(reveal>=0)return pageFor(pages,reveal);
+        if(request>=0)return safePage(request,pages.size());
+        return anchor>=0?pageFor(pages,anchor):safePage(previous,pages.size());
+    }
+    public static final int AXIS_UNDECIDED=0,AXIS_HORIZONTAL=1,AXIS_VERTICAL=2;
+    public static int lockAxis(int current,float dx,float dy,float slop){
+        if(current!=AXIS_UNDECIDED)return current;
+        float x=Math.abs(dx),y=Math.abs(dy);
+        if(x>=slop&&x>=1.55f*y)return AXIS_HORIZONTAL;
+        if(y>=slop&&y>=1.35f*x)return AXIS_VERTICAL;
+        return AXIS_UNDECIDED;
+    }
     public static int swipe(float dx,float dy,float threshold,boolean permitted){
         if(!permitted||Math.abs(dx)<threshold||Math.abs(dx)<1.55f*Math.abs(dy))return 0;
         return dx<0?1:-1;
