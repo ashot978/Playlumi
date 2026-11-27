@@ -365,7 +365,7 @@ def start_upgrade_quiz(label, resume):
 def test_debug_upgrade(baseline_apk, viewport):
     baseline = pathlib.Path(baseline_apk)
     global PAGED_UI
-    PAGED_UI = False
+    PAGED_UI = True  # Both 0.123 and 0.124 use fixed horizontal pages.
     candidate = pathlib.Path("app/build/outputs/apk/debug/app-debug.apk")
     assert baseline.is_file() and candidate.is_file(), "Both debug upgrade APKs must exist"
     # Install the older debuggable build as fixture setup, then seed its clean data.
@@ -373,7 +373,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.122" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.123" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -425,7 +425,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.123" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.124" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     PAGED_UI = True
     installed = prefs()
     for key in fixture:
@@ -462,7 +462,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.122", "candidateVersion": "0.123",
+        "baselineVersion": "0.123", "candidateVersion": "0.124",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -472,7 +472,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.122 → 0.123 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.123 → 0.124 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1643,7 +1643,18 @@ def test_fixed_pages(viewport):
     assert page_indicator(next_nodes).startswith("Inhoudspagina 2 van "), "Horizontal swipe did not advance"
     assert cards(next_nodes) and not cards(next_nodes).intersection(initial), "Page repeated or cut game cards"
     assert any(exact("Rekenraket")(n) for n in next_nodes), "Header not pinned"
-    assert any(exact("Dorp")(n) for n in next_nodes) and any(exact("Werelden")(n) for n in next_nodes), "Main navigation not pinned"
+    # Accessibility includes a selected-state suffix, so compare stable labels,
+    # actual visibility and geometry, not an exact unselected label.
+    def nav(values):
+        result = {}
+        for node in values:
+            desc = node.get("content-desc", "")
+            for title in ("Dorp", "Werelden"):
+                if desc in (title, title + ", geselecteerd") and visible(node) and node.get("clickable") == "true" and node.get("enabled") == "true":
+                    result[title] = rect(node)
+        assert set(result) == {"Dorp", "Werelden"}, "Main navigation not visible"
+        return result
+    assert nav(nodes) == nav(next_nodes), "Main navigation moved during swipe"
     shell(f"input swipe {int(w*.20)} {int(h*.45)} {int(w*.82)} {int(h*.45)} 350")
     time.sleep(.6)
     assert page_indicator(ui(label + "-swipe-right")) == first, "Horizontal reverse swipe failed"
@@ -1657,6 +1668,7 @@ def test_fixed_pages(viewport):
         current = cards(nodes)
         assert not all_cards.intersection(current), "Card duplicated across pages"
         all_cards.update(current)
+        assert nav(nodes) == nav(next_nodes), "Navigation geometry changed between pages"
         assert not any(n.get("scrollable") == "true" or n.get("class", "").endswith("ScrollView") for n in nodes)
         if not turn_page(nodes, True):
             break
@@ -1809,7 +1821,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.122 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.123 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)

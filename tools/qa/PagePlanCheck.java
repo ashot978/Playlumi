@@ -4,7 +4,7 @@ import java.util.*;
 public final class PagePlanCheck {
     private static void require(boolean good,String message){if(!good)throw new AssertionError(message);}
     public static void main(String[] args){
-        Random r=new Random(1232026);int cases=0,blocks=0,swipes=0;
+        Random r=new Random(1232026);int cases=0,blocks=0,swipes=0,anchors=0,axes=0;
         for(int i=0;i<12000;i++){
             int height=100+r.nextInt(1000),limit=1+r.nextInt(6),count=1+r.nextInt(60),position=0;
             ArrayList<PlaylumiPagePlan.Block> items=new ArrayList<>();
@@ -31,13 +31,23 @@ public final class PagePlanCheck {
                 require(owners==1,"Control cut, lost or duplicated");
                 int selected=PlaylumiPagePlan.pageFor(pages,item.start);
                 require(pages.get(selected).start<=item.start&&pages.get(selected).end>=item.end,"Wrong anchor");
-                blocks++;
+                require(PlaylumiPagePlan.resolvePage(pages,0,-1,item.start,-1)==selected,"Reflow lost content anchor");
+                require(PlaylumiPagePlan.resolvePage(pages,selected,0,item.start,-1)==0,"Explicit navigation ignored");
+                require(PlaylumiPagePlan.resolvePage(pages,0,0,-1,item.start)==selected,"Explicit reveal ignored");
+                anchors+=3;blocks++;
             }
             cases++;
             float y=60+r.nextInt(1000),x=r.nextInt(30)-15;
             require(PlaylumiPagePlan.swipe(x,y,48,true)==0&&PlaylumiPagePlan.swipe(x,-y,48,true)==0,"Vertical swipe changed page");
             require(PlaylumiPagePlan.swipe(-200,20,48,true)==1&&PlaylumiPagePlan.swipe(200,20,48,true)==-1,"Horizontal swipe lost");
             require(PlaylumiPagePlan.swipe(-200,20,48,false)==0,"Game gesture intercepted");swipes+=5;
+            int vertical=PlaylumiPagePlan.lockAxis(0,x,y,14);
+            require(vertical==PlaylumiPagePlan.AXIS_VERTICAL,"Vertical intent not recognized");
+            require(PlaylumiPagePlan.lockAxis(vertical,-1000,30,14)==vertical,"Vertical gesture changed axis");
+            int horizontal=PlaylumiPagePlan.lockAxis(0,-200,20,14);
+            require(horizontal==PlaylumiPagePlan.AXIS_HORIZONTAL,"Horizontal intent not recognized");
+            require(PlaylumiPagePlan.lockAxis(horizontal,10,1000,14)==horizontal,"Horizontal gesture changed axis");
+            axes+=4;
         }
         for(int w:new int[]{240,320,360,600,900,1200})for(float font:new float[]{1f,1.3f,1.5f}){
             int count=PlaylumiCityLayout.forWidth(w,font).columns;
@@ -50,6 +60,6 @@ public final class PagePlanCheck {
                 }
             }
         }
-        System.out.println("PASS: "+cases+" randomized page decks, "+blocks+" intact measured controls, "+swipes+" swipe-direction checks and compact city pages.");
+        System.out.println("PASS: "+cases+" randomized page decks, "+blocks+" intact measured controls, "+swipes+" swipe-direction checks, "+anchors+" anchor checks, "+axes+" axis locks and compact city pages.");
     }
 }

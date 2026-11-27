@@ -32,13 +32,15 @@ public final class PlaylumiPageDeck extends ViewGroup {
     private final boolean allowSwipe,game;
     private final IdentityHashMap<View,Integer> hidden=new IdentityHashMap<>();
     private List<PlaylumiPagePlan.Page> pages=java.util.Collections.emptyList();
-    private View header,pendingReveal,pinned;
+    private View header,pendingReveal,pinned,pageAnchor;
+    private final IdentityHashMap<View,Integer> blockStarts=new IdentityHashMap<>();
     private int pinnedExtent,pinnedWidth,pinnedHeight,bodyLeft;
     private boolean pinnedSide,blankGesture;
     private int maxBlocks;
     private int headerHeight,selected,requested=-1,bodyTop,bodyHeight,contentWidth,naturalHeight;
     private int contentBottom,contentLeft,contentRight;
-    private boolean laidOut,swiping;
+    private boolean laidOut,bodyGesture;
+    private int gestureAxis=PlaylumiPagePlan.AXIS_UNDECIDED;
     private float downX,downY;
     public PlaylumiPageDeck(Context context,boolean allowSwipe,boolean game){
         super(context);this.allowSwipe=allowSwipe;this.game=game;
@@ -134,12 +136,15 @@ public final class PlaylumiPageDeck extends ViewGroup {
             }
             if(output.size()>before)return;
         }
-        output.add(new PlaylumiPagePlan.Block(Math.max(0,y),Math.max(Math.max(0,y)+1,bottom)));
+        int start=Math.max(0,y);
+        output.add(new PlaylumiPagePlan.Block(start,Math.max(start+1,bottom)));
+        blockStarts.put(view,start);
     }
     private int topOf(View view){
         if(view==content)return 0;
         int y=0;View child=view;
         while(child!=content&&child.getParent() instanceof View){
+            if(child.getVisibility()!=VISIBLE||child.getHeight()<=0)return -1;
             y+=child.getTop();child=(View)child.getParent();
         }
         return child==content?y:-1;
@@ -160,18 +165,21 @@ public final class PlaylumiPageDeck extends ViewGroup {
         content.setScaleX(1f);content.setScaleY(1f);content.setClipBounds(null);
         content.layout(0,0,contentWidth,naturalHeight);
         ArrayList<PlaylumiPagePlan.Block> measured=new ArrayList<>();
+        blockStarts.clear();
         for(int i=0;i<content.getChildCount();i++){
             View child=content.getChildAt(i);
             blocks(child,child.getTop(),measured);
         }
         pages=PlaylumiPagePlan.pack(measured,bodyHeight,maxBlocks);
-        int index=requested>=0?requested:selected;requested=-1;
+        int anchor=pageAnchor==null?-1:topOf(pageAnchor);
+        int reveal=-1;
         if(pendingReveal!=null){
             int y=topOf(pendingReveal);
-            if(y>=0)index=PlaylumiPagePlan.pageFor(pages,y+Math.min(pendingReveal.getHeight()/2,dp(28)));
+            if(y>=0)reveal=y+Math.min(pendingReveal.getHeight()/2,dp(28));
             pendingReveal=null;
         }
-        selected=PlaylumiPagePlan.safePage(index,pages.size());laidOut=true;
+        selected=PlaylumiPagePlan.resolvePage(pages,selected,requested,anchor,reveal);
+        requested=-1;laidOut=true;
         displayPage();
     }
     private void hideOffPage(View view,int y,int start,int end){
@@ -191,6 +199,14 @@ public final class PlaylumiPageDeck extends ViewGroup {
         if(pages.isEmpty())return;
         restoreHidden();
         PlaylumiPagePlan.Page page=pages.get(selected);
+        // Keep the first visible measured block, not a fragile absolute page number.
+        pageAnchor=null;int first=Integer.MAX_VALUE;
+        for(Map.Entry<View,Integer> block:blockStarts.entrySet()){
+            int start=block.getValue();
+            if(start>=page.start&&start<page.end&&start<first){
+                pageAnchor=block.getKey();first=start;
+            }
+        }
         float scale=page.scale;
         int x=bodyLeft+Math.round((contentWidth-contentWidth*scale)/2f);
         int y=bodyTop-Math.round(page.start*scale);
@@ -218,39 +234,46 @@ public final class PlaylumiPageDeck extends ViewGroup {
         selected=target;displayPage();
         sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
     }
+    private void updateGestureAxis(MotionEvent event){
+        gestureAxis=PlaylumiPagePlan.lockAxis(gestureAxis,event.getX()-downX,event.getY()-downY,dp(14));
+    }
+    private int gestureDirection(MotionEvent event){
+        if(!bodyGesture||gestureAxis==PlaylumiPagePlan.AXIS_VERTICAL)return 0;
+        return PlaylumiPagePlan.swipe(event.getX()-downX,event.getY()-downY,dp(48),allowSwipe&&pages.size()>1);
+    }
     @Override public boolean onInterceptTouchEvent(MotionEvent event){
-        switch(event.getActionMasked()){
-            case MotionEvent.ACTION_DOWN:
-                downX=event.getX();downY=event.getY();swiping=false;return false;
-            case MotionEvent.ACTION_MOVE:
-                int direction=PlaylumiPagePlan.swipe(event.getX()-downX,event.getY()-downY,dp(48),allowSwipe&&pages.size()>1);
-                if(direction!=0&&downX>=bodyLeft&&downY>=bodyTop&&downY<controls.getTop()){swiping=true;return true;}
-                return false;
-            default:return false;
-        }
+        if(event.getActionMasked()==MotionEvent.ACTION_MOVE)return gestureDirection(event)!=0;
+        return false;
     }
     @Override public boolean onTouchEvent(MotionEvent event){
         if(event.getActionMasked()==MotionEvent.ACTION_UP){
-            int direction=PlaylumiPagePlan.swipe(event.getX()-downX,event.getY()-downY,dp(48),allowSwipe&&pages.size()>1);
-            if(direction!=0&&downX>=bodyLeft&&downY>=bodyTop&&downY<controls.getTop())turn(direction);
-            swiping=false;return true;
+            updateGestureAxis(event);
+            int direction=gestureDirection(event);
+            if(direction!=0)turn(direction);
         }
-        if(event.getActionMasked()==MotionEvent.ACTION_CANCEL){swiping=false;return true;}
         return true;
     }
     @Override public boolean dispatchTouchEvent(MotionEvent event){
-        if(event.getActionMasked()==MotionEvent.ACTION_DOWN){
-            float x=event.getX(),y=event.getY();
-            blankGesture=x>=bodyLeft&&y>=bodyTop&&y<controls.getTop()&&
-                    (y>=contentBottom||x<contentLeft||x>contentRight);
-            if(blankGesture){downX=x;downY=y;swiping=false;return true;}
-        }else if(blankGesture){
-            if(event.getActionMasked()==MotionEvent.ACTION_UP||event.getActionMasked()==MotionEvent.ACTION_CANCEL){
-                blankGesture=false;return onTouchEvent(event);
+        final int action=event.getActionMasked();
+        if(action==MotionEvent.ACTION_DOWN){
+            downX=event.getX();downY=event.getY();
+            gestureAxis=PlaylumiPagePlan.AXIS_UNDECIDED;
+            bodyGesture=downX>=bodyLeft&&downX<getWidth()-getPaddingRight()&&
+                    downY>=bodyTop&&downY<controls.getTop();
+            blankGesture=bodyGesture&&(downY>=contentBottom||downX<contentLeft||downX>contentRight);
+            if(blankGesture)return true;
+        }else if(action==MotionEvent.ACTION_MOVE){
+            updateGestureAxis(event);
+        }
+        if(blankGesture){
+            if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
+                blankGesture=false;boolean handled=onTouchEvent(event);bodyGesture=false;return handled;
             }
             return true;
         }
-        return super.dispatchTouchEvent(event);
+        boolean handled=super.dispatchTouchEvent(event);
+        if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)bodyGesture=false;
+        return handled;
     }
     @Override protected boolean drawChild(Canvas canvas,View child,long drawingTime){
         if(child!=content)return super.drawChild(canvas,child,drawingTime);

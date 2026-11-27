@@ -37,4 +37,21 @@ public final class PlaylumiPagePlanTest {
         assertEquals(1,PlaylumiPagePlan.swipe(-200,15,48,true));
         assertEquals(-1,PlaylumiPagePlan.swipe(200,15,48,true));
     }
+    @Test public void stableAnchorSurvivesEarlierContentGrowthAndExplicitNavigationWins(){
+        List<PlaylumiPagePlan.Page> changed=PlaylumiPagePlan.pack(Arrays.asList(
+                block(0,95),block(100,190),block(195,290),block(295,390)),100,4);
+        assertEquals(2,PlaylumiPagePlan.resolvePage(changed,1,-1,195,-1));
+        assertEquals(0,PlaylumiPagePlan.resolvePage(changed,1,0,195,-1));
+        assertEquals(3,PlaylumiPagePlan.resolvePage(changed,1,0,195,295));
+        assertEquals(1,PlaylumiPagePlan.resolvePage(changed,1,-1,-1,-1));
+    }
+    @Test public void aVerticalGestureCannotBecomeAnAccidentalPageTurn(){
+        int vertical=PlaylumiPagePlan.lockAxis(0,3,40,14);
+        assertEquals(PlaylumiPagePlan.AXIS_VERTICAL,vertical);
+        assertEquals(vertical,PlaylumiPagePlan.lockAxis(vertical,250,40,14));
+        int horizontal=PlaylumiPagePlan.lockAxis(0,-40,2,14);
+        assertEquals(PlaylumiPagePlan.AXIS_HORIZONTAL,horizontal);
+        assertEquals(horizontal,PlaylumiPagePlan.lockAxis(horizontal,-45,180,14));
+        assertEquals(0,PlaylumiPagePlan.lockAxis(0,10,10,14));
+    }
 }
