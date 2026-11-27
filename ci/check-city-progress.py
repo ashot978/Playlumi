@@ -322,7 +322,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.119" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.120" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -374,7 +374,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.120" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.121" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -408,7 +408,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.119", "candidateVersion": "0.120",
+        "baselineVersion": "0.120", "candidateVersion": "0.121",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -418,7 +418,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.119 → 0.120 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.120 → 0.121 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1409,6 +1409,65 @@ def test_puzzle_board(viewport):
     pass_check(viewport + ": genuine number grid plays and restores its exact selected cells")
 
 
+def open_expedition(label):
+    # Use the normal library on both the illustrated phone and native Fold home.
+    click(find_control(description_prefix("Rekenraket"), label + "-world", False))
+    page(44)
+    click(find_control(description_prefix("Werelden"), label + "-worlds-tab", False))
+    page(44)
+    click_named("Open Lumi’s expeditie", label + "-open")
+    page(51)
+
+
+def test_expedition(viewport):
+    label = viewport + "-expedition"
+    seed({})
+    launch_native_home()
+    open_expedition(label + "-initial")
+    screenshot(label + "-passport", expected_texts=("0 van 30 opdrachten · 0 van 6 zegels",))
+    click_named("Expeditie opdracht 1 spelen", label + "-first")
+    page(45)
+    click(find_control(lambda n: re.fullmatch(r"Vak \d+: 1", n.get("content-desc", "")) is not None, label + "-one", False))
+    key = "library_resume_v2_0_0:6:4:0"
+    progress_key = "expedition_v1_progress_0"
+    saved = wait_prefs(lambda p: key in p and json.loads(p[key])["count"] == 1, "Saved first move")
+    first = json.loads(saved[key])
+    assert saved.get(progress_key, 0) == 0 and saved["wardrobe_stars"] == 18, "Partial mission credited"
+    launch_native_home()
+    open_expedition(label + "-reopen")
+    click_named("Expeditie opdracht 1 spelen", label + "-resume")
+    page(45)
+    resumed = json.loads(prefs()[key])
+    for field in ("seed", "engine", "count", "mask", "total"):
+        assert resumed[field] == first[field], "Expedition resume changed " + field
+    for number in range(2, 6):
+        click(find_control(lambda n: re.fullmatch(r"Vak \d+: " + str(number), n.get("content-desc", "")) is not None, label + "-tile-" + str(number), False))
+    completed = wait_prefs(lambda p: p.get(progress_key) == 1 and key not in p, "First expedition mission completed")
+    assert completed["wardrobe_stars"] == 21, "Unexpected expedition reward before seal"
+    click_named("Terug naar de expeditie", label + "-return", False)
+    page(51)
+    screenshot(label + "-next", expected_texts=("1 van 30 opdrachten · 0 van 6 zegels",))
+    # Seed only the four earlier expedition stages to exercise the real chapter finale.
+    # Do not seed or describe a solved game or awarded chapter bonus.
+    seed({progress_key: 4})
+    launch_native_home()
+    open_expedition(label + "-chapter-finale")
+    click_named("Expeditie opdracht 5 spelen", label + "-finale")
+    page(45)
+    for number in range(1, 4):
+        click_named("Kies " + str(number), label + "-rocket-" + str(number))
+    seal = wait_prefs(lambda p: p.get(progress_key) == 5, "Chapter seal awarded")
+    assert seal["wardrobe_stars"] == 36, "Chapter bonus was not exactly 15 plus normal 3 stars"
+    assert seal["wardrobe_total_earned"] == 36, "Chapter reward missing from lifetime balance"
+    click_named("Terug naar de expeditie", label + "-seal-return", False)
+    page(51)
+    screenshot(label + "-seal", expected_texts=("5 van 30 opdrachten · 1 van 6 zegels",))
+    launch_native_home()
+    open_expedition(label + "-seal-restored")
+    assert prefs()[progress_key] == 5 and prefs()["wardrobe_stars"] == 36, "Reopening claimed a seal twice"
+    pass_check(viewport + ": expedition saves a real unfinished puzzle, advances exactly one mission, awards a chapter seal atomically, and restores without duplicate bonus")
+
+
 def test_simplified_navigation(viewport):
     label = viewport + "-navigation"
     # Start with an empty profile. Every completion and unfinished game below is
@@ -1547,7 +1606,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.119 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.120 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1571,6 +1630,7 @@ if __name__ == "__main__":
         test_hands_on_worlds(args.viewport)
         test_memory_refresh(args.viewport)
         test_puzzle_board(args.viewport)
+        test_expedition(args.viewport)
         test_cosmetic_fixture(args.viewport)
         test_drawing_lifecycle(args.viewport)
         test_drawing_tools(args.viewport)
