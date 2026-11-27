@@ -59,6 +59,15 @@ public final class ReleaseCandidateCheck {
     private static void nonQuiz(PlaylumiGameCatalog.Entry e,int age){
         for(int i=0;i<24;i++){
             if(e.kind==PlaylumiGameCatalog.INTERACTIVE){
+                if(PlaylumiPuzzle.supported(e.mode)){
+                    PlaylumiInteractive q=PlaylumiInteractive.start(e.mode,age,RNG.nextLong());
+                    while(!q.solved()){
+                        require(q.choose(q.expected()),e.id+" correct puzzle cell");
+                        PlaylumiInteractive restored=new PlaylumiInteractive(q.kind,q.level,q.seed,q.progress(),q.version,q.mask());
+                        require(restored.mask()==q.mask()&&restored.expected().equals(q.expected()),e.id+" puzzle restore");
+                    }
+                    interactive++;continue;
+                }
                 PlaylumiInteractive q=new PlaylumiInteractive(e.mode,age,RNG.nextLong(),0);
                 while(!q.solved()){
                     String right=q.expected();

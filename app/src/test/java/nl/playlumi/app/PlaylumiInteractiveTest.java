@@ -19,12 +19,12 @@ public class PlaylumiInteractiveTest {
             assertFalse(game.choose("invalid"));assertEquals(game.total(),game.progress());
         }
     }
-    @Test public void allFourGamesAreInLibrary(){
+    @Test public void existingAndNewBoardGamesAreInLibrary(){
         for(int age=0;age<3;age++){
             int count=0;
             for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age))
                 if(e.kind==PlaylumiGameCatalog.INTERACTIVE)count++;
-            assertEquals(4,count);
+            assertEquals(new int[]{10,12,13}[age],count);
         }
     }
 }

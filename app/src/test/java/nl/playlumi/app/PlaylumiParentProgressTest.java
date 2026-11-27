@@ -18,7 +18,7 @@ public final class PlaylumiParentProgressTest {
                     assertFalse(game.entry.kind==PlaylumiGameCatalog.DRAW);count++;
                 }
             }
-            assertEquals(new int[]{29,52,78}[age],count);
+            assertEquals(new int[]{35,60,87}[age],count);
         }
     }
     @Test public void reportsUseOnlyRealPerRouteSamplesAndKeepLegacyCompletion(){

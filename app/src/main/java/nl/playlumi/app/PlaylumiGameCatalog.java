@@ -128,6 +128,8 @@ public final class PlaylumiGameCatalog {
             q(list,4,19,skill,"Waar hoort het?","Kies de passende plek in het dagelijks leven","🏠");
             q(list,5,LearningGame.COLORS,skill,"Kleur bij het woord","Tik op de kleur bij het woord","●");
         }
+        for(int puzzle=PlaylumiPuzzle.NUMBER_HUNT;puzzle<=PlaylumiPuzzle.LAST;puzzle++)if(PlaylumiPuzzle.offered(puzzle,a))
+            g(list,PlaylumiPuzzle.world(puzzle),INTERACTIVE,puzzle,PlaylumiPuzzle.title(puzzle),PlaylumiPuzzle.description(puzzle),PlaylumiPuzzle.icon(puzzle));
         // Stable world order, including Android 6 (API 23).
         ArrayList<Entry> grouped=new ArrayList<>();
         for(int world=0;world<6;world++)

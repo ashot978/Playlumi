@@ -23,7 +23,7 @@ public final class PlaylumiPlayOverviewTest {
                 assertEquals(0,world.completedRoutes);assertEquals(0,world.unfinishedRoutes);
                 assertTrue(world.roundBasedRoutes>0);routes+=world.roundBasedRoutes;
             }
-            assertEquals(new int[]{29,52,78}[age],routes);
+            assertEquals(new int[]{35,60,87}[age],routes);
         }
     }
 

@@ -256,7 +256,7 @@ public class MainActivity extends Activity {
             personalReturn=state.getInt("personalReturn",HOME);collectionReturn=state.getInt("collectionReturn",HOME);closetReturn=state.getInt("closetReturn",AVATAR);
             libraryReturn=state.getBoolean("libraryReturn",false);
             if(state.containsKey("interactiveKind"))try{
-                interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"),state.getInt("interactiveVersion",PlaylumiInteractive.LEGACY));
+                interactive=new PlaylumiInteractive(state.getInt("interactiveKind"),state.getInt("interactiveLevel"),state.getLong("interactiveSeed"),state.getInt("interactiveProgress"),state.getInt("interactiveVersion",PlaylumiInteractive.LEGACY),state.getInt("interactiveMask",0));
             }catch(IllegalArgumentException ignored){interactive=null;}
             quickCategoryPlay=state.getBoolean("quickCategoryPlay",false);
             breakReturn=state.getInt("breakReturn",HOME);
@@ -503,7 +503,7 @@ public class MainActivity extends Activity {
         out.putInt("libraryScrollY",page==LIBRARY&&scroller!=null?scroller.getScrollY():libraryScrollY);
         out.putInt("achievementReturn",achievementReturn);out.putInt("achievementFilter",achievementFilter);
         out.putInt("personalReturn",personalReturn);out.putInt("collectionReturn",collectionReturn);out.putInt("closetReturn",closetReturn);
-        if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());out.putInt("interactiveVersion",interactive.version);}
+        if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());out.putInt("interactiveVersion",interactive.version);out.putInt("interactiveMask",interactive.mask());}
         out.putBoolean("quickCategoryPlay",quickCategoryPlay);
         out.putInt("breakReturn",breakReturn);
         out.putInt("roomPage",roomPage);
@@ -1872,7 +1872,7 @@ public class MainActivity extends Activity {
         if(o==null)return null;
         try{
             int count=o.getInt("count");
-            PlaylumiInteractive game=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),o.getLong("seed"),count,o.optInt("engine",PlaylumiInteractive.LEGACY));
+            PlaylumiInteractive game=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),o.getLong("seed"),count,o.optInt("engine",PlaylumiInteractive.LEGACY),o.optInt("mask",0));
             if(count<=0||count>=game.total()||game.progress()!=count||o.optInt("total",game.total())!=game.total())return null;
             return o;
         }catch(org.json.JSONException|IllegalArgumentException ignored){return null;}
@@ -1891,6 +1891,7 @@ public class MainActivity extends Activity {
             org.json.JSONObject o=new org.json.JSONObject();
             o.put("id",entry.id);o.put("age",age);o.put("seed",interactive.seed);o.put("engine",interactive.version);
             o.put("count",interactive.progress());o.put("total",interactive.total());
+            if(interactive.puzzle()!=null)o.put("mask",interactive.mask());
             o.put("updated",System.currentTimeMillis());stageLibrarySnapshot(edit,entry,o);
         }catch(org.json.JSONException ignored){}
     }
@@ -2101,7 +2102,7 @@ public class MainActivity extends Activity {
         }else if(entry.kind==PlaylumiGameCatalog.INTERACTIVE){
             org.json.JSONObject saved=resume?libraryInteractiveResume(entry):null;
             if(saved!=null){
-                interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"),saved.optInt("engine",PlaylumiInteractive.LEGACY));
+                interactive=new PlaylumiInteractive(entry.mode,PlaylumiRocketCurriculum.level(age),saved.optLong("seed"),saved.optInt("count"),saved.optInt("engine",PlaylumiInteractive.LEGACY),saved.optInt("mask",0));
                 interactiveMessage="";move(INTERACTIVE);
             }else{rememberCatalog(entry);startInteractive(entry.mode);}
         }else if(resume&&resumeLibrarySpecial(entry))return;
@@ -2121,6 +2122,7 @@ public class MainActivity extends Activity {
     private void showInteractive(){
         if(interactive==null){move(catalogReturnPage());return;}
         final PlaylumiInteractive round=interactive;
+        if(round.puzzle()!=null){showPuzzle(round);return;}
         final int width=getResources().getConfiguration().screenWidthDp;
         final boolean wide=PlaylumiLayout.interactiveWide(width);
         header(PlaylumiInteractive.TITLES[round.kind],"");
@@ -2227,6 +2229,80 @@ public class MainActivity extends Activity {
             });
         }
         if(round.solved())for(Button b:buttons)b.setEnabled(false);
+    }
+
+    private void showPuzzle(PlaylumiInteractive round){
+        final PlaylumiPuzzle puzzle=round.puzzle();
+        header(PlaylumiPuzzle.title(puzzle.kind),"");
+        addPrompt(root,puzzle.instruction(),17);
+        addMagicProgress(puzzle.progress(),puzzle.total(),false);
+        final TextView count=progressCounter;final PlaylumiStarTrail trail=roundStars;
+        final TextView message=text(puzzle.solved()?"Alles gelukt!":interactiveMessage.isEmpty()?"Jij bent aan de beurt!":interactiveMessage,16,PlaylumiMagicArt.CREAM);
+        message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        final LinearLayout panel=libraryPanel();panel.setBackground(libraryCardSurface(PlaylumiPuzzle.world(puzzle.kind)));
+        final LinearLayout victory=new LinearLayout(this);victory.setOrientation(LinearLayout.VERTICAL);
+        final Button again=tile("Nog eens spelen!","",0xffd5f5df,64),back=tile("Andere spellen","",0xffe8d9ff,64);
+        final LinearLayout[] finish=new LinearLayout[1];
+        final PlaylumiPuzzleBoard[] board=new PlaylumiPuzzleBoard[1];
+        final TextView preview=text("",22,PlaylumiMagicArt.GOLD);preview.setVisibility(View.GONE);
+        if(puzzle.kind==PlaylumiPuzzle.RHYTHM&&!puzzle.solved()){
+            Button reveal=tile("Bekijk de reeks","",0xffffedc3,58);
+            panel.addView(reveal,new LinearLayout.LayoutParams(-1,-2));panel.addView(preview,new LinearLayout.LayoutParams(-1,-2));
+            reveal.setOnClickListener(v->{
+                StringBuilder s=new StringBuilder();for(int i=0;i<puzzle.referenceCount();i++){if(i>0)s.append("  ");s.append(puzzle.reference(i));}
+                preview.setText(s.toString());preview.setVisibility(View.VISIBLE);
+            });
+            if(sound.isEnabled()){
+                Button listen=tile("Beluister de reeks","",0xffd9f3ff,58);panel.addView(listen,new LinearLayout.LayoutParams(-1,-2));
+                listen.setOnClickListener(v->{
+                    if(page!=INTERACTIVE||interactive!=round||round.solved()||melodyPreviewActive)return;
+                    melodyPreviewActive=true;final long token=++melodyPreviewToken;final FrameLayout current=stage;
+                    message.setText("Luister goed ...");
+                    for(int i=0;i<puzzle.referenceCount();i++){
+                        final int beat=i;
+                        current.postDelayed(()->{
+                            if(page!=INTERACTIVE||interactive!=round||stage!=current||token!=melodyPreviewToken||activeSince<=0||!melodyPreviewActive)return;
+                            String animal=puzzle.reference(beat);
+                            for(int note=0;note<PlaylumiMelody.ANIMALS.length;note++)if(PlaylumiMelody.ANIMALS[note].equals(animal))sound.note(note);
+                        },i*520L);
+                    }
+                    current.postDelayed(()->{
+                        if(page==INTERACTIVE&&interactive==round&&stage==current&&token==melodyPreviewToken){
+                            melodyPreviewActive=false;message.setText("Nu jij!");
+                        }
+                    },puzzle.referenceCount()*520L+200L);
+                });
+            }
+        }
+        int width=Math.min(620,PlaylumiLayout.libraryContentWidth(getResources().getConfiguration().screenWidthDp)-24);
+        board[0]=new PlaylumiPuzzleBoard(this,puzzle,width,(index,button)->{
+            if(page!=INTERACTIVE||interactive!=round||moving||round.solved()||melodyPreviewActive)return;
+            preview.setVisibility(View.GONE);
+            if(!round.choose(""+index)){
+                sound.mistake();interactiveMessage=puzzle.hint();message.setTextColor(PlaylumiMagicArt.GOLD);message.setText(interactiveMessage);PlaylumiDelight.wiggle(button);return;
+            }
+            SharedPreferences.Editor edit=prefs().edit();stagePlayDay(edit);
+            if(puzzle.kind==PlaylumiPuzzle.RHYTHM)sound.note(index);else sound.good();
+            board[0].refresh();count.setText(round.progress()+"/"+round.total());trail.showProgress(round.progress());
+            stageLibraryInteractive(edit);
+            if(round.solved()){
+                int category=PlaylumiPuzzle.scoreCategory(puzzle.kind);
+                ArrayList<Integer> badges=new ArrayList<>(scores.answer(category,true));lifetimeCount++;
+                wardrobe.earnAnswer();wardrobe.earnBadges(badges.size());
+                stageWardrobe(edit);stageScore(edit,category);
+                stageCompletion(edit,PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.INTERACTIVE,round.kind,0),round.progress(),round.total());
+                edit.apply();
+                interactiveMessage="Knap gedaan! +"+(PlaylumiWardrobe.STARS_FOR_ANSWER+badges.size()*PlaylumiWardrobe.STARS_FOR_BADGE)+" speelsterren";
+                victory.addView(completionPanel(PlaylumiPuzzle.title(puzzle.kind),PlaylumiPuzzle.icon(puzzle.kind),round.total(),1),new LinearLayout.LayoutParams(-1,-2));
+                showFinishActions(finish[0],true);PlaylumiDelight.sprinkle(stage,board[0]);
+            }else{edit.apply();interactiveMessage="Goed zo!";}
+            message.setTextColor(0xffc7ffd8);message.setText(interactiveMessage);
+        });
+        panel.addView(board[0],new LinearLayout.LayoutParams(-1,-2));panel.addView(message,new LinearLayout.LayoutParams(-1,-2));
+        addWidget(panel,3,4);addWidget(victory,3,6);
+        if(round.solved())victory.addView(completionPanel(PlaylumiPuzzle.title(puzzle.kind),PlaylumiPuzzle.icon(puzzle.kind),round.total(),1),new LinearLayout.LayoutParams(-1,-2));
+        finish[0]=finishActions(again,back,round.solved());
+        again.setOnClickListener(v->startInteractive(round.kind));back.setOnClickListener(v->move(catalogReturnPage()));
     }
 
     private void libraryClick(View view,String description,Runnable action){

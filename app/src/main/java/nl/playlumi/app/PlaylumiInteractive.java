@@ -8,7 +8,7 @@ import java.util.Random;
 /** Four hands-on activities with deterministic, restorable rounds. */
 public final class PlaylumiInteractive {
     public static final int NUMBERS=0, LETTERS=1, HABITATS=2, MOSAIC=3;
-    public static final String[] TITLES={"Getallenrace","Lettertrein","Dierenwereld: thuis","Kleurmozaïek"};
+    public static final String[] TITLES={"Getallenrace","Lettertrein","Dierenwereld: thuis","Kleurmozaïek","Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart"};
     public static final String[] INSTRUCTIONS={"Bouw de raket: tik de cijfers op volgorde.","Bouw de trein: tik de letters van het voorbeeld.","Help ieder dier naar zijn eigen huis.","Bouw het voorbeeld na: kies een kleur voor elk vak."};
     private static final String[][] WORDS={{"VIS","KAT","ZON"},{"BOOM","MAAN","ROOS"},{"STERREN","RAKET","BLOEMEN"}};
     private static final String[] ANIMALS={"🐠","🐄","🐒","🐬","🐑","🦜"};
@@ -23,13 +23,20 @@ public final class PlaylumiInteractive {
     private final String[] targets,answers;
     private final List<String> options;
     private int progress;
+    private final PlaylumiPuzzle puzzle;
     /** The four-argument constructor is intentionally the old deterministic generator. */
     public PlaylumiInteractive(int kind,int level,long seed,int progress){
         this(kind,level,seed,progress,LEGACY);
     }
-    public PlaylumiInteractive(int kind,int level,long seed,int progress,int version){
-        if(kind<0||kind>3||level<0||level>2||(version!=LEGACY&&version!=PREVIOUS&&version!=CURRENT))throw new IllegalArgumentException("game");
+    public PlaylumiInteractive(int kind,int level,long seed,int progress,int version){this(kind,level,seed,progress,version,0);}
+    public PlaylumiInteractive(int kind,int level,long seed,int progress,int version,int mask){
+        if(kind<0||kind>PlaylumiPuzzle.LAST||level<0||level>2||(kind<=3?(version!=LEGACY&&version!=PREVIOUS&&version!=CURRENT):version!=PlaylumiPuzzle.VERSION))throw new IllegalArgumentException("game");
         this.kind=kind;this.level=level;this.seed=seed;this.version=version;
+        puzzle=PlaylumiPuzzle.supported(kind)?new PlaylumiPuzzle(kind,level,seed,progress,mask):null;
+        if(puzzle!=null){
+            targets=new String[0];answers=new String[0];ArrayList<String> cells=new ArrayList<>();
+            for(int i=0;i<puzzle.cells();i++)cells.add(""+i);options=Collections.unmodifiableList(cells);this.progress=progress;return;
+        }
         Random r=new Random(seed);
         ArrayList<String> opts=new ArrayList<>();
         if(kind==NUMBERS){
@@ -91,13 +98,16 @@ public final class PlaylumiInteractive {
         this.progress=Math.max(0,Math.min(progress,targets.length));
     }
     public static PlaylumiInteractive start(int kind,int level,long seed){
-        return new PlaylumiInteractive(kind,level,seed,0,CURRENT);
+        return new PlaylumiInteractive(kind,level,seed,0,PlaylumiPuzzle.supported(kind)?PlaylumiPuzzle.VERSION:CURRENT,0);
     }
+    public PlaylumiPuzzle puzzle(){return puzzle;}
+    public int mask(){return puzzle==null?0:puzzle.mask();}
     public boolean wordPuzzle(){return wordPuzzle;}
     public String picture(){return picture;}
     public String clue(){return clue;}
     public int step(){return step;}
     public String instruction(){
+        if(puzzle!=null)return puzzle.instruction();
         if(kind==NUMBERS){
             if(version>=PREVIOUS&&level>0)return "Begin bij "+targets[0]+". Tel steeds "+Math.abs(step)+(step<0?" terug.":" verder.");
             return INSTRUCTIONS[kind]+" Begin bij "+targets[0]+".";
@@ -114,14 +124,15 @@ public final class PlaylumiInteractive {
     public boolean realMosaic(){return kind==MOSAIC&&version==CURRENT;}
     public int mosaicColumns(){return realMosaic()?PlaylumiHandsOn.mosaicColumns(level):0;}
     public String animalName(int i){return kind==HABITATS?PlaylumiHandsOn.animalName(targets[i]):"";}
-    public int progress(){return progress;}
-    public int total(){return targets.length;}
-    public boolean solved(){return progress==total();}
+    public int progress(){return puzzle==null?progress:puzzle.progress();}
+    public int total(){return puzzle==null?targets.length:puzzle.total();}
+    public boolean solved(){return progress()==total();}
     public String target(int i){return targets[i];}
     public List<String> options(){return options;}
     public boolean choose(String value){
+        if(puzzle!=null){try{return puzzle.tap(Integer.parseInt(value));}catch(NumberFormatException ignored){return false;}}
         if(solved()||!answers[progress].equals(value))return false;
         progress++;return true;
     }
-    public String expected(){return solved()?"":answers[progress];}
+    public String expected(){return solved()?"":puzzle!=null?""+puzzle.expected():answers[progress];}
 }
