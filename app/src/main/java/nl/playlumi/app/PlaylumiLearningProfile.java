@@ -15,6 +15,7 @@ public final class PlaylumiLearningProfile {
     }
     /** Keep the approved advanced exercises intact even when more support is needed. */
     public static int minimum(int age,int mode,int variant){
+        if(age==2&&mode==PlaylumiReadingPractice.MODE&&variant==PlaylumiReadingPractice.VARIANT)return 2;
         if(age==2&&(mode==LearningGame.PATTERNS||mode==ExtraGames.SEQUENCES||mode==ExtraGames.FIRST_LAST||mode==ExtraGames.RHYMES||mode==ExtraGames.SPELLING||mode==ExtraGames.MATH&&variant>=PlaylumiAdvancedMath.TABLES||mode==22||mode==23||mode==16&&variant==3))return 2;
         return Math.max(0,age-1);
     }

@@ -30,9 +30,11 @@ public final class PlaylumiGameCatalog {
         for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(a))
             q(list,0,m.mode,m.variant,m.title,m.description,"✦");
         if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
+        q(list,0,PlaylumiFocusedCounting.MODE,PlaylumiFocusedCounting.VARIANT,"Tel de vormen","Tel alleen de gevraagde vorm tussen de andere vormen","● ▲");
         q(list,0,ExtraGames.COMPARE,PlaylumiThinkingPractice.EQUAL_GROUPS,"Evenveel","Vergelijk hoeveelheden: zoek het groepje met evenveel voorwerpen","● = ◆");
         if(a>=1){
             q(list,0,16,0,"Klokkijken","Lees hele en halve uren, kwartieren en minuten op de wijzerklok","◷");
+            q(list,0,PlaylumiWeekdays.MODE,PlaylumiWeekdays.VARIANT,"Dagen van de week","Ga een dag vooruit of terug; vanaf 7 jaar ook meer dagen","▦");
             q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Ontdek de sprong tussen getallen","123");
         }
         if(a>=2){
@@ -59,6 +61,7 @@ public final class PlaylumiGameCatalog {
             q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
         }
         if(a>=2){
+            q(list,1,PlaylumiReadingPractice.MODE,PlaylumiReadingPractice.VARIANT,"Lees en kies","Lees korte verhaaltjes en zoek wie, wat of waar","Ab");
             q(list,1,ExtraGames.SPELLING,0,"Spelling","Maak een zin af met het goed gespelde woord","Ab");
             q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Vul de laatste letter in of zoek een woord met dezelfde eindletter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");

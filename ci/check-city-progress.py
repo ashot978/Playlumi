@@ -12,9 +12,11 @@ import hashlib
 import json
 import pathlib
 import re
+import struct
 import subprocess
 import time
 import xml.etree.ElementTree as ET
+import zlib
 
 
 APP = "nl.playlumi.app"
@@ -41,8 +43,10 @@ def pass_check(message):
     print("PASS:", message, flush=True)
 
 
-def prefs():
-    raw = adb("exec-out", "run-as", APP, "cat", "shared_prefs/MainActivity.xml")
+def prefs(profile=0):
+    assert profile in (0, 1, 2), "Unknown synthetic profile"
+    name = "MainActivity" if profile == 0 else "playlumi-child-" + str(profile)
+    raw = adb("exec-out", "run-as", APP, "cat", "shared_prefs/" + name + ".xml")
     root = ET.fromstring(raw)
     result = {}
     for node in root:
@@ -58,11 +62,11 @@ def prefs():
     return result
 
 
-def wait_prefs(predicate, expectation):
+def wait_prefs(predicate, expectation, profile=0):
     last = {}
     for _ in range(20):
         try:
-            last = prefs()
+            last = prefs(profile)
             if predicate(last):
                 return last
         except (ET.ParseError, ValueError, KeyError, subprocess.CalledProcessError):
@@ -155,16 +159,18 @@ def description_prefix(value):
     return lambda node: node.get("content-desc", "").startswith(value)
 
 
-def find_control(predicate, label, scroll=True):
+def find_control(predicate, label, scroll=True, enabled=True, scroll_x=None):
     w, h = dimensions()
     for attempt in range(11 if scroll else 3):
         nodes = ui(label + "-" + str(attempt))
         hit = next((node for node in nodes if predicate(node) and visible(node)
-                    and node.get("clickable") == "true" and node.get("enabled") == "true"), None)
+                    and node.get("clickable") == "true"
+                    and (enabled is None or node.get("enabled") == str(enabled).lower())), None)
         if hit is not None:
             return hit
         if scroll:
-            shell(f"input swipe {w//2} {int(h*.78)} {w//2} {int(h*.34)} 400")
+            x = w//2 if scroll_x is None else scroll_x
+            shell(f"input swipe {x} {int(h*.78)} {x} {int(h*.34)} 400")
         time.sleep(.5)
     raise AssertionError("Native control not found: " + label)
 
@@ -301,7 +307,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.108" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.109" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -321,6 +327,19 @@ def test_debug_upgrade(baseline_apk, viewport):
         "daily_round_v1": 0, "daily_claimed_v1": 0, "daily_sets_v1": 4,
     }
     seed(fixture)
+    # This is actual baseline artwork, made through HOME/world/library and a
+    # touch gesture. Do not synthesize a PNG or award a creative completion.
+    launch_native_home()
+    canvas = open_drawing(viewport + "-upgrade-baseline-drawing")
+    left, top, right, bottom = rect(canvas)
+    shell(f"input swipe {int(left+.25*(right-left))} {(top+bottom)//2} "
+          f"{int(left+.75*(right-left))} {(top+bottom)//2} 500")
+    screenshot(viewport + "-upgrade-baseline-drawing",
+               expected_descriptions=("Teken met je vinger op dit witte vel",))
+    click_named("Terug naar het magische dorp", viewport + "-upgrade-baseline-drawing-home", False)
+    page(1)
+    before_drawing = drawing_file(viewport + "-upgrade-baseline-drawing-file")
+    assert not prefs().get("drawing_saved_once", False), "Baseline autosave granted a creative reward"
     before_question = start_upgrade_quiz(viewport + "-upgrade-baseline", False)
     assert before_question["count"] == 0 and not before_question["solved"], "Baseline quiz must be unanswered"
     before = prefs()
@@ -330,10 +349,11 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.109" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.110" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
+    assert drawing_file(viewport + "-upgrade-installed-drawing-file") == before_drawing, "Package upgrade changed the real baseline artwork"
     after_question = start_upgrade_quiz(viewport + "-upgrade-current", True)
     identity = ("id", "age", "level", "count", "total", "attempts", "solved", "hadMistake",
                 "rejected", "feedback", "prompt", "display", "color", "correct", "fingers", "answers", "colors")
@@ -344,14 +364,31 @@ def test_debug_upgrade(baseline_apk, viewport):
         assert after.get(key) == before[key], "Opening upgraded quiz changed stored progress: " + key
     screenshot(viewport + "-upgrade-current-question",
                expected_texts=(after_question["prompt"], after_question["display"], *after_question["answers"]))
+    click_named("Terug naar het magische dorp", viewport + "-upgrade-current-drawing-home", False)
+    page(1)
+    open_drawing(viewport + "-upgrade-current-drawing")
+    screenshot(viewport + "-upgrade-current-drawing",
+               expected_descriptions=("Teken met je vinger op dit witte vel",))
+    click_named("Terug naar het magische dorp", viewport + "-upgrade-drawing-noop-save", False)
+    page(1)
+    after_drawing = drawing_file(viewport + "-upgrade-current-drawing-file")
+    assert after_drawing == before_drawing, "Opening/resizing unchanged old artwork rewrote or lost its saved PNG"
+    after_drawing_prefs = prefs()
+    assert not after_drawing_prefs.get("drawing_saved_once", False), "Opening old artwork granted a creative reward"
+    for key in fixture:
+        assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.108", "candidateVersion": "0.109",
+        "baselineVersion": "0.109", "candidateVersion": "0.110",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
+        "drawingSource": "Actual native touchstroke saved by baseline Home navigation",
+        "drawingBytesCompared": len(before_drawing),
+        "baselineDrawingSha256": hashlib.sha256(before_drawing).hexdigest(),
+        "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.108 → 0.109 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts and exact unanswered quiz")
+    pass_check(viewport + ": actual debug 0.109 → 0.110 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -371,12 +408,18 @@ def scroll_bottom():
 def test_new_quiz_routes(viewport):
     cases = ((0, "Rekenraket", "Evenveel", "0:0:11:5"),
              (2, "Rekenraket", "Tientallen en eenheden", "0:0:12:8"),
-             (2, "Speelplein", "Eerst en daarna", "4:0:19:5"))
+             (2, "Speelplein", "Eerst en daarna", "4:0:19:5"),
+             (0, "Rekenraket", "Tel de vormen", "0:0:0:5"),
+             (1, "Rekenraket", "Dagen van de week", "0:0:16:5"),
+             (2, "Letterhuis", "Lees en kies", "1:0:6:5"))
     normal = lambda text: " ".join(text.split())
     for index, (age, world, title, route) in enumerate(cases):
         label = viewport + "-new-quiz-" + str(index + 1)
         seed({"chosen_age": age})
-        start_home(age)
+        if index < 3:
+            start_home(age)
+        else:
+            launch_native_home()
         click(find_control(description_prefix(world), label + "-world", False))
         page(44)
         click(find_control(description_prefix("Speel " + title), label + "-entry"))
@@ -690,11 +733,71 @@ def open_drawing(label):
     return canvas
 
 
-def drawing_file(label):
-    raw = adb("exec-out", "run-as", APP, "cat", "files/playlumi-kunstwerk.png")
+def drawing_path(profile=0):
+    assert profile in (0, 1, 2), "Unknown synthetic artwork profile"
+    return "files/playlumi-kunstwerk" + ("" if profile == 0 else "-" + str(profile)) + ".png"
+
+
+def drawing_file(label, profile=0):
+    raw = adb("exec-out", "run-as", APP, "cat", drawing_path(profile))
     assert raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw) > 100, "Missing/corrupt saved drawing"
     (OUT / (label + ".png")).write_bytes(raw)
     return raw
+
+
+def drawing_top():
+    # The drawing View consumes swipes. Scroll only in the outer 8dp-or-wider
+    # content margin, never across the canvas or over a selectable tool.
+    _, h = dimensions()
+    for _ in range(4):
+        shell(f"input swipe 3 {int(h*.30)} 3 {int(h*.82)} 350")
+        time.sleep(.2)
+
+
+def drawing_control(predicate, label, enabled=True):
+    drawing_top()
+    return find_control(predicate, label, enabled=enabled, scroll_x=3)
+
+
+def drawing_click(value, label):
+    click(drawing_control(exact(value), label))
+
+
+def drawing_home(label):
+    drawing_top()
+    click_named("Terug naar het magische dorp", label, False)
+    page(1)
+
+
+def drawing_canvas(label):
+    drawing_top()
+    nodes = ui(label + "-canvas")
+    canvas = next((node for node in nodes if visible(node)
+                   and exact("Teken met je vinger op dit witte vel")(node)), None)
+    assert canvas is not None, "Drawing paper did not return to the viewport"
+    return canvas
+
+
+def drawing_gestures(label, paths, profile=0):
+    canvas = drawing_canvas(label)
+    left, top, right, bottom = rect(canvas)
+    raw = adb("exec-out", "run-as", APP, "cat", drawing_path(profile))
+    assert raw.startswith(b"\x89PNG\r\n\x1a\n"), "Stroke fixture has no saved paper geometry"
+    doc_w, doc_h = struct.unpack(">II", raw[16:24])
+    density = int(re.findall(r"(\d+)", shell("wm density"))[-1]) / 160
+    margin = 8*density
+    scale = min((right-left-2*margin)/doc_w, (bottom-top-2*margin)/doc_h)
+    assert scale > 0, "Drawing paper has no usable area"
+    paper_w, paper_h = doc_w*scale, doc_h*scale
+    paper_left, paper_top = (left+right-paper_w)/2, (top+bottom-paper_h)/2
+    for start, end in paths:
+        x1, y1 = round(paper_left+start[0]*paper_w), round(paper_top+start[1]*paper_h)
+        x2, y2 = round(paper_left+end[0]*paper_w), round(paper_top+end[1]*paper_h)
+        shell(f"input swipe {x1} {y1} {x2} {y2} {500 if len(paths) == 1 else 120}")
+
+
+def drawing_stroke(label, start=(.2, .5), end=(.8, .5), profile=0):
+    drawing_gestures(label, [(start, end)], profile)
 
 
 def test_drawing_lifecycle(viewport):
@@ -702,18 +805,13 @@ def test_drawing_lifecycle(viewport):
     seed({})
     launch_native_home()
     open_drawing(label + "-blank")
-    click_named("Terug naar het magische dorp", label + "-blank-home", False)
-    page(1)
+    drawing_home(label + "-blank-home")
     blank = drawing_file(label + "-blank-file")
 
-    canvas = open_drawing(label + "-stroke")
-    left, top, right, bottom = rect(canvas)
-    x1, y1 = int(left + .2*(right-left)), int(top + .35*(bottom-top))
-    x2, y2 = int(left + .8*(right-left)), int(top + .65*(bottom-top))
-    shell(f"input swipe {x1} {y1} {x2} {y2} 500")
+    open_drawing(label + "-stroke")
+    drawing_stroke(label + "-stroke", (.2, .35), (.8, .65))
     screenshot(label + "-stroke")
-    click_named("Terug naar het magische dorp", label + "-stroke-home", False)
-    page(1)
+    drawing_home(label + "-stroke-home")
     painted = drawing_file(label + "-saved-file")
     assert painted != blank, "The real touchstroke was not saved by the Home navigation"
     autosaved = prefs()
@@ -725,35 +823,369 @@ def test_drawing_lifecycle(viewport):
     screenshot(label + "-reopened")
     # A new stroke belongs to this live View, so Undo must remain available after
     # explicit save and after the automatic save on a background/foreground cycle.
-    shell(f"input swipe {int(left+.25*(right-left))} {int(top+.70*(bottom-top))} "
-          f"{int(left+.75*(right-left))} {int(top+.20*(bottom-top))} 500")
-    click_named("💾 Bewaar tekening", label + "-explicit-save", False)
+    drawing_stroke(label + "-second-stroke", (.25, .70), (.75, .20))
+    drawing_click("💾 Bewaar tekening", label + "-explicit-save")
     saved = wait_prefs(lambda p: p.get("drawing_saved_once") is True
                       and p.get("wardrobe_stars") == 27 and p.get("collection_world_5") == 1,
                       "drawing marker, one +9 bonus and world progress saved together")
     assert saved["wardrobe_total_earned"] == 27, "Drawing earned total disagrees with the wallet"
     assert drawing_file(label + "-second-stroke-file") != painted, "Second real stroke was not saved"
-    click_named("↩  Laatste lijn weg", label + "-undo-after-save", False)
-    click_named("💾 Bewaar tekening", label + "-save-again", False)
+    drawing_click("↩  Laatste lijn weg", label + "-undo-after-save")
+    drawing_click("💾 Bewaar tekening", label + "-save-again")
     assert drawing_file(label + "-undo-after-save-file") == painted, "Explicit saving flattened the live undo history"
     assert prefs()["wardrobe_stars"] == 27 and prefs()["collection_world_5"] == 1, "Repeated save paid/counts the drawing twice"
-    shell(f"input swipe {int(left+.2*(right-left))} {int(top+.75*(bottom-top))} "
-          f"{int(left+.8*(right-left))} {int(top+.75*(bottom-top))} 500")
+    drawing_stroke(label + "-background-stroke", (.2, .75), (.8, .75))
     old_pid = app_pid()
     background_app()
     native_foreground(25)
     assert app_pid() == old_pid, "Expected a live-View pause/resume for the Undo check"
     assert drawing_file(label + "-background-file") != painted, "Background autosave missed the new stroke"
-    click_named("↩  Laatste lijn weg", label + "-undo-after-background", False)
-    click_named("💾 Bewaar tekening", label + "-save-after-background", False)
+    drawing_click("↩  Laatste lijn weg", label + "-undo-after-background")
+    drawing_click("💾 Bewaar tekening", label + "-save-after-background")
     assert drawing_file(label + "-undo-after-background-file") == painted, "Background saving flattened the live undo history"
     launch_native_home()
     open_drawing(label + "-restart")
-    click_named("💾 Bewaar tekening", label + "-save-after-restart", False)
+    drawing_click("💾 Bewaar tekening", label + "-save-after-restart")
     restored = prefs()
     assert restored["wardrobe_stars"] == 27 and restored["collection_world_5"] == 1 and restored["drawing_saved_once"], "Restart repeated/lost the creative reward"
+    drawing_top()
     screenshot(label + "-reward-restored")
     pass_check(viewport + ": drawing touchstroke survives Home/reopen, Undo survives live save/pause, autosave is free and explicit save grants +9/one collection step only once across restart")
+
+
+def drawing_state(value, label, selected=None, enabled=None):
+    node = drawing_control(lambda item: exact(value)(item) or description_prefix(value)(item),
+                           label, enabled=None)
+    assert node.get("class") == "android.widget.Button", "Drawing tool is not a native Button: " + value
+    if selected is not None:
+        assert node.get("selected") == str(selected).lower(), "Wrong selected tool state: " + value
+        assert node.get("content-desc", "").endswith(", geselecteerd") == selected, "Wrong accessible selected marker: " + value
+    if enabled is not None:
+        assert node.get("enabled") == str(enabled).lower(), "Wrong enabled action state: " + value
+    return node
+
+
+def choose_drawing(value, label):
+    click(drawing_control(description_prefix(value), label))
+    drawing_state(value, label + "-selected", selected=True, enabled=True)
+
+
+def save_drawing(label, profile=0):
+    drawing_click("💾 Bewaar tekening", label + "-save")
+    return drawing_file(label + "-file", profile)
+
+
+def fixture_profile(profile, initialize=False):
+    """Explicit storage fixture, not a claim of a user-facing profile switcher."""
+    assert profile in (0, 1), "Only the two isolated test profiles may be selected"
+    shell(f"am force-stop {APP}")
+    assert not app_pid(), "Profile fixture must only change a fully stopped app"
+    # Capture after onPause/stop has finished: legitimate primary usage-time
+    # bookkeeping must not be attributed to the later secondary-profile work.
+    stopped_primary = prefs()
+    global_path = "shared_prefs/playlumi-global.xml"
+    raw = adb("exec-out", "run-as", APP, "cat", global_path, check=False)
+    root = ET.fromstring(raw) if raw.strip() else ET.Element("map")
+    active = next((node for node in root if node.get("name") == "active_profile"), None)
+    if active is None:
+        active = ET.SubElement(root, "int", name="active_profile")
+    assert active.tag == "int", "Unexpected active-profile preference type"
+    active.set("value", str(profile))
+    shell(f"run-as {APP} sh -c 'cat > {global_path}; rm -f {global_path}.bak'",
+          ET.tostring(root, encoding="utf-8", xml_declaration=True))
+    if initialize:
+        assert profile == 1, "The real primary test history must not be reseeded"
+        child = ET.Element("map")
+        values = {"chosen_age": 0, "quiz_pace": 2, "reduced_motion": True,
+                  "sound_on": False, "auto_speech": True, "catalog_adaptive": False,
+                  "wardrobe_initialized": True, "wardrobe_stars": 18,
+                  "wardrobe_total_earned": 18}
+        for key, value in values.items():
+            ET.SubElement(child, "boolean" if isinstance(value, bool) else "int", name=key,
+                          value=str(value).lower() if isinstance(value, bool) else str(value))
+        shell(f"run-as {APP} sh -c 'cat > shared_prefs/playlumi-child-1.xml'",
+              ET.tostring(child, encoding="utf-8", xml_declaration=True))
+    return stopped_primary
+
+
+def test_drawing_tools(viewport):
+    label = viewport + "-drawing-tools"
+    undo, redo = "↩  Laatste lijn weg", "↪  Laatste lijn terug"
+    seed({})
+    launch_native_home()
+    open_drawing(label + "-blank")
+    drawing_state("Tekenkleur Roze", label + "-default-color", selected=True)
+    drawing_state("Potlood", label + "-default-pencil", selected=True)
+    drawing_state("Gum", label + "-default-eraser", selected=False)
+    drawing_state("Lijndikte Normaal", label + "-default-width", selected=True)
+    drawing_state(undo, label + "-initial-undo", enabled=False)
+    drawing_state(redo, label + "-initial-redo", enabled=False)
+    drawing_home(label + "-blank-home")
+    blank = drawing_file(label + "-blank-file")
+    assert prefs()["wardrobe_stars"] == 18 and not prefs().get("drawing_saved_once", False), "Tool inspection/autosave awarded stars"
+
+    open_drawing(label + "-thin")
+    choose_drawing("Lijndikte Dun", label + "-thin-width")
+    drawing_stroke(label + "-thin-stroke")
+    thin = save_drawing(label + "-thin")
+    assert thin != blank, "Thin pencil did not leave a real stroke"
+    wait_prefs(lambda p: p.get("wardrobe_stars") == 27 and p.get("drawing_saved_once") is True
+               and p.get("collection_world_5") == 1, "one creative reward for new tools scenario")
+    drawing_home(label + "-thin-home")
+    open_drawing(label + "-old-png")
+    assert drawing_file(label + "-reopened-thin-file") == thin, "Loading the saved pencil image changed its bytes"
+    drawing_state(undo, label + "-reopened-undo", enabled=False)
+    drawing_state(redo, label + "-reopened-redo", enabled=False)
+
+    # Erase the entire thin stroke in the flattened, previously saved PNG.
+    # The larger eraser follows the exact same native gesture, including caps.
+    choose_drawing("Gum", label + "-eraser")
+    choose_drawing("Lijndikte Dik", label + "-thick-eraser")
+    drawing_state("Potlood", label + "-pencil-off", selected=False)
+    drawing_state(redo, label + "-before-erase-redo", enabled=False)
+    screenshot(label + "-selected-eraser",
+               expected_descriptions=("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
+    drawing_stroke(label + "-erase-old-png")
+    erased = save_drawing(label + "-erased")
+    assert erased == blank, "Eraser did not restore white paper underneath the loaded PNG stroke"
+    drawing_top()
+    screenshot(label + "-erased-old-artwork")
+    drawing_click(undo, label + "-undo-erase")
+    assert save_drawing(label + "-undo-erase") == thin, "Undo did not restore the loaded image exactly"
+    drawing_state(redo, label + "-redo-available", enabled=True)
+
+    # Selecting a color chooses the pencil but must not discard a redo action.
+    choose_drawing("Tekenkleur Blauw", label + "-blue")
+    drawing_state("Potlood", label + "-color-selects-pencil", selected=True)
+    drawing_state("Gum", label + "-color-clears-eraser", selected=False)
+    drawing_state(redo, label + "-color-keeps-redo", enabled=True)
+    drawing_click(redo, label + "-redo-erase")
+    assert save_drawing(label + "-redo-erase") == blank, "Redo changed an eraser action into the newly selected pencil"
+    drawing_click(undo, label + "-restore-before-new-line")
+    assert save_drawing(label + "-restored-old-line") == thin, "Undo after redo did not restore the original PNG"
+
+    drawing_stroke(label + "-blue-stroke", (.3, .65), (.7, .65))
+    drawing_state(redo, label + "-new-action-clears-redo", enabled=False)
+    combined = save_drawing(label + "-combined")
+    assert combined not in (blank, thin), "Thick blue pencil did not add a new stroke"
+    drawing_click(undo, label + "-undo-blue")
+    assert save_drawing(label + "-undo-blue") == thin, "Undo removed more than the last real gesture"
+    drawing_click(redo, label + "-redo-blue")
+    assert save_drawing(label + "-redo-blue") == combined, "Redo did not restore the same blue gesture"
+
+    drawing_click("🧽 Begin met leeg papier", label + "-arm-clear")
+    armed = drawing_state("🧽 Begin met leeg papier", label + "-clear-confirmation", enabled=True)
+    assert "Tik nog eens" in armed.get("text", ""), "Clear did not require its second native tap"
+    drawing_click("🧽 Begin met leeg papier", label + "-confirm-clear")
+    assert save_drawing(label + "-cleared") == blank, "Confirmed clear did not produce a blank saved page"
+    drawing_click(undo, label + "-undo-clear")
+    assert save_drawing(label + "-undo-clear") == combined, "Undo did not recover the full drawing after clear"
+    drawing_state(redo, label + "-redo-clear-before-pause", enabled=True)
+    old_pid = app_pid()
+    background_app()
+    native_foreground(25)
+    assert app_pid() == old_pid, "Expected live drawing history for pause/redo check"
+    drawing_state(redo, label + "-redo-clear-after-pause", enabled=True)
+    drawing_click(redo, label + "-redo-clear-after-background")
+    assert save_drawing(label + "-redo-clear-after-background") == blank, "Save/pause lost the pending clear action"
+    drawing_click(undo, label + "-restore-after-background")
+    assert save_drawing(label + "-restored-after-background") == combined, "Undo after background/redo lost existing artwork"
+    drawing_top()
+    screenshot(label + "-restored-artwork")
+    current = prefs()
+    assert current["wardrobe_stars"] == 27 and current["wardrobe_total_earned"] == 27 \
+        and current["collection_world_5"] == 1 and current["drawing_saved_once"], "Drawing tool/history actions repeated the creative reward"
+    pass_check(viewport + ": native pencil/eraser/width selections work; erasing loaded PNG, exact Undo/Redo, new-action branching, confirmed clear and live pause/redo preserve artwork and one creative reward")
+
+    if viewport == "phone":
+        shell("settings put system font_scale 1.3")
+        time.sleep(1)
+        page(25)
+        drawing_top()
+        screenshot(label + "-large-font-top", expected_texts=("Tekenstudio",))
+        drawing_state("Lijndikte Dik", label + "-large-font-width", selected=True)
+        drawing_state("🧽 Begin met leeg papier", label + "-large-font-clear", enabled=True)
+        screenshot(label + "-large-font-controls",
+                   expected_descriptions=("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
+        shell("settings put system font_scale 1.0")
+        time.sleep(1)
+        page(25)
+        assert drawing_file(label + "-font-restored-file") == combined, "Font/viewport change rewrote unchanged artwork"
+        pass_check("phone: drawing tools remain reachable with 130% text and unchanged saved artwork; top and controls captured")
+
+    # There is no profile-switch UI in this release. Select profile 1 through
+    # an explicit stopped-app fixture, then use actual drawing controls in both.
+    choose_drawing("Gum", label + "-primary-tool")
+    primary = prefs()
+    assert (primary.get("drawing_color_v1"), primary.get("drawing_brush_size_v1"),
+            primary.get("drawing_eraser_v1")) == (2, 2, True), "Primary tool choices were not saved"
+    primary = fixture_profile(1, initialize=True)
+    launch_native_home()
+    open_drawing(label + "-profile-fixture-second")
+    drawing_state("Tekenkleur Roze", label + "-profile-default-color", selected=True)
+    drawing_state("Potlood", label + "-profile-default-tool", selected=True)
+    drawing_state("Lijndikte Normaal", label + "-profile-default-width", selected=True)
+    drawing_home(label + "-second-blank-home")
+    assert drawing_file(label + "-second-blank-file", profile=1) == blank, "Second profile inherited the first artwork"
+    open_drawing(label + "-second-paint")
+    choose_drawing("Tekenkleur Groen", label + "-second-green")
+    choose_drawing("Lijndikte Dun", label + "-second-thin")
+    drawing_stroke(label + "-second-stroke", (.35, .5), (.65, .5), profile=1)
+    second = save_drawing(label + "-second-artwork", profile=1)
+    assert second not in (blank, thin, combined), "Second profile did not save its independent green artwork"
+    wait_prefs(lambda p: p.get("wardrobe_stars") == 27 and p.get("collection_world_5") == 1
+               and p.get("drawing_saved_once") is True, "independent profile-1 creative reward", profile=1)
+    assert prefs() == primary, "Painting in the second fixture profile changed the primary preferences"
+    assert drawing_file(label + "-primary-untouched-file") == combined, "Painting in profile 1 overwrote profile 0 artwork"
+    fixture_profile(0)
+    launch_native_home()
+    open_drawing(label + "-profile-fixture-return")
+    drawing_state("Tekenkleur Blauw", label + "-restored-primary-color", selected=True)
+    drawing_state("Gum", label + "-restored-primary-tool", selected=True)
+    drawing_state("Lijndikte Dik", label + "-restored-primary-width", selected=True)
+    drawing_state(undo, label + "-restored-primary-undo", enabled=False)
+    drawing_state(redo, label + "-restored-primary-redo", enabled=False)
+    assert drawing_file(label + "-primary-restored-file") == combined, "Restoring primary profile changed its drawing"
+    assert drawing_file(label + "-second-retained-file", profile=1) == second, "Restoring primary profile changed the second drawing"
+    assert prefs()["wardrobe_stars"] == prefs(1)["wardrobe_stars"] == 27, "Profile restore repeated a creative reward"
+    drawing_top()
+    screenshot(label + "-profile-fixture-restored")
+    pass_check(viewport + ": explicitly selected fixture profiles keep separate artwork, color/tool/width choices and one-time creative rewards; reopening restores each saved selection")
+
+
+def png_raster(raw):
+    """Decode Android's 8-bit non-interlaced RGB/RGBA output without a CI dependency."""
+    assert raw.startswith(b"\x89PNG\r\n\x1a\n"), "Raster evidence is not a PNG"
+    offset, parts, header = 8, [], None
+    while offset + 12 <= len(raw):
+        length = struct.unpack(">I", raw[offset:offset+4])[0]
+        kind = raw[offset+4:offset+8]
+        data = raw[offset+8:offset+8+length]
+        assert len(data) == length, "Truncated PNG chunk"
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", data)
+        elif kind == b"IDAT":
+            parts.append(data)
+        elif kind == b"IEND":
+            break
+        offset += length + 12
+    assert header is not None, "PNG has no image header"
+    width, height, depth, color, compression, filtering, interlace = header
+    assert 0 < width <= 4096 and 0 < height <= 4096, "Unexpected drawing dimensions"
+    assert depth == 8 and color in (2, 6) and (compression, filtering, interlace) == (0, 0, 0), "Unexpected Android PNG format"
+    channels = 3 if color == 2 else 4
+    stride = width*channels
+    packed = zlib.decompress(b"".join(parts))
+    assert len(packed) == (stride+1)*height, "Unexpected PNG raster length"
+    pixels = bytearray(stride*height)
+    previous = bytearray(stride)
+    for y in range(height):
+        pos = y*(stride+1)
+        method = packed[pos]
+        row = bytearray(packed[pos+1:pos+1+stride])
+        assert method <= 4, "Unknown PNG row filter"
+        for x in range(stride):
+            left = row[x-channels] if x >= channels else 0
+            up = previous[x]
+            corner = previous[x-channels] if x >= channels else 0
+            if method == 1:
+                prediction = left
+            elif method == 2:
+                prediction = up
+            elif method == 3:
+                prediction = (left+up)//2
+            elif method == 4:
+                estimate = left+up-corner
+                dl, du, dc = abs(estimate-left), abs(estimate-up), abs(estimate-corner)
+                prediction = left if dl <= du and dl <= dc else up if du <= dc else corner
+            else:
+                prediction = 0
+            row[x] = (row[x]+prediction) & 255
+        pixels[y*stride:(y+1)*stride] = row
+        previous = row
+
+    def sample(x, y):
+        index = round(y*(height-1))*stride + round(x*(width-1))*channels
+        rgba = tuple(pixels[index:index+channels])
+        return rgba if channels == 4 else rgba+(255,)
+
+    return width, height, sample
+
+
+def test_drawing_compaction(viewport):
+    label = viewport + "-drawing-compaction"
+    white = (255, 255, 255, 255)
+    seed({})
+    launch_native_home()
+    open_drawing(label + "-blank")
+    drawing_home(label + "-blank-home")
+    blank = drawing_file(label + "-blank-file")
+    open_drawing(label + "-paint")
+    drawing_stroke(label + "-old-line")
+    original = save_drawing(label + "-original")
+    width, height, original_pixel = png_raster(original)
+    assert original_pixel(.3, .5) != white and original_pixel(.7, .5) != white, "Original native stroke missed the raster samples"
+    drawing_home(label + "-load-home")
+    open_drawing(label + "-loaded-png")
+    assert drawing_file(label + "-loaded-file") == original, "Compaction fixture did not load unchanged real artwork"
+    choose_drawing("Gum", label + "-eraser")
+    choose_drawing("Lijndikte Dik", label + "-eraser-width")
+    drawing_stroke(label + "-erase-section", (.5, .44), (.5, .56))
+    erased = save_drawing(label + "-erased")
+    _, _, erased_pixel = png_raster(erased)
+    assert erased_pixel(.5, .5) == white, "Loaded-image eraser produced a dark or opaque patch"
+    assert erased_pixel(.3, .5) == original_pixel(.3, .5) \
+        and erased_pixel(.7, .5) == original_pixel(.7, .5), "Erasing the middle damaged untouched old artwork"
+
+    choose_drawing("Tekenkleur Blauw", label + "-pencil")
+    choose_drawing("Lijndikte Dun", label + "-pencil-width")
+    def grid(first_y):
+        return [((.1+(i%8)*.1, first_y+(i//8)*.055),
+                 (.125+(i%8)*.1, first_y+(i//8)*.055)) for i in range(32)]
+
+    upper = grid(.14)
+    drawing_gestures(label + "-32-separate-gestures", upper)
+    compacted = save_drawing(label + "-eraser-compacted")
+    w, h, pixel = png_raster(compacted)
+    assert (w, h) == (width, height), "History compaction changed document dimensions/density"
+    assert pixel(.5, .5) == white, "Eraser became dark or restored old pixels after the 32-action limit"
+    assert pixel(.3, .5) == original_pixel(.3, .5) and pixel(.7, .5) == original_pixel(.7, .5), "Compaction shifted or lost untouched old PNG content"
+    for start, end in upper:
+        assert pixel((start[0]+end[0])/2, start[1]) != white, "A separate native gesture was lost before compaction"
+    drawing_top()
+    screenshot(label + "-eraser-retained")
+
+    drawing_click("🧽 Begin met leeg papier", label + "-arm-clear")
+    drawing_click("🧽 Begin met leeg papier", label + "-confirm-clear")
+    assert save_drawing(label + "-clear") == blank, "Clear did not remove compacted artwork"
+    drawing_click("↩  Laatste lijn weg", label + "-undo-clear")
+    assert save_drawing(label + "-undo-clear") == compacted, "Undo clear did not recover the exact pre-limit artwork"
+    drawing_click("↪  Laatste lijn terug", label + "-redo-clear")
+    assert save_drawing(label + "-redo-clear") == blank, "Redo clear did not restore a blank document"
+    lower = grid(.66)
+    drawing_gestures(label + "-32-after-clear", lower)
+    cleared_compacted = save_drawing(label + "-clear-compacted")
+    w, h, cleared_pixel = png_raster(cleared_compacted)
+    assert (w, h) == (width, height), "Clear compaction changed document dimensions/density"
+    assert all(cleared_pixel(x, .5) == white for x in (.3, .5, .7)), "Original loaded line returned or turned dark after clear compaction"
+    for start, end in upper:
+        assert cleared_pixel((start[0]+end[0])/2, start[1]) == white, "Cleared older pencil strokes returned after the history limit"
+    for start, end in lower:
+        assert cleared_pixel((start[0]+end[0])/2, start[1]) != white, "New drawing after clear was lost by compaction"
+    drawing_top()
+    screenshot(label + "-clear-retained")
+    state = prefs()
+    assert state["wardrobe_stars"] == 27 and state["wardrobe_total_earned"] == 27 \
+        and state["collection_world_5"] == 1, "History-limit operations repeated the creative reward"
+    (OUT / (label + "-pixels.json")).write_text(json.dumps({
+        "document": [width, height], "nativeGesturesAfterEraser": len(upper),
+        "nativeGesturesAfterClear": len(lower), "erasedCenterAfterCompaction": pixel(.5, .5),
+        "untouchedOldLineBefore": original_pixel(.3, .5),
+        "untouchedOldLineAfterEraserCompaction": pixel(.3, .5),
+        "oldLineAfterClearCompaction": cleared_pixel(.3, .5),
+        "scope": "Actual native strokes and Android PNG pixels; no generated artwork fixture."
+    }, indent=2))
+    pass_check(viewport + ": Android raster preserves white erasure and untouched loaded PNG through 32 later gestures; Clear/Undo/Redo and 32 more gestures retain exact pixels and one creative reward")
 
 
 def unlock_parent_gate(label):
@@ -853,7 +1285,9 @@ def real_history_fingerprint():
 
 
 def parent_world_summary(world, rounds, completed, unfinished, label):
-    counted = f"{rounds} getelde rondes · {completed} oefeningen met een afgeronde ronde"
+    counted = (str(rounds) + (" getelde ronde" if rounds == 1 else " getelde rondes")
+               + " · " + str(completed) + (" oefening" if completed == 1 else " oefeningen")
+               + " met een afgeronde ronde")
     saved = str(unfinished) + (" begonnen ronde om verder te spelen" if unfinished == 1
                                else " begonnen rondes om verder te spelen")
     w, h = dimensions()
@@ -1016,7 +1450,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.108 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.109 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1039,6 +1473,8 @@ if __name__ == "__main__":
         test_play_ideas(args.viewport)
         test_cosmetic_fixture(args.viewport)
         test_drawing_lifecycle(args.viewport)
+        test_drawing_tools(args.viewport)
+        test_drawing_compaction(args.viewport)
         test_parent_lifecycle(args.viewport)
     finally:
         (OUT / "checks.json").write_text(json.dumps({"viewport": args.viewport, "passed": CHECKS,

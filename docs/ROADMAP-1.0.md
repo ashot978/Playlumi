@@ -1,6 +1,6 @@
 # Playlumi — ontwikkeling en roadmap
 
-Laatste geverifieerde testbouw: **0.108 / 601009**. In ontwikkeling: **0.109 / 601010**. Daarna volgen 0.110, 0.111 enzovoort met steeds hogere Android-versiecodes. Versie 1.0 blijft een afzonderlijk besluit na acceptatie; een geslaagde testbouw is geen productiepublicatie.
+Laatste geverifieerde testbouw: **0.109 / 601010**. In ontwikkeling: **0.110 / 601011**. Daarna volgen 0.111, 0.112 enzovoort met steeds hogere Android-versiecodes. Versie 1.0 blijft een afzonderlijk besluit na acceptatie; een geslaagde testbouw is geen productiepublicatie.
 
 ## Vaste uitgangspunten
 
@@ -49,29 +49,61 @@ d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef
 
 [PR 92](https://github.com/ashot978/Playlumi/pull/92) is een concept en is niet gemerged. De APK is een testoplevering; er is geen openbare release of Play Store-publicatie. Fysieke Samsung-bediening en een update met de oorspronkelijke releasehandtekening op dat toestel zijn nog niet uitgevoerd.
 
-## 0.109 — lopend werk
+## 0.109 — afgeronde testbouw
 
-Baseline is de hierboven geverifieerde 0.108. De beschrijving van de nieuwe bouw staat in [RELEASE-0.109.md](RELEASE-0.109.md). De onderstaande bronwijzigingen moeten nog als één definitieve Android-bouw worden geverifieerd; er wordt hier geen geslaagde 0.109-CI-run geclaimd.
+Bronversie: [c31400887005acd24c1d418eb6084f8156dbe9b5](https://github.com/ashot978/Playlumi/commit/c31400887005acd24c1d418eb6084f8156dbe9b5). Baseline is de hierboven geverifieerde 0.108. De volledige beschrijving staat in [RELEASE-0.109.md](RELEASE-0.109.md).
+
+### Uitgevoerd
+
+- [x] Drie optionele speelideeën uit de werkelijke geschiedenis van het gekozen profiel en de gekozen leeftijd: verder spelen, opnieuw spelen en ontdekken. Kiezen of verversen geeft geen extra beloning.
+- [x] Een ouderoverzicht met feitelijk getelde rondes, oefeningen met een afgeronde ronde en verder te spelen rondes per wereld. Oudere voltooiing zonder rondetelling blijft herkenbaar zonder schatting.
+- [x] Antwoordfeedback met een vinkje, native geselecteerde status en betekenisvolle schermlezertekst; oorspronkelijke antwoord- en herstelgegevens blijven behouden.
+- [x] Tekeningen ook bij het huisje bewaren met AtomicFile en controle van de geschreven PNG. Undo blijft tijdens hetzelfde tekenblad bruikbaar na bewaren en achtergrondgebruik. Automatisch bewaren geeft geen extra beloning; de eerste expliciete bonus en voortgang worden samen opgeslagen.
+- [x] Hergebruik van avatarpaden, gradients en vaste navigatiegeometrie; een begrensde cache voor identieke gebouwgradients. Geen onbewezen FPS-winst geclaimd.
+- [x] Gouden gezichtsuitsparingen voor de volledige outfits; strik en sjaal volledig zichtbaar en de glimlach binnen de stervorm.
+- [x] De ouderpoort opnieuw sluiten bij achtergrondgebruik en Activity-herstel, met behoud van navigatie binnen de geopende ouderzone.
+
+### Geverifieerd en opgeleverd
+
+- [x] [Android-run 46014835510](https://github.com/ashot978/Playlumi/actions/runs/46014835510): debug en release gebouwd, oorspronkelijke illustraties gecontroleerd, **230 unit-tests in 53 suites geslaagd**.
+- [x] Android Lint op dezelfde bron: **0 fouten en 168 waarschuwingen**, zonder algemene onderdrukking.
+- [x] Onafhankelijke Java-controle: 3.422 speelgeschiedenissen/variaties, 10.266 leeftijdspassende ideeën en 20.538 feitelijke wereldsamenvattingen, naast de bestaande inhouds- en herstelcontroles.
+- [x] [UI-run 46014835542](https://github.com/ashot978/Playlumi/actions/runs/46014835542): **43 emulatorchecks geslaagd** — 19 telefoon- en 18 Fold-checks voor stad, update en lifecycle, plus drie quizchecks per formaat.
+- [x] Update van exacte 0.108 naar 0.109 met dezelfde tijdelijke debughandtekening: 28 voorkeuren/voortgangswaarden en 17 velden van een echte begonnen quiz blijven gelijk.
+- [x] Speelideeën en ouderoverzicht gecontroleerd met werkelijk gespeelde rondes; exact vraagherstel en pauze gecontroleerd na beëindiging van het achtergrondproces en herstel in een nieuwe PID.
+- [x] Echte tekenbeweging blijft bewaard na huisje en heropenen. Undo na Bewaar en na achtergrondgebruik herstelt dezelfde PNG-bytes; bonus blijft eenmaal negen sterren.
+- [x] Screenshots beoordeeld van speelideeën, grote tekst, antwoordmarkering, pauze, ouderpoort, tekenstudio, stad en de vijf outfitvarianten strik, sjaal, sterrenpak, regenboog en astronaut.
+- [x] APK privé ondertekend met het oorspronkelijke releasecertificaat; bronrelatie, pakket, versie, certificaat, inhoud en ZIP-uitlijning gecontroleerd.
+
+SHA-256 van de opgeleverde 0.109-APK:
+
+```text
+85e6ebcbea21f4a00d5a3ab7efab3ad365f354d0737ceccb3f97aaa8dd83fcc9
+```
+
+[PR 93](https://github.com/ashot978/Playlumi/pull/93) is een concept. De geteste bron is niet gemerged of openbaar gepubliceerd. De fletse Tekenstudio-feedback, titelafbreking op telefoon en enkelvoudstekst in het ouderoverzicht zijn bekende afwerkingspunten voor de volgende bouw. De emulatorproef vervangt geen oorspronkelijk ondertekende update op een fysiek Samsung-toestel.
+
+## 0.110 — lopend werk
+
+Baseline: de geverifieerde 0.109 op commit `c31400887005acd24c1d418eb6084f8156dbe9b5`. Het geplande werk en de gerichte regressieproeven staan in [RELEASE-0.110.md](RELEASE-0.110.md). Resultaten van 0.109 zijn geen geslaagde verificatie van deze nieuwe bron.
 
 ### Werkpakket
 
-- Drie optionele speelideeën uit de werkelijke geschiedenis van het gekozen profiel en de gekozen leeftijd: verder spelen, opnieuw spelen en ontdekken. Geen extra beloning bij kiezen of verversen.
-- Een ouderoverzicht met feitelijke gespeelde rondes, oefeningen met een afgeronde ronde en verder te spelen rondes per wereld. Oudere voltooiing zonder rondetelling blijft herkenbaar zonder schatting.
-- Duidelijkere antwoordfeedback met een vinkje, native geselecteerde status en betekenisvolle schermlezertekst; bestaande antwoord- en herstelgegevens behouden.
-- Betrouwbaarder bewaren van tekeningen, ook bij het huisje in de kop: eerst geslaagde opslag, daarna de bestaande eenmalige beloning. Actief werk blijft beschikbaar als opslaan mislukt.
-- Hergebruik van avatarpaden, gradients en vaste navigatiegeometrie; een begrensde cache voor identieke gebouwgradients. Dit verwijdert terugkerende allocaties, zonder een gemeten FPS-winst te claimen.
-- Een gouden gezichtsuitsparing voor de volledige outfits. Strik en sjaal blijven volledig herkenbaar; Lumi's glimlach ligt binnen de stervorm.
-- De ouderpoort opnieuw sluiten bij achtergrondgebruik en Activity-herstel, met behoud van de bestaande lokale bediening.
+- Potlood, gum en drie lijndiktes in de Tekenstudio, met native geselecteerde status en lokaal bewaarde gereedschapskeuze per profiel.
+- Undo en Redo voor volledige tekengebaren en leegmaken. Bewaren en kort achtergrondgebruik houden de actieve geschiedenis beschikbaar. De geschiedenis blijft begrensd zonder het zichtbare oudere tekenwerk weg te gooien.
+- Gum ook op een eerder opgeslagen afbeelding; dezelfde profielbestanden en veilige opslag blijven behouden.
+- Drie nieuwe vaste quizroutes: Tel de vormen voor alle leeftijden, Dagen van de week vanaf 5–6 en Lees en kies voor 7+. Beoogd aanbod: 26 / 45 / 71 routes, met ongewijzigde bestaande routecodes.
+- Leesbare Tekenstudio-feedback en een passende kop, correct enkelvoud in het ouderoverzicht en betere uitlijning van de stadstegels.
 
 ### Nog vóór oplevering
 
-- [ ] Alle bronwijzigingen en onafhankelijke controles op één vastgelegde commit samenbrengen en de verplichte regressiepoort opnieuw uitvoeren.
-- [ ] Debug en release bouwen; volledige unit-tests, Android Lint, pakket-/versiecontrole en oorspronkelijke artworkcontrole laten slagen.
-- [ ] De native speelideeën, terugnavigatie, ouderoverzichten, antwoordmarkering en tekenen bedienen op telefoon- en Fold-emulators.
-- [ ] Nieuwe screenshots beoordelen, inclusief grote tekst en de gewijzigde kledingstukken: strik, sjaal, sterrenpak, regenboogtrui en astronaut.
-- [ ] Een update van exact 0.108 naar 0.109 testen met controle van profielen, sterren, eigendom, favorieten en begonnen rondes.
-- [ ] De gecontroleerde productie-APK privé met de oorspronkelijke sleutel ondertekenen en pakket, versie, certificaat, inhoud en uitlijning verifiëren.
-- [ ] Definitieve commit, workflowreferenties, testresultaten, APK-hash en resterende grenzen bij de oplevering vastleggen.
+- [ ] De nieuwe regels, tekengeschiedenis en catalogus controleren met onafhankelijke Java-controles en gerichte unit-tests.
+- [ ] De definitieve bron als debug en release bouwen, met volledige tests, Android Lint, versie-/pakketcontrole en oorspronkelijke artworkcontrole.
+- [ ] Alle bestaande telefoon-/Fold-proeven behouden en echte native bediening van de nieuwe tekenknoppen, gum, Undo/Redo, leegmaken en drie quizroutes toevoegen.
+- [ ] De update van exact 0.109 naar 0.110 controleren, nu ook met een werkelijk in de oude bouw getekende PNG die bytegelijk blijft na installatie.
+- [ ] Screenshots controleren van de nieuwe gereedschappen en leerinhoud, antwoordfeedback, grote tekst en de bestaande afwerkingspunten.
+- [ ] De gecontroleerde productie-APK privé ondertekenen met de oorspronkelijke sleutel; pakket, versie, certificaat, inhoud en uitlijning controleren.
+- [ ] Definitieve broncommit, workflows, resultaten, APK-hash en nog open fysieke toestelacceptatie vastleggen.
 
 ## Eerdere mijlpalen
 
@@ -96,7 +128,7 @@ Bekende verificatiereferenties: 0.106 [build 45909894600](https://github.com/ash
 - [ ] Overgebleven lintmeldingen inhoudelijk beoordelen; herstel op basis van werkelijk risico en effect, zonder algemene onderdrukking.
 - [ ] Teksten, artworkrechten en de privacy-informatie laten aansluiten op de uiteindelijke app en de gekozen distributie.
 
-Nieuwe leerstof en extra geïllustreerde details volgen op basis van feedback op de geteste bouwen. Wekelijkse doelen zijn geen onderdeel van 0.108 of het huidige 0.109-werkpakket. Advertenties, betaalde herstelopties, drukke terugkeermeldingen en verlies van verdiende badges passen niet binnen de uitgangspunten.
+Nieuwe leerstof en extra geïllustreerde details volgen op basis van feedback op de geteste bouwen. Wekelijkse doelen zijn geen onderdeel van de geverifieerde 0.109 of het huidige 0.110-werkpakket. Advertenties, betaalde herstelopties, drukke terugkeermeldingen en verlies van verdiende badges passen niet binnen de uitgangspunten.
 
 ## 1.0 — na afzonderlijke acceptatie
 

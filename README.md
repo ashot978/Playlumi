@@ -8,12 +8,12 @@ De app werkt lokaal en zonder accounts, advertenties, trackers of extra toestemm
 
 | Bouw | Status |
 | --- | --- |
-| **0.108 · 601009** | Laatst geverifieerde test-APK, gebouwd vanaf [06bf09a](https://github.com/ashot978/Playlumi/commit/06bf09abae45cea79143bee00924cecabb474bea), privé ondertekend met het oorspronkelijke releasecertificaat. |
-| **0.109 · 601010** | In ontwikkeling. De nieuwe functies en rendererwijzigingen krijgen hun eigen build-, test-, update- en handtekeningcontrole vóór oplevering. |
+| **0.109 · 601010** | Laatst geverifieerde test-APK, gebouwd vanaf [c314008](https://github.com/ashot978/Playlumi/commit/c31400887005acd24c1d418eb6084f8156dbe9b5), privé ondertekend met het oorspronkelijke releasecertificaat. |
+| **0.110 · 601011** | In ontwikkeling: meer tekengereedschap, drie aanvullende leerroutes en gerichte interface-afwerking. De definitieve bron krijgt eigen build-, test-, update- en handtekeningcontroles. |
 
-Voor 0.108 zijn de [Android-build en volledige tests](https://github.com/ashot978/Playlumi/actions/runs/45992312167) en de [telefoon- en Fold-emulatorproeven](https://github.com/ashot978/Playlumi/actions/runs/45992312107) geslaagd. Een emulatorproef is geen bediening op een fysiek Samsung Fold-toestel; die acceptatie staat nog open. Dit project bevindt zich in testontwikkeling. Een test-APK geeft geen opdracht tot een merge of Play Store-publicatie.
+Voor 0.109 zijn de [Android-build en volledige tests](https://github.com/ashot978/Playlumi/actions/runs/46014835510) en de [telefoon- en Fold-emulatorproeven](https://github.com/ashot978/Playlumi/actions/runs/46014835542) geslaagd: **230 unit-tests in 53 suites**, **0 lintfouten en 168 waarschuwingen**, en **43 emulatorchecks**. [PR 93](https://github.com/ashot978/Playlumi/pull/93) is een concept. Een emulatorproef is geen bediening op een fysiek Samsung Fold-toestel; die acceptatie staat nog open. Dit project bevindt zich in testontwikkeling. Een test-APK geeft geen opdracht tot een merge of Play Store-publicatie.
 
-Zie [de wijzigingen in 0.108](docs/RELEASE-0.108.md), [het werk aan 0.109](docs/RELEASE-0.109.md) en [de roadmap met bewijs en open controles](docs/ROADMAP-1.0.md).
+Zie [de geverifieerde wijzigingen in 0.109](docs/RELEASE-0.109.md), [het werk aan 0.110](docs/RELEASE-0.110.md) en [de roadmap met bewijs en open controles](docs/ROADMAP-1.0.md).
 
 ## Spelen en ontdekken
 
@@ -26,9 +26,11 @@ Zie [de wijzigingen in 0.108](docs/RELEASE-0.108.md), [het werk aan 0.109](docs/
 | Speelplein | Interactieve spellen en oefeningen met handelingen en alledaagse situaties. |
 | Kleurentuin | Kleuren, tekenen en creatieve activiteiten. |
 
-De catalogus van 0.108 bevat **25, 43 en 68 spelroutes** voor de drie leeftijdsgroepen. Zoeken, favorieten en een lijst van begonnen spellen helpen bij het kiezen. Bestaande spelcodes en opgeslagen rondes blijven bij uitbreiding behouden.
+De geverifieerde catalogus van 0.109 bevat **25, 43 en 68 spelroutes** voor de drie leeftijdsgroepen. Zoeken, favorieten en een lijst van begonnen spellen helpen bij het kiezen. Speelideeën geeft drie concrete keuzes uit de werkelijke speelgeschiedenis, met voorrang voor een begonnen ronde. Bestaande spelcodes en opgeslagen rondes blijven bij uitbreiding behouden.
 
 Lumi's stad toont zeven verschillende plekken als gebouw, park, podium, brug of monument zodra de bijbehorende prestatie daadwerkelijk verdiend is. Kleding en vriendjes gebruiken de bestaande eigendomslijst. Drie optionele dagopdrachten wijzen naar passende spellen; behaalde cadeaus verdwijnen niet wanneer een dag wordt overgeslagen. Opnieuw spelen telt mee voor zichtbare herhalingsmijlpalen zonder oude, niet geregistreerde rondes te verzinnen.
+
+Tekeningen worden lokaal per profiel bewaard, ook bij het huisje of achtergrondgebruik. De actieve tekenlijnen blijven na bewaren terug te draaien. Automatisch bewaren geeft geen extra sterren. Het ouderoverzicht toont werkelijk getelde rondes en begonnen oefeningen; de ouderpoort sluit opnieuw na achtergrondgebruik of opnieuw maken van het scherm.
 
 De oorspronkelijke geïllustreerde startpagina blijft behouden. Native Android-bediening maakt gebouwen en acties afzonderlijk bereikbaar. Brede schermen hebben een aangepaste indeling; de stadskaart houdt rekening met de beschikbare breedte en tekstgrootte. De app voegt geen gesproken instructies toe. Muziek, instelbare feedback en Android-toegankelijkheid blijven afzonderlijke functies.
 
@@ -49,10 +51,12 @@ De onafhankelijke Java-controles hebben geen Android-runtime nodig:
 
 ```sh
 mkdir -p build/rc-check
-javac -encoding UTF-8 -d build/rc-check -sourcepath app/src/main/java tools/qa/ReleaseCandidateCheck.java tools/qa/ThinkingPracticeCheck.java tools/qa/PlayIdeasCheck.java
+javac -encoding UTF-8 -d build/rc-check -sourcepath app/src/main/java tools/qa/ReleaseCandidateCheck.java tools/qa/ThinkingPracticeCheck.java tools/qa/PlayIdeasCheck.java tools/qa/FoundationsCheck.java tools/qa/DrawingHistoryCheck.java
 java -cp build/rc-check nl.playlumi.app.ReleaseCandidateCheck
 java -cp build/rc-check nl.playlumi.app.ThinkingPracticeCheck
 java -cp build/rc-check nl.playlumi.app.PlayIdeasCheck
+java -cp build/rc-check nl.playlumi.app.FoundationsCheck
+java -cp build/rc-check nl.playlumi.app.DrawingHistoryCheck
 ```
 
 Met de Android SDK beschikbaar:
