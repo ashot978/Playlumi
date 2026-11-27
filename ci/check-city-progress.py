@@ -271,10 +271,11 @@ def test_debug_upgrade(baseline_apk, viewport):
     baseline = pathlib.Path(baseline_apk)
     candidate = pathlib.Path("app/build/outputs/apk/debug/app-debug.apk")
     assert baseline.is_file() and candidate.is_file(), "Both debug upgrade APKs must exist"
-    # Reset the disposable fixture once. The actual baseline → candidate step below
-    # uses install -r exclusively, with no clearing/uninstalling between versions.
-    adb("uninstall", APP, check=False)
-    adb("install", str(baseline), timeout=120)
+    # Install the older debuggable build as fixture setup, then seed its clean data.
+    # Avoid uninstall/launcher churn on the emulator. The actual forward upgrade
+    # below uses install -r exclusively, with no clearing between versions.
+    adb("shell", "am force-stop " + APP)
+    adb("install", "-r", "-d", str(baseline), timeout=120)
     assert "versionName=0.107" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
@@ -553,6 +554,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
+    parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
     parser.add_argument("--baseline-apk", help="Optional exact 0.107 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -564,8 +566,10 @@ if __name__ == "__main__":
         shell("pm disable-user --user 0 com.android.launcher3")
         shell("am force-stop com.android.launcher3")
         if args.viewport == "fold":
-            shell("wm size 1200x1320")
-            shell("wm density 210")
+            if dimensions() != (1200, 1320):
+                shell("wm size 1200x1320")
+            if int(re.findall(r"(\d+)", shell("wm density"))[-1]) != 210:
+                shell("wm density 210")
         time.sleep(2)
         if args.baseline_apk:
             test_debug_upgrade(args.baseline_apk, args.viewport)
@@ -575,11 +579,16 @@ if __name__ == "__main__":
         (OUT / "checks.json").write_text(json.dumps({"viewport": args.viewport, "passed": CHECKS,
             "scope": "Native UI and persistence on a disposable emulator; synthetic fixtures explicitly labelled."},
             indent=2, ensure_ascii=False))
-        try:
-            (OUT / "logcat.txt").write_bytes(adb("logcat", "-d", "-v", "brief"))
-            (OUT / "window.txt").write_text(shell("dumpsys window"))
-            (OUT / "last-screen.png").write_bytes(adb("exec-out", "screencap", "-p"))
-        finally:
-            shell("wm size reset")
-            shell("wm density reset")
-            shell("settings put system font_scale 1.0")
+        for filename, command in (("logcat.txt", ("logcat", "-d", "-v", "brief")),
+                                  ("window.txt", ("shell", "dumpsys window")),
+                                  ("last-screen.png", ("exec-out", "screencap", "-p"))):
+            try:
+                (OUT / filename).write_bytes(adb(*command, timeout=5))
+            except (subprocess.SubprocessError, OSError) as error:
+                print("Diagnostic unavailable:", filename, type(error).__name__, flush=True)
+        if not args.keep_viewport:
+            for command in ("wm size reset", "wm density reset", "settings put system font_scale 1.0"):
+                try:
+                    adb("shell", command, timeout=5)
+                except (subprocess.SubprocessError, OSError) as error:
+                    print("Cleanup unavailable:", command, type(error).__name__, flush=True)

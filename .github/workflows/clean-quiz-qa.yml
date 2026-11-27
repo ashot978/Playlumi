@@ -66,8 +66,15 @@ jobs:
           disable-linux-hw-accel: auto
           emulator-boot-timeout: 390
           script: |
-            python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }}
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --baseline-apk build/upgrade-baseline/playlumi-0107-debug.apk
+            python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
+            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0107-debug.apk
+      - name: Collect host diagnostics after emulator failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p build/city-progress
+          timeout 5s sudo -n dmesg -T > build/city-progress/host-kernel.txt 2>&1 || true
+          free -m > build/city-progress/host-memory.txt
       - name: Save actual emulator screenshots and UI hierarchy
         if: always()
         uses: actions/upload-artifact@v4
