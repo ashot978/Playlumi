@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
     private int melodyRound;
     private int melodyVariant;
     private boolean melodySolved;
-    private TextView melodyStatus,magicHeaderProgress;
+    private TextView melodyStatus,melodySteps,magicHeaderProgress;
     private final Button[] melodyPads=new Button[4];
     private boolean melodyPreviewActive;
     private long melodyPreviewToken;
@@ -962,6 +962,8 @@ public class MainActivity extends Activity {
             if(page==VILLAGE_MENU && place==PlaylumiVillageView.ROCKET)height=Math.min(height,landscapeScreen()?160:118);
             if(page==MINI_PLAY && miniKind==PlaylumiMiniChallenge.DRAG)
                 height=PlaylumiLayout.shapeHeroHeight(available);
+            else if(page==MINI_PLAY||page==BUBBLE_PLAY||page==STAR_CATCH||page==MUSIC_PLAY)
+                height=Math.min(height,available<640?54:76);
             View art=PlaylumiMagicArt.hero(this,place);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(height));
             p.setMargins(0,0,0,dp(landscapeScreen()?10:6));root.addView(art,p);
@@ -1291,7 +1293,7 @@ public class MainActivity extends Activity {
             if(PlaylumiCityRewards.grant(wardrobe,achievedMask(achievementStats())))saveWardrobe();
         }
         if(!parentAllowed && protectedParentPage())page=PARENT_GATE;
-        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;skillBoard=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;drawing=null;drawingInfo=null;
+        playPal=null;progressCounter=null;melodySteps=null;questionPicture=null;questionPattern=null;skillBoard=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;drawing=null;drawingInfo=null;
         java.util.Arrays.fill(drawingColors,null);java.util.Arrays.fill(drawingWidths,null);
         drawingPencil=null;drawingEraser=null;drawingUndo=null;drawingRedo=null;drawingClear=null;eraseAsked=false;
         final boolean villageScreen=page==HOME;
@@ -3737,7 +3739,7 @@ public class MainActivity extends Activity {
             return;
         }
         autoRoundVisible=true;
-        String instruction=miniKind==PlaylumiMiniChallenge.MEMORY?"Vind de gelijke dieren":miniKind==PlaylumiMiniChallenge.DRAG?"Sleep naar de vormpoort":mini.question;
+        String instruction=miniKind==PlaylumiMiniChallenge.MEMORY?PlaylumiMiniPractice.theme(mini.choices)+" · vind de paren":miniKind==PlaylumiMiniChallenge.DRAG?"Sleep naar de vormpoort":mini.question;
         addPrompt(root,instruction,19);
         PlaylumiMiniBoard board=new PlaylumiMiniBoard(this,mini,new PlaylumiMiniBoard.Listener() {
             @Override public void onSolved() {
@@ -4612,12 +4614,13 @@ public class MainActivity extends Activity {
         final PlaylumiStarCatch round=starCatch;
         String instruction="Vang "+round.target()+" gouden sterren!";
         addPrompt(root,instruction,19);
-        starCatchProgress=text("⭐ "+round.collected()+" / "+round.target(),21,PlaylumiMagicArt.INK);
+        starCatchProgress=text(PlaylumiMiniPractice.trail(round.collected(),round.target(),"★","☆")+"   "+round.collected()+"/"+round.target(),20,PlaylumiMagicArt.INK);
+        starCatchProgress.setContentDescription(round.collected()+" van "+round.target()+" sterren gevangen");
         starCatchProgress.setBackground(PlaylumiMagicArt.creamPlate(this));
         starCatchProgress.setPadding(dp(8),dp(8),dp(8),dp(8));
         addWidget(starCatchProgress,2,6);
         PlaylumiStarCatchBoard board=new PlaylumiStarCatchBoard(this,round,new PlaylumiStarCatchBoard.Listener(){
-            @Override public void onStar(int count){starCatchProgress.setText("⭐ "+count+" / "+round.target());sound.pop();if(!round.finished())saveLibrarySpecial(STAR_CATCH);}
+            @Override public void onStar(int count){starCatchProgress.setText(PlaylumiMiniPractice.trail(count,round.target(),"★","☆")+"   "+count+"/"+round.target());starCatchProgress.setContentDescription(count+" van "+round.target()+" sterren gevangen");sound.pop();if(!round.finished())saveLibrarySpecial(STAR_CATCH);}
             @Override public void onMistake(){sound.mistake();}
             @Override public void onFinished(){
                 if(page!=STAR_CATCH||moving||!autoRoundVisible||starCatchSolved)return;
@@ -4842,7 +4845,7 @@ public class MainActivity extends Activity {
         active.postDelayed(()->{
             if(stage==active&&page==MUSIC_PLAY&&preview==melodyPreviewToken&&activeSince>0){
                 melodyPreviewActive=false;
-                melodyStatus.setText("Nu jij! Tik de dierenvriendjes aan.");
+                melodyStatus.setText(melody.progress()>0?"Ga verder vanaf toon "+Math.min(melody.progress()+1,melody.length())+".":"Nu jij! Tik de dierenvriendjes aan.");
             }
         },melody.length()*470L+220L);
     }
@@ -4866,9 +4869,14 @@ public class MainActivity extends Activity {
         }
         autoRoundVisible=true;
         // Only the actual melody preview and playable animal buttons are shown.
-        melodyStatus=magicRibbon(sound.isEnabled()?
+        melodyStatus=magicRibbon(melody.progress()>0?"Ga verder vanaf toon "+Math.min(melody.progress()+1,melody.length())+".":sound.isEnabled()?
                 "Luister en speel het deuntje na.":"Bekijk de plaatjes en tik ze na.",19);
-        addWidget(melodyStatus,0,5);
+        addWidget(melodyStatus,0,4);
+        melodySteps=text("",21,PlaylumiMagicArt.INK);
+        melodySteps.setBackground(PlaylumiMagicArt.creamPlate(this));
+        melodySteps.setPadding(dp(5),dp(4),dp(5),dp(4));
+        melodySteps.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        updateMelodySteps();addWidget(melodySteps,0,4);
         Button replay=tile(sound.isEnabled()?"▶  Speel de melodie af":"Bekijk de melodie",
                 "",0xffd9f3ff,66);
         addTile(replay,3);
@@ -4904,11 +4912,17 @@ public class MainActivity extends Activity {
         if(melodySolved)melodyStatus.setText("🎉 Geweldig! Je kon de melodie spelen!");
         if(melodySolved)scheduleAutoAdvance();
     }
+    private void updateMelodySteps(){
+        if(melody==null||melodySteps==null)return;
+        melodySteps.setText(melody.playedTrail());
+        melodySteps.setContentDescription(melody.progress()+" van "+melody.length()+" tonen gespeeld");
+    }
     private void tapMelody(int note,Button pressed) {
         if(page!=MUSIC_PLAY||moving||!autoRoundVisible||melodySolved||melody==null||melodyPreviewActive)return;
         sound.note(note);
         PlaylumiDelight.hop(pressed);
         int status=melody.tap(note);
+        updateMelodySteps();
         if(status!=2)saveLibrarySpecial(MUSIC_PLAY);
         if(status==0) {
             melodyStatus.setText("💗 Oeps! Probeer de melodie nog eens.");

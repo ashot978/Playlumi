@@ -83,9 +83,9 @@ public final class PlaylumiGameCatalog {
         g(list,3,MUSIC,0,"Speel het deuntje","Speel "+(a+2)+" tonen na","♪");
         if(a>=1)list.add(new Entry(3,MUSIC,0,1,"Lange melodie","Onthoud "+(a+3)+" tonen","♫"));
         if(a>=2)list.add(new Entry(3,MUSIC,0,2,"Geheugenconcert","Onthoud zes tonen","♪"));
-        g(list,4,MINI,PlaylumiMiniChallenge.MEMORY,"Dierenmemory","Vind gelijke dieren","🐾");
+        g(list,4,MINI,PlaylumiMiniChallenge.MEMORY,"Dierenmemory","Vind gelijke dieren in vier dierenthema’s","🐾");
         g(list,4,MINI,PlaylumiMiniChallenge.BALLOONS,"Tel de ballonnen","Tel echte ballonnen","🎈");
-        g(list,4,BUBBLES,0,"Bellenfeest","Prik de zeepbellen","○");
+        g(list,4,BUBBLES,0,"Bellenfeest","Prik precies genoeg zeepbellen","○");
         g(list,4,STARS,0,"Vang de sterren","Verzamel alleen gouden sterren","★");
         q(list,4,21,1,"Dierenwereld","Herken de dieren","🐾");
         q(list,4,ExtraGames.CATEGORIES,0,"Wat hoort erbij?","Zoek het passende plaatje","◆");

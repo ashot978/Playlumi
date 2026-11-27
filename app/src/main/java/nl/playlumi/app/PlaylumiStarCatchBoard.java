@@ -63,6 +63,8 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
             if(game.caught(i)) {
                 star.setVisibility(INVISIBLE);
                 motions.add(null);
+            } else if(game.finished()){
+                star.setEnabled(false);motions.add(null);
             } else {
                 star.setOnClickListener(v->catchStar(star,index));
                 if(PlaylumiMotion.isReduced()){
@@ -97,7 +99,11 @@ public final class PlaylumiStarCatchBoard extends FrameLayout {
         else star.animate().alpha(0f).scaleX(.15f).scaleY(.15f)
                 .rotation(28f).setDuration(270)
                 .withEndAction(()->star.setVisibility(INVISIBLE)).start();
-        if(game.finished())listener.onFinished();
+        if(game.finished()){
+            for(Button button:stars)button.setEnabled(false);
+            for(ObjectAnimator motion:motions)if(motion!=null)motion.cancel();
+            listener.onFinished();
+        }
     }
     @Override protected void onSizeChanged(int w,int h,int oldw,int oldh) {
         super.onSizeChanged(w,h,oldw,oldh);

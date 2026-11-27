@@ -37,6 +37,11 @@ public final class PlaylumiMelody {
     public int[] sequence(){return tune.clone();}
     public int length(){return tune.length;}
     public int progress(){return position;}
+    public String playedTrail(){
+        StringBuilder text=new StringBuilder();
+        for(int i=0;i<tune.length;i++){if(i>0)text.append("  ");text.append(i<position?ANIMALS[tune[i]]:"○");}
+        return text.toString();
+    }
     public boolean completed(){return completed;}
     public int noteAt(int i){
         if(i<0||i>=tune.length)throw new IllegalArgumentException("position");

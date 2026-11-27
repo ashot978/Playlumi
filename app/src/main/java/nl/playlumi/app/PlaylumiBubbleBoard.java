@@ -24,7 +24,8 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
     private final PlaylumiBubbles game;
     private final Listener listener;
     private final ArrayList<ObjectAnimator> floating=new ArrayList<>();
-    private final TextView count;
+    private final ArrayList<Button> buttons=new ArrayList<>();
+    private final TextView count,trail;
     private boolean awarded;
     private static final int[][] GRADIENTS={
             {0xffc9e9ff,0xff7dbcea},
@@ -40,15 +41,15 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
         setOrientation(VERTICAL);
         setPadding(dp(5),dp(4),dp(5),dp(6));
         setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView intro=text("🫧 Prik "+state.target+" bellen!",21,0xff624698);
-        addView(intro,new LayoutParams(-1,dp(43)));
-        count=text("✨ "+state.popped()+" / "+state.target,19,0xff34876a);
-        boolean wide=PlaylumiLayout.useWideLayout(
-                getResources().getConfiguration().screenWidthDp,
-                getResources().getConfiguration().orientation==
-                        android.content.res.Configuration.ORIENTATION_LANDSCAPE);
-        int perRow=wide?4:3;
-        int bubbleHeight=getResources().getConfiguration().screenHeightDp<700?72:80;
+        count=text("",17,0xffffedbf);
+        count.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        addView(count,new LayoutParams(-1,-2));
+        trail=text("",19,0xffffdfa1);
+        addView(trail,new LayoutParams(-1,dp(32)));
+        int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
+        int content=Math.max(1,width-2*PlaylumiLayout.magicSidePadding(width)-10);
+        int perRow=PlaylumiMiniPractice.bubbleColumns(content,state.total);
+        int bubbleHeight=PlaylumiMiniPractice.bubbleSize(content,height,state.total);
         for(int start=0;start<state.total;start+=perRow) {
             LinearLayout row=new LinearLayout(context);
             row.setGravity(Gravity.CENTER);
@@ -56,10 +57,11 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                 final int index=i;
                 Button b=new Button(context);
                 b.setAllCaps(false);
-                b.setText("🫧");
-                b.setTextSize(wide?31:35);
+                b.setText("◉");
+                b.setTextColor(0xfff9faff);
+                b.setTextSize(Math.max(24,bubbleHeight/3));
                 b.setGravity(Gravity.CENTER);
-                b.setMinHeight(dp(60));
+                b.setMinHeight(0);b.setMinimumHeight(0);
                 b.setPadding(dp(3),dp(3),dp(3),dp(3));
                 b.setContentDescription("Zeepbel "+(index+1)+" van "+state.total+", tik om te prikken");
                 GradientDrawable shape=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -68,10 +70,11 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                 shape.setStroke(dp(2),0xeaffffff);
                 b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66ffffff),shape,null));
                 b.setElevation(dp(4));
-                LayoutParams bp=new LayoutParams(0,dp(bubbleHeight),1);
+                LayoutParams bp=new LayoutParams(dp(bubbleHeight),dp(bubbleHeight));
                 bp.setMargins(dp(4),dp(4),dp(4),dp(5));
-                row.addView(b,bp);
-                if(state.isPopped(i))b.setVisibility(INVISIBLE);
+                row.addView(b,bp);buttons.add(b);
+                if(state.isPopped(i)){b.setVisibility(INVISIBLE);floating.add(null);}
+                else if(state.solved()){b.setEnabled(false);floating.add(null);}
                 else {
                     b.setOnClickListener(v->pop(b,index));
                     if(!PlaylumiMotion.isReduced()) {
@@ -82,13 +85,12 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
                         floaty.setRepeatCount(ValueAnimator.INFINITE);
                         floaty.setInterpolator(new AccelerateDecelerateInterpolator());
                         floating.add(floaty);
-                    }
+                    }else floating.add(null);
                 }
             }
             addView(row,new LayoutParams(-1,-2));
         }
         updateStatus();
-        addView(count,new LayoutParams(-1,dp(44)));
     }
     private TextView text(String s,int size,int color) {
         TextView t=new TextView(getContext());
@@ -102,6 +104,7 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
     private void pop(Button button,int index) {
         if(!game.pop(index))return;
         button.setEnabled(false);
+        ObjectAnimator motion=floating.get(index);if(motion!=null)motion.cancel();
         listener.onPop();
         button.animate().cancel();
         button.setTranslationY(0);
@@ -111,20 +114,25 @@ public final class PlaylumiBubbleBoard extends LinearLayout {
         updateStatus();
         if(game.solved() && !awarded) {
             awarded=true;
+            for(Button b:buttons)b.setEnabled(false);
+            for(ObjectAnimator m:floating)if(m!=null)m.cancel();
             listener.onSolved();
         }
     }
     private void updateStatus() {
         if(count==null)return;
         if(game.solved())count.setText("🎉 Geweldig! "+game.target+" bellen geknapt!");
-        else count.setText("✨ "+game.popped()+" van "+game.target+" geknapt");
+        else count.setText(game.popped()+" van "+game.target+" bellen geknapt");
+        trail.setText(PlaylumiMiniPractice.trail(game.popped(),game.target,"●","○"));
+        trail.setContentDescription(game.popped()+" van "+game.target+" bellen");
     }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        for(ObjectAnimator m:floating)if(!m.isStarted())m.start();
+        for(ObjectAnimator m:floating)if(m!=null&&!m.isStarted())m.start();
     }
     @Override protected void onDetachedFromWindow() {
-        for(ObjectAnimator m:floating)m.cancel();
+        for(ObjectAnimator m:floating)if(m!=null)m.cancel();
+        for(Button b:buttons)b.animate().cancel();
         super.onDetachedFromWindow();
     }
 }

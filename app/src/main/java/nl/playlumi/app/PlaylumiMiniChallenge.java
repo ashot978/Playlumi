@@ -19,9 +19,6 @@ public final class PlaylumiMiniChallenge {
     private static final String[] SHAPES={"⭐","🔺","🔵","🟩","💜","🔶","❤️","⬛","🔷","🔸","🟢","⬜"};
     private static final String[] SHAPE_NAMES={"ster","driehoek","cirkel","vierkant","hart",
             "ruit","hart","vierkant","ruit","ruit","cirkel","vierkant"};
-    private static final String[] MEMORY_ICONS={"🐶","🐱","🐮","🐸","🐰","🐻",
-            "🦊","🐵","🐘","🐝","🦋","🐢","🐧","🦁","🐼","🐟","🐔","🐙"};
-
     private PlaylumiMiniChallenge(int kind,int level,String question,String target,
                                   List<String> choices,int answerIndex) {
         this.kind=kind;this.level=level;this.question=question;this.target=target;
@@ -51,11 +48,7 @@ public final class PlaylumiMiniChallenge {
             return new PlaylumiMiniChallenge(kind,level,"Waar zie je "+options.get(answer)+(options.get(answer).equals("1")?" ballon?":" ballonnen?"),
                     options.get(answer),options,answer);
         }
-        int pairs=level==0?3:level==1?4:6;
-        List<Integer> indices=uniqueIndices(random,pairs,MEMORY_ICONS.length);
-        for(int index:indices) {options.add(MEMORY_ICONS[index]);options.add(MEMORY_ICONS[index]);}
-        Collections.shuffle(options,random);
-        return new PlaylumiMiniChallenge(kind,level,"Zoek twee dezelfde diertjes","🐾",options,-1);
+        return new PlaylumiMiniChallenge(kind,level,"Zoek twee dezelfde diertjes","🐾",PlaylumiMiniPractice.memory(level,random),-1);
     }
     public static PlaylumiMiniChallenge restoreDrag(int level,String target,List<String> choices,int correctIndex){
         if(level<0||level>2||target==null||choices==null||choices.size()!=(level==0?3:level==1?4:6)||
@@ -88,7 +81,7 @@ public final class PlaylumiMiniChallenge {
         PlaylumiMiniChallenge saved=new PlaylumiMiniChallenge(kind,level,"Zoek twee dezelfde diertjes","🐾",choices,-1);
         for(int i=0;i<choices.size();i++){
             String value=choices.get(i);
-            if(!java.util.Arrays.asList(MEMORY_ICONS).contains(value)||Collections.frequency(choices,value)!=2)
+            if(PlaylumiMiniPractice.animalName(value).isEmpty()||Collections.frequency(choices,value)!=2)
                 throw new IllegalArgumentException("saved memory pair");
             boolean marked=(mask&(1<<i))!=0;
             for(int j=0;j<choices.size();j++)if(value.equals(choices.get(j))&&marked!=((mask&(1<<j))!=0))

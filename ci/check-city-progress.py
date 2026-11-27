@@ -322,7 +322,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.117" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.118" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -374,7 +374,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.118" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.119" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -408,7 +408,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.117", "candidateVersion": "0.118",
+        "baselineVersion": "0.118", "candidateVersion": "0.119",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -418,7 +418,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.117 → 0.118 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.118 → 0.119 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1346,6 +1346,37 @@ def test_hands_on_worlds(viewport):
         pass_check(viewport + ": " + title + " uses its new native board and restores the exact first step without duplicate rewards")
 
 
+def test_memory_refresh(viewport):
+    label = viewport + "-memory-refresh"
+    seed({})
+    launch_native_home()
+    click(find_control(description_prefix("Speelplein"), label + "-world", False))
+    page(44)
+    click(find_control(description_prefix("Speel Dierenmemory"), label + "-entry"))
+    page(13)
+    nodes = screenshot(label + "-closed")
+    backs = [n for n in nodes if n.get("content-desc", "").startswith("Gesloten kaart ")]
+    assert len(backs) == 6 and all(n.get("text") == "✦" for n in backs), "Memory backs expose different faces"
+    click_named("Gesloten kaart 1", label + "-first")
+    key = "library_resume_v2_0_4:1:2:0"
+    state = wait_prefs(lambda p: key in p and json.loads(p[key])["open"] == 0, "One open card saved")
+    saved = json.loads(state[key])
+    assert state["wardrobe_stars"] == 18 and saved["matched"] == 0, "Single card awarded progress"
+    mate = next(i for i, card in enumerate(saved["choices"]) if i != 0 and card == saved["choices"][0])
+    launch_native_home()
+    click(find_control(description_prefix("Speelplein"), label + "-world-return", False))
+    page(44)
+    click(find_control(description_prefix("Verder spelen Dierenmemory"), label + "-resume"))
+    page(13)
+    nodes = screenshot(label + "-resumed")
+    assert any(n.get("content-desc", "").startswith("Kaart 1: ") for n in nodes), "Open card missing after restart"
+    click_named("Gesloten kaart " + str(mate+1), label + "-match")
+    result = wait_prefs(lambda p: key in p and json.loads(p[key])["matched"] == ((1 << mate) | 1), "First pair saved")
+    assert result["wardrobe_stars"] == 18, "Incomplete memory board awarded stars"
+    screenshot(label + "-pair")
+    pass_check(viewport + ": themed memory has identical hidden cards and exactly restores an open card and matched pair")
+
+
 def test_simplified_navigation(viewport):
     label = viewport + "-navigation"
     # Start with an empty profile. Every completion and unfinished game below is
@@ -1484,7 +1515,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.117 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.118 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1506,6 +1537,7 @@ if __name__ == "__main__":
         test_new_quiz_routes(args.viewport)
         test_simplified_navigation(args.viewport)
         test_hands_on_worlds(args.viewport)
+        test_memory_refresh(args.viewport)
         test_cosmetic_fixture(args.viewport)
         test_drawing_lifecycle(args.viewport)
         test_drawing_tools(args.viewport)

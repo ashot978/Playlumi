@@ -34,7 +34,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     private final Listener listener;
     private final List<Button> cards=new ArrayList<>();
     private final List<ObjectAnimator> floating=new ArrayList<>();
-    private TextView status;
+    private TextView status,memoryProgress;
+    private final Runnable closeMiss=this::closeMemoryMiss;
     private PlaylumiShapeGate shapeGate;
     private boolean solved,waiting;
     private static final class ShapeDrag {
@@ -155,8 +156,12 @@ public final class PlaylumiMiniBoard extends LinearLayout {
             addView(status,new LayoutParams(-1,dp(45)));
             addChoices(this,true);
         } else {
-            status.setText("🃏 Zoek twee dezelfde kaartjes");
-            addView(status,new LayoutParams(-1,dp(45)));
+            status.setText("Zoek twee dezelfde dieren");
+            status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+            addView(status,new LayoutParams(-1,-2));
+            memoryProgress=caption("",18,0xffffedbf);
+            memoryProgress.setPadding(dp(3),dp(3),dp(3),dp(3));
+            addView(memoryProgress,new LayoutParams(-1,-2));
             addMemory();
         }
     }
@@ -286,19 +291,26 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         for(Button b:cards)b.setEnabled(false);
     }
     private void addMemory() {
-        int columns=landscape() && question.choices.size()>8?4:3;
-        int h=getResources().getConfiguration().screenHeightDp;
-        int cardHeight=landscape()?Math.max(74,Math.min(128,h/8)):h<700?60:78;
+        int w=getResources().getConfiguration().screenWidthDp,h=getResources().getConfiguration().screenHeightDp;
+        int content=Math.max(1,w-2*PlaylumiLayout.magicSidePadding(w)-16);
+        int columns=PlaylumiMiniPractice.memoryColumns(content,question.choices.size());
+        int cardHeight=PlaylumiMiniPractice.memoryCardHeight(content,h,question.choices.size());
         for(int start=0;start<question.choices.size();start+=columns) {
-            LinearLayout row=new LinearLayout(getContext());
+            LinearLayout row=new LinearLayout(getContext());row.setGravity(Gravity.CENTER);
             for(int idx=start;idx<Math.min(start+columns,question.choices.size());idx++) {
                 final int index=idx;
-                Button b=tile("",idx,36);
+                Button b=tile("",idx,Math.max(23,Math.min(38,cardHeight/2)));
+                b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(2),dp(2),dp(2),dp(2));
+                b.setMaxLines(1);
                 LayoutParams p=new LayoutParams(0,dp(cardHeight),1);
                 p.setMargins(dp(3),dp(4),dp(3),dp(4));
                 row.addView(b,p);
                 cards.add(b);
                 b.setOnClickListener(v->flip(index));
+            }
+            for(int empty=Math.min(start+columns,question.choices.size());empty<start+columns;empty++){
+                LayoutParams p=new LayoutParams(0,dp(cardHeight),1);p.setMargins(dp(3),dp(4),dp(3),dp(4));
+                row.addView(new View(getContext()),p);
             }
             addView(row,new LayoutParams(-1,-2));
         }
@@ -308,6 +320,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
         if(waiting || solved)return;
         int result=question.flip(index);
         if(result==0)return;
+        if(result==-1)waiting=true;
+        if(result==3)solved=true;
         renderMemory();
         if(result!=3)listener.onStateChanged();
         if(index<cards.size())PlaylumiDelight.flip(cards.get(index));
@@ -320,28 +334,38 @@ public final class PlaylumiMiniBoard extends LinearLayout {
                 listener.onSolved();
             }
         } else if(result==-1) {
-            waiting=true;
             status.setText("🌼 Kijk goed en onthoud!");
-            postDelayed(()->{
-                question.hideMiss();
-                waiting=false;
-                if(isAttachedToWindow())renderMemory();
-            },950);
+            postDelayed(closeMiss,question.level==0?1350:question.level==1?1150:950);
             listener.onMistake();
         }
+    }
+    private void closeMemoryMiss(){
+        question.hideMiss();waiting=false;
+        if(isAttachedToWindow())renderMemory();
+    }
+    private GradientDrawable memoryCard(boolean revealed,boolean matched){
+        int[] colors=matched?new int[]{0xffe6f9e8,0xffb7e7c4}:
+                revealed?new int[]{0xfffff8dd,0xffffe7b5}:new int[]{0xff9065c7,0xff57358c};
+        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,colors);
+        d.setCornerRadius(dp(15));d.setStroke(dp(2),matched?0xff61b780:revealed?0xffffc65f:0xffd5b5f6);
+        return d;
     }
     private void renderMemory() {
         for(int i=0;i<cards.size();i++) {
             Button b=cards.get(i);
-            boolean revealed=question.visible(i);
-            b.setText(revealed?question.choices.get(i):"");
-            b.setTextColor(PlaylumiMagicArt.INK);
-            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),
-                    PlaylumiMagicArt.memory(getContext(),i,revealed,question.matched(i)),null));
-            b.setContentDescription(revealed?question.choices.get(i):"Gesloten kaart "+(i+1));
-            b.setEnabled(!question.matched(i) && !solved);
+            boolean revealed=question.visible(i),matched=question.matched(i);
+            b.setText(matched?"✓ "+question.choices.get(i):revealed?question.choices.get(i):"✦");
+            b.setTextColor(matched?0xff174f36:revealed?PlaylumiMagicArt.INK:0xffffe8ac);
+            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),memoryCard(revealed,matched),null));
+            b.setContentDescription(PlaylumiMiniPractice.cardLabel(i,revealed,matched,question.choices.get(i)));
+            b.setSelected(matched);b.setEnabled(!revealed&&!waiting&&!solved);
         }
-        if(!solved)status.setText("🃏 "+question.matchedPairs()+" van "+question.pairCount()+" paar gevonden");
+        if(memoryProgress!=null){
+            memoryProgress.setText(PlaylumiMiniPractice.trail(question.matchedPairs(),question.pairCount(),"✓","○"));
+            memoryProgress.setContentDescription(question.matchedPairs()+" van "+question.pairCount()+" paren gevonden");
+        }
+        status.setText(solved?"🎉 Alle diertjes gevonden!":
+                question.matchedPairs()+" van "+question.pairCount()+" paren gevonden");
     }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -349,6 +373,8 @@ public final class PlaylumiMiniBoard extends LinearLayout {
     }
     @Override protected void onDetachedFromWindow() {
         for(ObjectAnimator m:floating)m.cancel();
+        removeCallbacks(closeMiss);
+        if(waiting){question.hideMiss();waiting=false;}
         super.onDetachedFromWindow();
     }
 }
