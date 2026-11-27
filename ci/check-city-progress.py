@@ -180,10 +180,26 @@ def click_named(value, label, scroll=True):
     click(find_control(exact(value), label, scroll))
 
 
-def screenshot(label):
+def screenshot(label, expected_texts=(), expected_descriptions=()):
+    # Screen logs and saved preferences precede drawing. Wait for accessibility
+    # idle, then give rendering a short settle window before the capture.
+    normal = lambda text: " ".join(text.split())
+    for _ in range(4):
+        nodes = ui(label + "-capture")
+        missing = [text for text in expected_texts
+                   if not any(visible(node) and any(normal(value) == normal(text) for value in labels(node))
+                              for node in nodes)]
+        missing += [description for description in expected_descriptions
+                    if not any(visible(node) and description_prefix(description)(node) for node in nodes)]
+        if not missing:
+            break
+        time.sleep(.4)
+    assert not missing, "Capture has not reached the expected UI: " + label + ": " + repr(missing)
+    time.sleep(.4)
     raw = adb("exec-out", "screencap", "-p")
     assert raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw) > 30000, "Invalid/blank screenshot"
     (OUT / (label + ".png")).write_bytes(raw)
+    return nodes
 
 
 def no_speech(nodes):
@@ -301,7 +317,8 @@ def test_debug_upgrade(baseline_apk, viewport):
     before = prefs()
     for key, expected in fixture.items():
         assert before.get(key) == expected, "Baseline did not retain its fixture: " + key
-    screenshot(viewport + "-upgrade-baseline-question")
+    screenshot(viewport + "-upgrade-baseline-question",
+               expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
     assert "versionName=0.108" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
@@ -316,7 +333,8 @@ def test_debug_upgrade(baseline_apk, viewport):
     after = prefs()
     for key in fixture:
         assert after.get(key) == before[key], "Opening upgraded quiz changed stored progress: " + key
-    screenshot(viewport + "-upgrade-current-question")
+    screenshot(viewport + "-upgrade-current-question",
+               expected_texts=(after_question["prompt"], after_question["display"], *after_question["answers"]))
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
         "baselineVersion": "0.107", "candidateVersion": "0.108",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
@@ -331,6 +349,13 @@ def scroll_top():
     w, h = dimensions()
     for _ in range(4):
         shell(f"input swipe {w//2} {int(h*.30)} {w//2} {int(h*.82)} 350")
+        time.sleep(.2)
+
+
+def scroll_bottom():
+    w, h = dimensions()
+    for _ in range(4):
+        shell(f"input swipe {w//2} {int(h*.82)} {w//2} {int(h*.30)} 350")
         time.sleep(.2)
 
 
@@ -517,11 +542,23 @@ def test(viewport):
     seed({"achievements_v1": sum(1 << bit for bit in LANDMARK_ACHIEVEMENTS)})
     start_home()
     open_city(prefix + "-full-fixture")
-    screenshot(prefix + "-all-unlocked-fixture")
+    top_nodes = screenshot(prefix + "-all-unlocked-fixture",
+                           expected_texts=("Lumi's groeiende stad",),
+                           expected_descriptions=("Vriendjespark, vrijgespeeld.",))
+    first_plot = next(node for node in top_nodes if description_prefix("Vriendjespark,")(node))
+    plot_height = rect(first_plot)[3] - rect(first_plot)[1]
     for name in LANDMARKS:
         node = find_control(description_prefix(name + ","), prefix + "-all-" + str(LANDMARKS.index(name)))
         assert "vrijgespeeld" in node.get("content-desc", ""), "Saved achievement not rendered: " + name
-    screenshot(prefix + "-all-unlocked-fixture-bottom")
+    # A native node may be only partly visible. Move to the actual footer so the
+    # final illustration and its nameplate are both present in the evidence.
+    scroll_bottom()
+    bottom_nodes = screenshot(prefix + "-all-unlocked-fixture-bottom",
+                              expected_texts=("Alle plekken zijn ontdekt! Je kunt overal blijven spelen.",),
+                              expected_descriptions=("Lumi-standbeeld, vrijgespeeld.", "Open kledingkast",
+                                                     "Dagelijkse uitdagingen"))
+    monument = next(node for node in bottom_nodes if description_prefix("Lumi-standbeeld,")(node))
+    assert rect(monument)[3] - rect(monument)[1] >= plot_height-2, "Final city plot/nameplate is clipped in capture"
     pass_check(viewport + ": all seven saved landmark unlocks have distinct accessible map controls")
 
     start_home()
