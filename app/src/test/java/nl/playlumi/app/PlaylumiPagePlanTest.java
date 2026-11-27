@@ -35,6 +35,14 @@ public final class PlaylumiPagePlanTest {
         assertEquals(2,PlaylumiPagePlan.libraryRows(780,1f));
         assertEquals(218,PlaylumiPagePlan.libraryTileHeight(850,2));
     }
+    @Test public void semanticPageLabelsAndCompactShelvesRemainStable(){
+        assertEquals("Bouwtekening · 2/5",PlaylumiPagePlan.caption("Bouwtekening",1,5));
+        assertEquals("Pagina 5 van 5",PlaylumiPagePlan.caption("",8,5));
+        assertEquals("Accessoires · 1/1",PlaylumiPagePlan.caption("Accessoires",-1,0));
+        assertEquals(1,PlaylumiPagePlan.shelfRows(540,1f));
+        assertEquals(2,PlaylumiPagePlan.shelfRows(740,1f));
+        assertEquals(1,PlaylumiPagePlan.shelfRows(740,1.5f));
+    }
     @Test public void onlyDeliberateHorizontalSwipesChangePages(){
         assertEquals(0,PlaylumiPagePlan.swipe(0,500,48,true));
         assertEquals(0,PlaylumiPagePlan.swipe(20,500,48,true));

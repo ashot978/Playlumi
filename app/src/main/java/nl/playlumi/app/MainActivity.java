@@ -1998,7 +1998,7 @@ public class MainActivity extends Activity {
 
         // Home has the same discrete pages as the library, with navigation pinned.
         PlaylumiPageDeck homeDeck=new PlaylumiPageDeck(this,true,false);
-        pageDeck=homeDeck;
+        pageDeck=homeDeck;homeDeck.setMaxBlocks(1);homeDeck.setCentered(true);
         LinearLayout.LayoutParams deckParams=new LinearLayout.LayoutParams(-1,0,1f);
         deckParams.setMargins(0,dp(4),0,dp(4));shell.addView(homeDeck,deckParams);
         LinearLayout content=homeDeck.content();content.setGravity(Gravity.TOP);
@@ -2011,7 +2011,7 @@ public class MainActivity extends Activity {
         heading.addView(headingText,new LinearLayout.LayoutParams(0,-2,1f));
         TextView total=text(entries.size()+" spellen",13,PlaylumiMagicArt.GOLD);
         heading.addView(total,new LinearLayout.LayoutParams(-2,-2));
-        heading.setPadding(dp(3),dp(3),dp(3),dp(6));worlds.addView(heading);
+        heading.setPadding(dp(3),dp(3),dp(3),dp(6));
         int columns=width>=690?3:2;
         int artHeight=Math.min(PlaylumiHomeLayout.artHeight(width,height),height<500?52:height<650?74:112);
         for(int first=0;first<6;first+=columns){
@@ -2046,10 +2046,10 @@ public class MainActivity extends Activity {
         // Two calm rows of worlds first. Profile and shortcuts occupy their own pages.
         while(worlds.getChildCount()>0){
             View child=worlds.getChildAt(0);worlds.removeViewAt(0);
-            content.addView(child,new LinearLayout.LayoutParams(-1,-2));
+            content.addView(child,new LinearLayout.LayoutParams(-1,-2));homeDeck.keepTogether(child);homeDeck.namePage(child,"Speelwerelden");
         }
-        homeAdd(content,actions,2,2);
-        homeAdd(content,profile,2,2);
+        homeAdd(content,actions,2,2);homeDeck.keepTogether(actions);homeDeck.namePage(actions,"Meer avonturen");
+        homeAdd(content,profile,2,2);homeDeck.keepTogether(profile);homeDeck.namePage(profile,"Lumi");
 
         // Full-width native navigation with distinct 48dp+ touch targets.
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);
@@ -4840,29 +4840,30 @@ public class MainActivity extends Activity {
         for(PlaylumiParentProgress.World world:parentProgress())addWidget(parentWorldCard(world,true),2,3);
     }
     private void showParentHome() {
-        header("👨‍👩‍👧 Voor ouders",PlaylumiProfiles.ageLabel(age)+". Alles blijft op dit toestel.");
+        header("👨‍👩‍👧 Voor ouders","");pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
         saveUsage();
         long correct=0;int badges=0;
         for(int i=0;i<PlaylumiScores.CATEGORIES;i++){
             correct+=Math.max(0,scores.get(i).correct);badges+=scores.get(i).earnedBadges();
         }
         LinearLayout overviewCard=personalPanel();
-        homeAdd(overviewCard,homeLabel("Op dit toestel",17,TEXT,true),0,3);
+        homeAdd(overviewCard,homeLabel(PlaylumiProfiles.ageLabel(age)+" · op dit toestel",17,TEXT,true),0,3);
         homeAdd(overviewCard,homeLabel("⭐ "+correct+" goede antwoorden",23,0xff34856d,true),0,4);
         homeAdd(overviewCard,homeLabel("🏅 "+badges+" van "+(PlaylumiScores.CATEGORIES*6)+" badges verdiend",17,TEXT,false),0,4);
         homeAdd(overviewCard,homeLabel("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",15,SUB,false),0,2);
         homeAdd(overviewCard,homeLabel("Daguitdagingen vandaag: "+dailyChallenges().completed()+"/3",15,SUB,false),0,2);
         homeAdd(overviewCard,homeLabel("Expeditie: "+expeditionProgress()+"/30 opdrachten · "+PlaylumiExpedition.stamps(expeditionProgress())+"/6 hoofdstukken",15,SUB,false),0,2);
         homeAdd(overviewCard,homeLabel("Bouwatelier: "+builderProgress()+"/12 bouwtekeningen voltooid",15,SUB,false),0,2);
-        addWidget(overviewCard,3,5);
-        Button overview=tile("📊 Bekijk de voortgang","Zes speelwerelden, per spel",
-                0xffd7eefe,104);
-        addTile(overview,9);
-        overview.setOnClickListener(v->move(PARENT_WORLDS));
-        Button settings=tile("⚙️ Instellingen","Geluid, animaties en pauzeherinnering",
-                0xffe8dcff,104);
-        addTile(settings,9);
-        settings.setOnClickListener(v->move(PARENT_SETTINGS));
+        LinearLayout front=personalPanel();
+        homeAdd(front,homeLabel("Wat wil je bekijken?",20,TEXT,true),0,4);
+        Button overview=tile("📊 Bekijk de voortgang","Per speelwereld en spel",0xffd7eefe,88);
+        overview.setOnClickListener(v->move(PARENT_WORLDS));homeAdd(front,overview,3,3);
+        Button settings=tile("⚙️ Instellingen","Geluid, animaties en pauze",0xffe8dcff,88);
+        settings.setOnClickListener(v->move(PARENT_SETTINGS));homeAdd(front,settings,3,3);
+        final Button totals=tile("Speelgegevens","",0xffffe8b8,64);
+        totals.setOnClickListener(v->pageDeck.reveal(overviewCard));homeAdd(front,totals,3,3);
+        fixedSheet(front,"Oudermenu");
+        fixedSheet(overviewCard,"Speelgegevens");
         showLearningSummary();
         Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
         addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
@@ -4873,25 +4874,29 @@ public class MainActivity extends Activity {
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
     }
     private void showParentWorlds() {
-        header("📊 Voortgang","Kies een van de zes speelwerelden.");
-        parentDataNote();
-        for(PlaylumiParentProgress.World report:parentProgress())addWidget(parentWorldCard(report,true),2,4);
+        header("📊 Voortgang","");pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
+        int worldNumber=0;
+        for(PlaylumiParentProgress.World report:parentProgress())fixedSheet(parentWorldCard(report,true),PlaylumiWorldStyle.NAMES[worldNumber++]);
+        LinearLayout note=personalPanel();homeAdd(note,homeLabel("Alle voortgang blijft op dit toestel.",16,SUB,false),0,0);fixedSheet(note,"Over deze gegevens");
     }
     private void showParentStats() {
         if(!PlaylumiWorldStyle.valid(parentWorld))parentWorld=0;
         PlaylumiParentProgress.World report=parentProgress().get(parentWorld);
-        header(PlaylumiWorldStyle.NAMES[parentWorld],"Voortgang per spel");
-        addWidget(parentWorldCard(report,false),2,4);
-        int pageSize=PlaylumiParentProgress.pageSize(getResources().getConfiguration().screenWidthDp,getResources().getConfiguration().fontScale);
-        parentStatsPage=PlaylumiParentProgress.safePage(parentStatsPage,report.games.size(),pageSize);
-        int pages=PlaylumiParentProgress.pageCount(report.games.size(),pageSize);
-        addText("Spellen · pagina "+(parentStatsPage+1)+" van "+pages,17,TEXT,6,2);
-        addText("Spellen met opgeslagen resultaten staan bovenaan.",13,SUB,0,4);
-        int end=Math.min(report.games.size(),(parentStatsPage+1)*pageSize);
-        for(int i=parentStatsPage*pageSize;i<end;i++){
+        header(PlaylumiWorldStyle.NAMES[parentWorld],"");
+        pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
+        // All games are reachable through the same horizontal deck. No second paginator.
+        fixedSheet(parentWorldCard(report,false),"Samenvatting");
+        int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
+        int cardsPerPage=width>=650&&height>=650&&getResources().getConfiguration().fontScale<1.3f?2:1;
+        LinearLayout sheet=null;
+        for(int i=0;i<report.games.size();i++){
+            if(i%cardsPerPage==0){
+                sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);
+                fixedSheet(sheet,"Spellen "+(i+1)+"–"+Math.min(i+cardsPerPage,report.games.size()));
+            }
             PlaylumiParentProgress.Game game=report.games.get(i);
             LinearLayout card=personalPanel();
-            homeAdd(card,homeLabel(game.entry.icon+"  "+game.entry.title,18,PlaylumiWorldStyle.deep(parentWorld),true),0,3);
+            homeAdd(card,homeLabel(game.entry.icon+"  "+game.entry.title,18,PlaylumiWorldStyle.deep(parentWorld),true),0,4);
             String state=game.rounds>0?game.rounds+(game.rounds==1?" getelde ronde":" getelde rondes"):
                     game.completed?"Afgerond · oudere ronde, aantal onbekend":"Nog geen afgeronde ronde";
             homeAdd(card,homeLabel(state,15,TEXT,false),0,3);
@@ -4904,18 +4909,8 @@ public class MainActivity extends Activity {
                 }else homeAdd(card,homeLabel(game.samples==0?"Nog geen quizgegevens":"Nog te weinig recente vragen voor een percentage",13,SUB,false),0,2);
                 if(game.total>0&&game.level>=0)homeAdd(card,homeLabel("Adaptief oefenniveau: "+AGES[game.level]+(catalogAdaptive()?"":" (adaptief oefenen staat uit)"),13,SUB,false),0,1);
             }else homeAdd(card,homeLabel("Interactief spel · voortgang per ronde",13,SUB,false),0,1);
-            addWidget(card,2,3);
+            homeAdd(sheet,card,2,3);
         }
-        LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER);
-        Button previous=tile("‹ Vorige","",0xffe8dcff,56),next=tile("Volgende ›","",0xffd5f5df,56);
-        previous.setEnabled(parentStatsPage>0);next.setEnabled(parentStatsPage+1<pages);
-        previous.setContentDescription("Vorige pagina met spellen");next.setContentDescription("Volgende pagina met spellen");
-        for(Button b:new Button[]{previous,next}){
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);navigation.addView(b,lp);
-        }
-        addWidget(navigation,4,6);
-        previous.setOnClickListener(v->{parentStatsPage--;showPage();});
-        next.setOnClickListener(v->{parentStatsPage++;showPage();});
     }
     private void showParentSettings() {
         header("⚙️ Instellingen","Deze instellingen blijven op dit toestel.");

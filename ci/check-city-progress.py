@@ -365,7 +365,7 @@ def start_upgrade_quiz(label, resume):
 def test_debug_upgrade(baseline_apk, viewport):
     baseline = pathlib.Path(baseline_apk)
     global PAGED_UI
-    PAGED_UI = False
+    PAGED_UI = True  # Both baseline and candidate use horizontal pages.
     candidate = pathlib.Path("app/build/outputs/apk/debug/app-debug.apk")
     assert baseline.is_file() and candidate.is_file(), "Both debug upgrade APKs must exist"
     # Install the older debuggable build as fixture setup, then seed its clean data.
@@ -373,7 +373,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.122" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.123" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -425,7 +425,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.123" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.124" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     PAGED_UI = True
     installed = prefs()
     for key in fixture:
@@ -462,7 +462,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.122", "candidateVersion": "0.123",
+        "baselineVersion": "0.123", "candidateVersion": "0.124",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -472,7 +472,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.122 → 0.123 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.123 → 0.124 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -618,7 +618,9 @@ def test(viewport):
     seed(values)
     start_home()
     open_daily(prefix + "-daily")
-    screenshot(prefix + "-daily-before")
+    nodes = screenshot(prefix + "-daily-before")
+    assert all(any(exact("Daguitdaging " + str(i) + " spelen")(n) and visible(n) for n in nodes) for i in (1, 2, 3)), "Daily goals require paging"
+    assert not page_indicator(nodes), "Daily menu has an unnecessary paginator"
     initial = daily_quiz(1, prefix + "-daily")
     route = initial["id"]
     state = answer_saved(route, 1, 36, prefix + "-daily-first")
@@ -658,7 +660,12 @@ def test(viewport):
     time.sleep(.5)
     click_named("Open kledingkast", prefix + "-gift-wardrobe")
     page(10)
+    preview = next(n for n in ui(prefix + "-closet-categories") if exact("Lumi, voorbeeld van je outfit")(n) and visible(n))
+    preview_rect = rect(preview)
     click(find_control(lambda n: n.get("content-desc", "").startswith("Vriendjes"), prefix + "-friends-tab"))
+    friend_nodes = ui(prefix + "-closet-items")
+    assert any(exact("Lumi, voorbeeld van je outfit")(n) and rect(n) == preview_rect for n in friend_nodes), "Lumi moved or disappeared while browsing accessories"
+    assert any(exact("Kies een andere accessoirecategorie")(n) and visible(n) for n in friend_nodes), "Category shortcut disappeared"
     click(find_control(lambda n: "Vlindervriend" in n.get("content-desc", ""), prefix + "-equip-butterfly"))
     equipped = wait_prefs(lambda p: p.get("wardrobe_worn_3") == 1, "butterfly equipped")
     assert equipped["wardrobe_stars"] == 89, "Earned gift cost stars to equip"
@@ -1503,7 +1510,16 @@ def test_expedition(viewport):
     seed({})
     launch_native_home()
     open_expedition(label + "-initial")
-    screenshot(label + "-passport", expected_texts=("0 van 30 opdrachten · 0 van 6 zegels",))
+    nodes = screenshot(label + "-passport", expected_texts=("0 van 30 opdrachten · 0 van 6 zegels",))
+    assert page_indicator(nodes).startswith("Inhoudspagina 1 van "), "Expedition does not open on its first page"
+    mission = next((n for n in nodes if exact("Expeditie opdracht 1 spelen")(n) and visible(n)), None)
+    assert mission is not None, "Next expedition mission requires paging"
+    map_button = next((n for n in nodes if exact("Bekijk avonturenkaart")(n) and visible(n)), None)
+    assert map_button is not None, "Expedition map shortcut is missing"
+    click(map_button)
+    map_nodes = screenshot(label + "-map-jump")
+    assert any("Expeditiekaart:" in n.get("content-desc", "") and visible(n) for n in map_nodes), "Map shortcut did not open the map sheet"
+    scroll_top()
     click_named("Expeditie opdracht 1 spelen", label + "-first")
     page(45)
     click(find_control(lambda n: re.fullmatch(r"Vak \d+: 1", n.get("content-desc", "")) is not None, label + "-one", False))
@@ -1571,8 +1587,14 @@ def test_builder(viewport):
     seed({})
     launch_native_home()
     open_builder(label + "-initial")
+    nodes = screenshot(label + "-start-choices")
+    assert any(exact("Bouwopdracht 1 openen")(n) and visible(n) for n in nodes), "Builder's next plan is not on its first sheet"
+    assert any(exact("Bekijk eigen ontwerpen")(n) and visible(n) for n in nodes), "Free design shortcut requires paging"
     click_named("Bouwopdracht 1 openen", label + "-plan")
     page(53)
+    nodes = screenshot(label + "-tools-first")
+    assert any(description_prefix("Kies Huis")(n) and visible(n) for n in nodes), "Builder does not open with useful tools"
+    assert any(exact("Bouwvak 1: Leeg gras")(n) and visible(n) for n in nodes), "Builder grid is not pinned"
     click_named("Bouwvak 1: Leeg gras", label + "-house")
     key = "builder_v1_board_0_0"
     progress = "builder_v1_progress_0"
@@ -1811,7 +1833,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.122 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.123 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
