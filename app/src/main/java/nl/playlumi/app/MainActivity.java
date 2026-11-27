@@ -18,7 +18,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.view.animation.DecelerateInterpolator;
 import java.util.ArrayList;
@@ -79,7 +78,8 @@ public class MainActivity extends Activity {
     private PlaylumiAvatar character;
     private LinearLayout root;
     private FrameLayout stage;
-    private ScrollView scroller;
+    private PlaylumiPageDeck pageDeck;
+    private int restoredDeckPage=-1;
     private TextView feedbackText,progressCounter,questionPicture;
     private PlaylumiStarTrail roundStars;
     private long autoAdvanceToken;
@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
     private boolean finalFeedbackPending;
     private PlaylumiPatternView questionPattern;
     private PlaylumiSkillBoard skillBoard;
-    private int libraryScrollY;
+    private int libraryPageIndex;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private int dailyReturn=HOME,catalogReturn=LIBRARY,friendReturn=AVATAR,ideasReturn=LIBRARY;
     private int expeditionReturn=LIBRARY,expeditionChapter=-1;
@@ -217,6 +217,7 @@ public class MainActivity extends Activity {
             sessionSolved=state.getInt("sessionSolved",0);
             sessionAttempts=state.getInt("sessionAttempts",0);
             page=state.getInt("page",page);
+            restoredDeckPage=state.getInt("deckPage",-1);
             earnedBadge=state.getInt("earnedBadge",-1);
             miniKind=state.getInt("miniKind",0);
             miniRound=state.getInt("miniRound",0);
@@ -249,7 +250,7 @@ public class MainActivity extends Activity {
             parentAllowed=false;
             villageLaunch=state.getInt("villageLaunch",-1);
             libraryFilter=availableLibraryFilter(state.getInt("libraryFilter",PlaylumiGameCatalog.OVERVIEW));
-            libraryScrollY=Math.max(0,state.getInt("libraryScrollY",0));
+            libraryPageIndex=Math.max(0,state.getInt("libraryPageIndex",0));
             achievementReturn=state.getInt("achievementReturn",HOME);
             dailyReturn=state.getInt("dailyReturn",HOME);
             catalogReturn=state.getInt("catalogReturn",LIBRARY);
@@ -395,7 +396,7 @@ public class MainActivity extends Activity {
                 age=Math.max(0,Math.min(2,getIntent().getIntExtra("playlumi_ci_age",Math.max(0,age))));
                 if(PlaylumiWorldStyle.valid(ciWorld)){
                     page=LIBRARY;libraryFilter=ciWorld;libraryReturn=false;
-                    libraryScrollY=0;storyStage=-1;villageLaunch=ciWorld;
+                    libraryPageIndex=0;storyStage=-1;villageLaunch=ciWorld;
                 }else page=HOME;
             }
         }
@@ -511,7 +512,8 @@ public class MainActivity extends Activity {
         out.putInt("adultB",adultB);
         out.putInt("villageLaunch",villageLaunch);
         out.putInt("libraryFilter",libraryFilter);out.putBoolean("libraryReturn",libraryReturn);
-        out.putInt("libraryScrollY",page==LIBRARY&&scroller!=null?scroller.getScrollY():libraryScrollY);
+        out.putInt("libraryPageIndex",page==LIBRARY&&pageDeck!=null?pageDeck.currentPage():libraryPageIndex);
+        out.putInt("deckPage",pageDeck==null?0:pageDeck.currentPage());
         out.putInt("achievementReturn",achievementReturn);out.putInt("achievementFilter",achievementFilter);
         out.putInt("personalReturn",personalReturn);out.putInt("collectionReturn",collectionReturn);out.putInt("closetReturn",closetReturn);
         if(interactive!=null){out.putInt("interactiveKind",interactive.kind);out.putInt("interactiveLevel",interactive.level);out.putLong("interactiveSeed",interactive.seed);out.putInt("interactiveProgress",interactive.progress());out.putInt("interactiveVersion",interactive.version);out.putInt("interactiveMask",interactive.mask());}
@@ -533,12 +535,12 @@ public class MainActivity extends Activity {
         if(page==CITY){move(HOME);return;}
         if(page==EXPEDITION){
             libraryReturn=false;
-            if(expeditionReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;}
+            if(expeditionReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryPageIndex=0;}
             move(expeditionReturn==CITY?CITY:expeditionReturn==HOME?HOME:LIBRARY);return;
         }
         if(page==BUILDER_PLAY){move(BUILDER_HOME);return;}
         if(page==BUILDER_HOME){
-            if(builderReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;}
+            if(builderReturn==LIBRARY){libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryPageIndex=0;}
             move(builderReturn==HOME?HOME:builderReturn==LIBRARY?LIBRARY:CITY);return;
         }
         if(page==IDEAS){move(ideasReturn==CITY?CITY:LIBRARY);return;}
@@ -732,7 +734,7 @@ public class MainActivity extends Activity {
     private void launchDaily(int goal){
         PlaylumiGameCatalog.Entry entry=dailyRoute(dailyChallenges(),goal);
         if(entry==null)return;
-        libraryFilter=entry.world;libraryScrollY=0;quickCategoryPlay=false;
+        libraryFilter=entry.world;libraryPageIndex=0;quickCategoryPlay=false;
         launchCatalog(entry,libraryResume(entry)!=null,DAILY);
     }
     private int expeditionProgress(){
@@ -764,7 +766,7 @@ public class MainActivity extends Activity {
         if(page!=EXPEDITION||moving)return;
         PlaylumiGameCatalog.Entry entry=PlaylumiExpedition.route(age,expeditionProgress());
         if(entry==null)return;
-        libraryFilter=entry.world;libraryScrollY=0;
+        libraryFilter=entry.world;libraryPageIndex=0;
         launchCatalog(entry,libraryResume(entry)!=null,EXPEDITION);
     }
     private void showExpedition(){
@@ -845,8 +847,7 @@ public class MainActivity extends Activity {
         addWidget(chapterCard,2,5);
         if(expeditionScrollToChapter){
             expeditionScrollToChapter=false;
-            final ScrollView current=scroller;
-            current.post(()->{if(page==EXPEDITION&&scroller==current)current.scrollTo(0,Math.max(0,chapterCard.getTop()-dp(8)));});
+            pageDeck.reveal(chapterCard);
         }
         Button free=tile("Vrij spelen in de werelden","Je expeditie blijft bewaard",0xffe8dcff,65);
         addTile(free,4);free.setOnClickListener(v->openLibrary(PlaylumiGameCatalog.OVERVIEW));
@@ -945,10 +946,11 @@ public class MainActivity extends Activity {
         libraryReturn=false;final PlaylumiBuilder.State state=builderState(builderSlot);
         final boolean free=PlaylumiBuilder.free(state.slot);
         header(PlaylumiBuilder.title(state.slot),"");
-        addText(free?"Maak je eigen wijk. Kies een onderdeel en tik op een bouwvak.":"Bouw het voorbeeld na. Draai wegen en bruggen tot ze precies aansluiten.",15,SUB,2,4);
+        addText(free?"Kies een onderdeel en tik op een bouwvak.":"Maak de bouwtekening na.",14,SUB,1,2);
         int width=getResources().getConfiguration().screenWidthDp;
         int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-30);
-        boolean wide=!free&&width>=650;
+        int height=getResources().getConfiguration().screenHeightDp;
+        boolean wide=!free&&width>=650&&height>=610;
         LinearLayout workspace=new LinearLayout(this);workspace.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);workspace.setGravity(Gravity.TOP);
         final LinearLayout target=personalPanel(),boardPanel=personalPanel();
         final TextView message=homeLabel("Kies een onderdeel om te beginnen.",15,TEXT,true);
@@ -992,7 +994,7 @@ public class MainActivity extends Activity {
             else{workspace.addView(target,new LinearLayout.LayoutParams(-1,-2));}
         }
         homeAdd(boardPanel,current,0,3);
-        int perRow=3;
+        int perRow=5;
         for(int start=0;start<palette.length;start+=perRow){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
             for(int j=start;j<Math.min(start+perRow,palette.length);j++){
@@ -1008,7 +1010,7 @@ public class MainActivity extends Activity {
         homeAdd(boardPanel,rotate,3,4);
         rotate.setOnClickListener(v->{if(PlaylumiBuilder.rotatable(builderPiece)){builderPiece=PlaylumiBuilder.rotate(builderPiece);sound.tap();refresh.run();}});
         homeAdd(boardPanel,homeLabel("Jouw bouwterrein",18,TEXT,true),0,2);
-        grid[0]=new PlaylumiBuilderGrid(this,state.size,wide?usable/2-18:usable,state.cells(),true,index->{
+        grid[0]=new PlaylumiBuilderGrid(this,state.size,Math.min(wide?usable/2-18:usable,Math.max(156,height-325)),state.cells(),true,index->{
             if(page!=BUILDER_PLAY||builderSlot!=state.slot||moving)return;
             if(state.place(index,builderPiece)){saveBuilderEdit(state);sound.tap();message.setText("Opgeslagen. Bouw rustig verder.");refresh.run();}
         });
@@ -1620,7 +1622,8 @@ public class MainActivity extends Activity {
         }
         LinearLayout.LayoutParams rowp=new LinearLayout.LayoutParams(-1,dp(theme>=0?56:gameHeader?60:66));
         rowp.setMargins(0,0,0,dp(theme>=0?5:gameHeader?9:10));
-        root.addView(row,rowp);
+        if(pageDeck!=null&&root==pageDeck.content())pageDeck.setHeader(row,dp(theme>=0?56:gameHeader?60:62));
+        else root.addView(row,rowp);
         if(!gameHeader && subtitle!=null && !subtitle.isEmpty())
             addText(subtitle,14,SUB,0,8);
     }
@@ -1678,22 +1681,21 @@ public class MainActivity extends Activity {
             stage.addView(new PlaylumiSkyView(this),
                     new FrameLayout.LayoutParams(-1,-1));
         }
-        scroller=new ScrollView(this);scroller.setFillViewport(true);
-        scroller.setClipToPadding(true);
-        scroller.setVerticalScrollBarEnabled(false);
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
+        // All content screens use a fixed viewport with measured, discrete pages.
+        // Drawing and drag games reserve gestures for the actual game; arrows still work.
+        pageDeck=new PlaylumiPageDeck(this,page!=DRAW&&!(page==MINI_PLAY&&miniKind==PlaylumiMiniChallenge.DRAG),gameScreen()||page==BUILDER_PLAY);
+        root=pageDeck.content();
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
         if(magicScreen)side=page==LIBRARY||page==INTERACTIVE?PlaylumiLayout.librarySidePadding(getResources().getConfiguration().screenWidthDp):PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
-        root.setPadding(page==HOME?0:dp(side),page==HOME?0:dp(5),
-                page==HOME?0:dp(side),page==HOME?0:dp(16));
-        scroller.addView(root);
-        stage.addView(scroller,new FrameLayout.LayoutParams(-1,-1));
+        root.setPadding(0,dp(3),0,dp(3));
+        pageDeck.setPadding(page==HOME?0:dp(side),dp(3),page==HOME?0:dp(side),dp(3));
+        stage.addView(pageDeck,new FrameLayout.LayoutParams(-1,-1));
         setContentView(stage);
         final LinearLayout currentRoot=root;
-        final ScrollView currentScroller=scroller;
+        final PlaylumiPageDeck currentDeck=pageDeck;
         stage.setOnApplyWindowInsetsListener((v,insets)->{
-            if(scroller==currentScroller) {
+            if(pageDeck==currentDeck||page==HOME&&currentRoot==root) {
                 int top,bottom;
                 if(Build.VERSION.SDK_INT>=30) {
                     android.graphics.Insets bars=insets.getInsets(
@@ -1722,7 +1724,7 @@ public class MainActivity extends Activity {
                         left=horizontal.left;right=horizontal.right;
                     }
                     stage.setPadding(left,Math.max(0,top),right,Math.max(0,bottom));
-                    currentScroller.setPadding(0,0,0,0);
+                    // The native village is already laid out within the safe stage.
                     if((getApplicationInfo().flags &
                             android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
                         android.util.Log.i("PlaylumiQA","safeTop="+Math.max(0,top)+
@@ -1742,7 +1744,7 @@ public class MainActivity extends Activity {
                     // Reserve a conservative minimum only on non-village screens.
                     int safeBottom=Math.max(bottom,dp(landscapeScreen()?56:24));
                     stage.setPadding(left,Math.max(0,top),right,safeBottom);
-                    currentScroller.setPadding(0,dp(3),0,dp(12));
+                    // The deck keeps its own horizontal padding; the stage owns system insets.
                     if((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
                         android.util.Log.i("PlaylumiQA","gameBottomInset="+bottom+" gameReservedBottom="+safeBottom+
                                 " gameSafeTop="+Math.max(0,top)+" gamePage="+page);
@@ -1806,6 +1808,10 @@ public class MainActivity extends Activity {
             case STAR_CATCH: showStarCatch();break;
             default: throw new IllegalStateException("page");
         }
+        if(restoredDeckPage>=0){
+            if(pageDeck!=null&&pageDeck.getParent()!=null)pageDeck.requestPage(restoredDeckPage);
+            restoredDeckPage=-1;
+        }
         if((getApplicationInfo().flags &
                 android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)
             android.util.Log.i("PlaylumiQA","screen="+page+" villageLaunch="+villageLaunch);
@@ -1825,7 +1831,7 @@ public class MainActivity extends Activity {
         if(next==DAILY&&(page==HOME||page==CITY||page==AVATAR||page==LIBRARY))dailyReturn=page;
         autoAdvanceToken++;melodyPreviewToken++;
         if(next==EXPEDITION&&page!=EXPEDITION){expeditionChapter=-1;expeditionScrollToChapter=false;}
-        if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();}
+        if(page==LIBRARY&&next!=LIBRARY&&pageDeck!=null){libraryPageIndex=pageDeck.currentPage();}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
         if(page==INTERACTIVE&&next!=INTERACTIVE)saveLibraryInteractive();
         saveLibrarySpecial(page==BREAK_SCREEN?breakReturn:page);
@@ -1937,7 +1943,7 @@ public class MainActivity extends Activity {
     private void showHome(){
         int width=getResources().getConfiguration().screenWidthDp;
         int height=getResources().getConfiguration().screenHeightDp;
-        stage.removeView(scroller);
+        stage.removeView(pageDeck);
         if(PlaylumiHomeLayout.mode(width,height)!=PlaylumiHomeLayout.PHONE){
             showWideHome(width,height);return;
         }
@@ -1997,12 +2003,12 @@ public class MainActivity extends Activity {
         homeMetric(top,"⚙","Instellingen",()->visitVillagePlace(PlaylumiVillageView.SETTINGS));
         shell.addView(top,new LinearLayout.LayoutParams(-1,dp(62)));
 
-        // Only the content scrolls on short landscape windows. Navigation stays visible.
-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setVerticalScrollBarEnabled(false);
-        LinearLayout.LayoutParams scrollParams=new LinearLayout.LayoutParams(-1,0,1f);
-        scrollParams.setMargins(0,dp(8),0,dp(8));shell.addView(scroll,scrollParams);
-        LinearLayout content=new LinearLayout(this);content.setGravity(Gravity.TOP);content.setOrientation(LinearLayout.HORIZONTAL);
-        scroll.addView(content,new ScrollView.LayoutParams(-1,-2));
+        // Home has the same discrete pages as the library, with navigation pinned.
+        PlaylumiPageDeck homeDeck=new PlaylumiPageDeck(this,true,false);
+        pageDeck=homeDeck;
+        LinearLayout.LayoutParams deckParams=new LinearLayout.LayoutParams(-1,0,1f);
+        deckParams.setMargins(0,dp(4),0,dp(4));shell.addView(homeDeck,deckParams);
+        LinearLayout content=homeDeck.content();content.setGravity(Gravity.TOP);
 
         LinearLayout profile=wideHomeProfile(width,stars,discovered);
         LinearLayout actions=wideHomeActions();
@@ -2014,7 +2020,7 @@ public class MainActivity extends Activity {
         heading.addView(total,new LinearLayout.LayoutParams(-2,-2));
         heading.setPadding(dp(3),dp(3),dp(3),dp(6));worlds.addView(heading);
         int columns=PlaylumiHomeLayout.worldColumns(width,height);
-        int artHeight=PlaylumiHomeLayout.artHeight(width,height);
+        int artHeight=Math.min(PlaylumiHomeLayout.artHeight(width,height),height<500?52:height<650?74:112);
         for(int first=0;first<6;first+=columns){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
             row.setBaselineAligned(false);row.setClipChildren(false);row.setClipToPadding(false);
@@ -2044,19 +2050,13 @@ public class MainActivity extends Activity {
             }
             worlds.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
-        if(mode==PlaylumiHomeLayout.EXPANDED){
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.profileWidth(width)), -2);
-            lp.rightMargin=dp(8);content.addView(profile,lp);
-            content.addView(worlds,new LinearLayout.LayoutParams(0,-2,1f));
-            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.actionWidth(width)), -2);
-            rp.leftMargin=dp(8);content.addView(actions,rp);
-        }else{
-            content.addView(worlds,new LinearLayout.LayoutParams(0,-2,1f));
-            LinearLayout side=new LinearLayout(this);side.setOrientation(LinearLayout.VERTICAL);
-            homeAdd(side,profile,0,8);homeAdd(side,actions,0,0);
-            LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(dp(PlaylumiHomeLayout.actionWidth(width)),-2);
-            rp.leftMargin=dp(7);content.addView(side,rp);
+        // Two calm rows of worlds first. Profile and shortcuts occupy their own pages.
+        while(worlds.getChildCount()>0){
+            View child=worlds.getChildAt(0);worlds.removeViewAt(0);
+            content.addView(child,new LinearLayout.LayoutParams(-1,-2));
         }
+        homeAdd(content,actions,2,2);
+        homeAdd(content,profile,2,2);
 
         // Full-width native navigation with distinct 48dp+ touch targets.
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);
@@ -2091,7 +2091,7 @@ public class MainActivity extends Activity {
     }
     private void startFromWideHome(PlaylumiGameCatalog.Entry entry){
         if(page!=HOME||moving||entry==null)return;
-        libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryScrollY=0;
+        libraryFilter=PlaylumiGameCatalog.OVERVIEW;libraryPageIndex=0;
         quickCategoryPlay=false;launchCatalog(entry,libraryResume(entry)!=null);
     }
     private LinearLayout wideHomeActions(){
@@ -2106,7 +2106,7 @@ public class MainActivity extends Activity {
     }
 
     private void openLibrary(int filter){
-        libraryReturn=false;libraryFilter=availableLibraryFilter(filter);libraryScrollY=0;storyStage=-1;move(LIBRARY);
+        libraryReturn=false;libraryFilter=availableLibraryFilter(filter);libraryPageIndex=0;storyStage=-1;move(LIBRARY);
     }
     private java.util.Set<String> librarySet(String key){
         return new java.util.HashSet<>(prefs().getStringSet(key,java.util.Collections.emptySet()));
@@ -2675,7 +2675,7 @@ public class MainActivity extends Activity {
     private void libraryFilter(int filter){
         filter=availableLibraryFilter(filter);
         if(moving||page!=LIBRARY||libraryFilter==filter)return;
-        libraryFilter=filter;libraryScrollY=0;
+        libraryFilter=filter;libraryPageIndex=0;
         if(PlaylumiWorldStyle.valid(filter)){
             SharedPreferences discovery=getSharedPreferences("playlumi-village-"+activeProfile,MODE_PRIVATE);
             int old=discovery.getInt("visited",0),updated=PlaylumiVillageProgress.markVisited(old,filter);
@@ -2775,7 +2775,7 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams scrollParams=new FrameLayout.LayoutParams(-1,-1);
         if(rail)scrollParams.leftMargin=dp(PlaylumiLayout.LIBRARY_RAIL_WIDTH+14);
         else scrollParams.bottomMargin=dp(PlaylumiLayout.libraryNavHeight()+6);
-        scroller.setLayoutParams(scrollParams);
+        pageDeck.setLayoutParams(scrollParams);
         FrameLayout.LayoutParams navParams=rail?
                 new FrameLayout.LayoutParams(dp(PlaylumiLayout.LIBRARY_RAIL_WIDTH),-1,Gravity.START|Gravity.CENTER_VERTICAL):
                 new FrameLayout.LayoutParams(-1,dp(PlaylumiLayout.libraryNavHeight()),Gravity.BOTTOM);
@@ -2784,13 +2784,12 @@ public class MainActivity extends Activity {
     }
     private void showGameLibrary(){
         libraryFilter=availableLibraryFilter(libraryFilter);
-        showLibraryNavigation();renderLibraryContents(libraryScrollY);
+        showLibraryNavigation();renderLibraryContents(libraryPageIndex);
     }
     private void renderLibraryContents(int desiredScroll){
-        final ScrollView active=scroller;final int filter=libraryFilter;
         root.removeAllViews();renderLibraryBody();refreshLibraryNavigation();
-        libraryScrollY=Math.max(0,desiredScroll);
-        active.post(()->{if(scroller==active&&page==LIBRARY&&libraryFilter==filter)active.scrollTo(0,Math.max(0,desiredScroll));});
+        libraryPageIndex=Math.max(0,desiredScroll);
+        pageDeck.requestPage(libraryPageIndex);
     }
     private java.util.List<PlaylumiGameCatalog.Entry> unfinishedGames(){
         ArrayList<PlaylumiGameCatalog.Entry> entries=new ArrayList<>();
@@ -2828,7 +2827,7 @@ public class MainActivity extends Activity {
             // The original missions remain accessible from the expedition page.
             return;
         }
-        libraryWorldHeader(libraryFilter,width);
+        // The fixed title already names the world: no repeated decorative hero.
         java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,java.util.Collections.emptySet());
         librarySection("Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
         if(entries.isEmpty()){
@@ -2853,7 +2852,7 @@ public class MainActivity extends Activity {
         LinearLayout card=new LinearLayout(this);card.setOrientation(wide?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(9),dp(8),dp(9),dp(8));
         card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),libraryCardSurface(entry.world),null));
-        card.setMinimumHeight(dp(wide?138:78));
+        card.setMinimumHeight(dp(wide?106:66));
         org.json.JSONObject snapshot=libraryResume(entry);
         boolean resume=snapshot!=null;
         boolean completed=completedRoutes().contains(entry.id)&&PlaylumiCompletion.eligible(entry);
@@ -2882,7 +2881,7 @@ public class MainActivity extends Activity {
         if(wide){
             card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
             TextView description=homeLabel(entry.description,13,0xfff2e4ff,false);
-            description.setMinLines(2);description.setPadding(dp(3),dp(5),dp(3),dp(4));
+            description.setMaxLines(2);description.setPadding(dp(3),dp(3),dp(3),dp(2));
             card.addView(description,new LinearLayout.LayoutParams(-1,-2));
             TextView play=text("▶ Spelen",15,PlaylumiMagicArt.INK);
             play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);play.setBackground(PlaylumiMagicArt.creamPlate(this));
@@ -3233,7 +3232,7 @@ public class MainActivity extends Activity {
     /**
      * Responsive game canvas: portrait stacks short cards; landscape splits the
      * question and answers into two columns. All answers remain tappable and the
-     * ScrollView can still scroll when the user chooses large system fonts.
+     * measured horizontal pages preserve complete controls at larger system fonts.
      */
     private void showPlay() {
         int mode=game.mode();
@@ -3248,7 +3247,7 @@ public class MainActivity extends Activity {
         int theme=worldTheme();
         PlaylumiGameCatalog.Entry currentEntry=PlaylumiGameCatalog.route(age,villageLaunch,PlaylumiGameCatalog.QUIZ,mode,game.variant());
         header(currentEntry!=null?currentEntry.title:mode==16&&game.variant()==3?"Tijd van de dag":LearningGame.GAME_NAMES[mode],sessionSolved+"/"+sessionGoal());
-        addQuizBanner(theme,mode,game.variant(),height,wide);
+        // Put the exercise first, rather than a decorative banner on every question.
         addMagicProgress(sessionSolved,sessionGoal(),true);
         LinearLayout questions=root,answers=root;
         if(centered) {
@@ -3279,7 +3278,7 @@ public class MainActivity extends Activity {
         addPrompt(questions,round.prompt,wide?20:19);
         boolean shortDisplay=round.display.codePointCount(0,round.display.length())<=3;
         int questionH=centered?PlaylumiLayout.centeredQuestionHeight(height):PlaylumiLayout.magicQuestionHeight(width,height,wide);
-        if(!wide&&height<690)questionH=Math.min(questionH,110);
+        if(height<740)questionH=Math.min(questionH,height<530?88:106);
         if(round.fingerCount>0){
             PlaylumiNumberHands hands=new PlaylumiNumberHands(this,round.fingerCount);
             hands.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,false));
@@ -3534,8 +3533,9 @@ public class MainActivity extends Activity {
     }
     private void showFinishActions(LinearLayout bar,boolean visible){
         bar.setVisibility(visible?View.VISIBLE:View.GONE);
-        FrameLayout.LayoutParams sp=(FrameLayout.LayoutParams)scroller.getLayoutParams();
-        sp.bottomMargin=visible?dp(78):0;scroller.setLayoutParams(sp);
+        FrameLayout.LayoutParams sp=(FrameLayout.LayoutParams)pageDeck.getLayoutParams();
+        sp.bottomMargin=visible?dp(78):0;pageDeck.setLayoutParams(sp);
+        if(visible&&root.getChildCount()>0)pageDeck.reveal(root.getChildAt(root.getChildCount()-1));
     }
 
     private void choose(int index,Button touched) {
