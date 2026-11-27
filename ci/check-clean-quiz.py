@@ -53,6 +53,13 @@ def no_help(nodes):
             assert not any(x in s.lower() for x in BAD), "Unexpected hint/speech UI: " + s
     assert not exact(nodes, "Tip"), "Tip button visible"
 
+def selected_correct(nodes, answer):
+    markers = [node for node in nodes if node.get("class") == "android.widget.Button"
+               and node.get("content-desc") == answer+", goed gekozen"]
+    assert len(markers)==1, "Correct choice lost its spoken feedback marker"
+    assert markers[0].get("selected")=="true" and markers[0].get("enabled")=="false", "Correct choice must stay selected and disabled"
+    assert markers[0].get("text")=="✓ "+answer, "Correct choice has no visible checkmark"
+
 def page(number):
     for _ in range(8):
         logs = shell("logcat -d -s PlaylumiQA:I")
@@ -190,12 +197,14 @@ def test(viewport, manual):
         time.sleep(2)
         nodes = ui(viewport+"-solved")
         no_help(nodes)
+        selected_correct(nodes, answer)
         next_nodes = exact(nodes,"Volgende vraag")
         assert len(next_nodes)==1 and next_nodes[0].get("clickable")=="true", "Manual continuation missing"
         screenshot(viewport+"-solved")
         open_quiz(viewport+"-resume-solved", True)
         nodes = ui(viewport+"-resumed-solved")
         no_help(nodes)
+        selected_correct(nodes, answer)
         next_nodes = exact(nodes,"Volgende vraag")
         assert len(next_nodes)==1 and next_nodes[0].get("clickable")=="true", "Manual continuation lost on restart"
         assert not choices(nodes), "Previously rewarded answer became clickable"

@@ -32,14 +32,23 @@ import android.widget.Button;
 public final class PlaylumiCityMapView extends ViewGroup {
     public interface Listener { void onLandmark(int index); }
     private static final int INK=0xff46245f,GOLD=0xffffd780;
+    private static final int[] SKY_COLORS={0xff7568af,0xff546a91,0xff3b6d78,0xff4c665c},
+            RAINBOW_RAILS={0xffe3a2c8,0xffe5b69c,0xfff4d98d,0xffb6d797,0xff8fcdd3,0xffa8b4e3,0xffc9a9df};
+    private static final float[] SKY_STOPS={0,.25f,.65f,1},STAR_POINTS=starPoints();
+    private static final RadialGradient MONUMENT_GLOW=new RadialGradient(110,71,45,
+            new int[]{0x6dfff3bd,0x00fff3bd},null,Shader.TileMode.CLAMP);
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path=new Path();
     private final RectF rect=new RectF();
+    private final Gradients gradients=new Gradients();
     private final Button[] sites=new Button[PlaylumiCityLayout.SITES];
     private final float density;
     private final boolean reducedMotion;
     private long achievements;
     private PlaylumiCityLayout geometry;
+    private int geometryWidth=-1;
+    private float geometryFontScale;
+    private LinearGradient sky;
 
     public PlaylumiCityMapView(Context context,long achievementMask,
                                boolean reducedMotion,Listener listener){
@@ -112,8 +121,11 @@ public final class PlaylumiCityMapView extends ViewGroup {
         int width=resolveSize(suggested,widthMeasureSpec);
         if(MeasureSpec.getMode(widthMeasureSpec)!=MeasureSpec.UNSPECIFIED)
             width=MeasureSpec.getSize(widthMeasureSpec);
-        geometry=PlaylumiCityLayout.forWidth(width/density,
-                getResources().getConfiguration().fontScale);
+        float fontScale=getResources().getConfiguration().fontScale;
+        if(geometry==null||geometryWidth!=width||geometryFontScale!=fontScale){
+            geometry=PlaylumiCityLayout.forWidth(width/density,fontScale);
+            geometryWidth=width;geometryFontScale=fontScale;
+        }
         int desiredHeight=Math.round(geometry.height*density);
         setMeasuredDimension(width,resolveSize(desiredHeight,heightMeasureSpec));
         for(int i=0;i<sites.length;i++){
@@ -121,6 +133,14 @@ public final class PlaylumiCityMapView extends ViewGroup {
             sites[i].measure(MeasureSpec.makeMeasureSpec(Math.round(q.width*density),MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(Math.round(q.height*density),MeasureSpec.EXACTLY));
         }
+    }
+
+    @Override protected void onSizeChanged(int w,int h,int oldw,int oldh){
+        super.onSizeChanged(w,h,oldw,oldh);
+        // Size-dependent shading is built once, not during every canvas redraw.
+        if(w>0&&h>0)sky=new LinearGradient(0,0,w/density,h/density,
+                SKY_COLORS,SKY_STOPS,Shader.TileMode.CLAMP);
+        gradients.clear();
     }
 
     @Override protected void onLayout(boolean changed,int l,int t,int r,int b){
@@ -137,12 +157,10 @@ public final class PlaylumiCityMapView extends ViewGroup {
         if(geometry==null)return;
         canvas.save();canvas.scale(density,density);
         float width=geometry.width,height=getHeight()/density;
-        path.reset();rect.set(0,0,width,height);
+        path.rewind();rect.set(0,0,width,height);
         path.addRoundRect(rect,24,24,Path.Direction.CW);canvas.clipPath(path);
         paint(0xff63468b);
-        p.setShader(new LinearGradient(0,0,width,height,
-                new int[]{0xff7568af,0xff546a91,0xff3b6d78,0xff4c665c},
-                new float[]{0,.25f,.65f,1},Shader.TileMode.CLAMP));
+        p.setShader(sky);
         canvas.drawRect(0,0,width,height,p);p.setShader(null);
         scenery(canvas,width,height);
         roads(canvas);
@@ -178,19 +196,19 @@ public final class PlaylumiCityMapView extends ViewGroup {
     private void scenery(Canvas c,float w,float h){
         // Depth comes from layered hills, a winding stream, rim lighting and
         // small fixed highlights; none of these decorations represents progress.
-        paint(0xff7687a1);path.reset();path.moveTo(0,56);
+        paint(0xff7687a1);path.rewind();path.moveTo(0,56);
         path.cubicTo(w*.20f,15,w*.30f,94,w*.58f,48);
         path.cubicTo(w*.78f,13,w*.86f,36,w,22);path.lineTo(w,h);path.lineTo(0,h);path.close();c.drawPath(path,p);
-        paint(0xff6b927d);path.reset();path.moveTo(0,100);
+        paint(0xff6b927d);path.rewind();path.moveTo(0,100);
         path.cubicTo(w*.20f,52,w*.30f,130,w*.57f,96);
         path.cubicTo(w*.80f,66,w*.9f,104,w,92);path.lineTo(w,h);path.lineTo(0,h);path.close();c.drawPath(path,p);
-        paint(0xff4a786b);path.reset();path.moveTo(0,h*.47f);
+        paint(0xff4a786b);path.rewind();path.moveTo(0,h*.47f);
         path.cubicTo(w*.25f,h*.35f,w*.48f,h*.48f,w,h*.33f);
         path.lineTo(w,h);path.lineTo(0,h);path.close();c.drawPath(path,p);
-        paint(0xff41675e);path.reset();path.moveTo(0,h*.83f);
+        paint(0xff41675e);path.rewind();path.moveTo(0,h*.83f);
         path.cubicTo(w*.23f,h*.70f,w*.65f,h*.87f,w,h*.74f);
         path.lineTo(w,h);path.lineTo(0,h);path.close();c.drawPath(path,p);
-        path.reset();path.moveTo(w*.88f,-20);
+        path.rewind();path.moveTo(w*.88f,-20);
         path.cubicTo(w*.72f,h*.23f,w*.91f,h*.42f,w*.73f,h*.61f);
         path.cubicTo(w*.63f,h*.78f,w*.81f,h*.88f,w*.66f,h+30);
         stroke(0x7773dbdd,18);c.drawPath(path,p);
@@ -210,7 +228,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
 
     private void roads(Canvas c){
         if(geometry==null)return;
-        path.reset();
+        path.rewind();
         PlaylumiCityLayout.Plot first=geometry.plot(0);
         path.moveTo(first.centerX(),first.groundY());
         for(int i=1;i<sites.length;i++){
@@ -365,7 +383,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
         for(int i=0;i<4;i++)line(c,30+i*42,145+(i%2)*6,48+i*42,145+(i%2)*6,1.5f,0xffd6f6ef);
         gradientRound(c,46,114,62,157,3,0xffe3d3bd,0xffbda9a5);
         gradientRound(c,167,114,183,157,3,0xffe3d3bd,0xffbda9a5);
-        path.reset();path.moveTo(51,134);path.cubicTo(79,92,142,92,178,133);
+        path.rewind();path.moveTo(51,134);path.cubicTo(79,92,142,92,178,133);
         stroke(0xffb3a3b6,14);c.drawPath(path,p);
         stroke(0xfff5d8b6,9);c.drawPath(path,p);
         for(int i=0;i<9;i++){
@@ -373,11 +391,10 @@ public final class PlaylumiCityMapView extends ViewGroup {
             line(c,x,y-2,x+2,y+7,1.5f,0xffbe9b8e);
         }
         // Seven coloured rails form an actual traversable arch, not a badge.
-        int[] colors={0xffe3a2c8,0xffe5b69c,0xfff4d98d,0xffb6d797,0xff8fcdd3,0xffa8b4e3,0xffc9a9df};
-        for(int i=0;i<colors.length;i++){
-            path.reset();path.moveTo(48,123-i*2);
+        for(int i=0;i<RAINBOW_RAILS.length;i++){
+            path.rewind();path.moveTo(48,123-i*2);
             path.cubicTo(74,36+i*3,151,36+i*3,182,123-i*2);
-            stroke(colors[i],4.5f);c.drawPath(path,p);
+            stroke(RAINBOW_RAILS[i],4.5f);c.drawPath(path,p);
         }
         for(int i=0;i<5;i++){
             float x=54+i*30,u=(x-114)/61f,y=56+49*u*u;
@@ -396,7 +413,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
         gradientRound(c,85,101,137,129,5,0xffe9d6b0,0xffc9b7a2);
         round(c,102,111,121,122,2,0xffb19880);
         // An inert, faceless golden sculpture. Lumi remains the only hero.
-        glow(c,110,71,45,0x6dfff3bd);
+        paint(0x6dfff3bd);p.setShader(MONUMENT_GLOW);c.drawCircle(110,71,45,p);p.setShader(null);
         star(c,111,72,37,0xffc39458);
         c.save();c.translate(-2,-4);star(c,111,72,36,0xffffd989);c.restore();
         polygon(c,0xffffedbc,109,32,109,68,75,57,96,53);
@@ -484,22 +501,25 @@ public final class PlaylumiCityMapView extends ViewGroup {
     private void musicNote(Canvas c,float x,float y,float s,int color){
         ellipse(c,x-8*s,y-2*s,x+4*s,y+5*s,color);
         line(c,x+3*s,y,x+3*s,y-24*s,3*s,color);
-        path.reset();path.moveTo(x+3*s,y-24*s);path.cubicTo(x+17*s,y-17*s,x+13*s,y-10*s,x+6*s,y-10*s);
+        path.rewind();path.moveTo(x+3*s,y-24*s);path.cubicTo(x+17*s,y-17*s,x+13*s,y-10*s,x+6*s,y-10*s);
         stroke(color,3*s);c.drawPath(path,p);
     }
     private void badge(Canvas c,float x,float y){
         circle(c,x,y,13,0xffe5bc75);circle(c,x,y-1,10.5f,0xffffe4a7);
         line(c,x-5,y,x-1,y+4,2.6f,0xff697a5b);line(c,x-1,y+4,x+6,y-5,2.6f,0xff697a5b);
     }
-    private void glow(Canvas c,float x,float y,float radius,int color){
-        paint(color);p.setShader(new RadialGradient(x,y,radius,new int[]{color,color&0x00ffffff},null,Shader.TileMode.CLAMP));
-        c.drawCircle(x,y,radius,p);p.setShader(null);
+    private static float[] starPoints(){
+        float[] points=new float[20];
+        for(int i=0;i<10;i++){
+            double a=-Math.PI/2+i*Math.PI/5;float r=i%2==0?1f:.46f;
+            points[2*i]=(float)Math.cos(a)*r;points[2*i+1]=(float)Math.sin(a)*r;
+        }
+        return points;
     }
     private void star(Canvas c,float x,float y,float radius,int color){
-        path.reset();
+        path.rewind();
         for(int i=0;i<10;i++){
-            double a=-Math.PI/2+i*Math.PI/5;float r=i%2==0?radius:radius*.46f;
-            float px=x+(float)Math.cos(a)*r,py=y+(float)Math.sin(a)*r;
+            float px=x+STAR_POINTS[2*i]*radius,py=y+STAR_POINTS[2*i+1]*radius;
             if(i==0)path.moveTo(px,py);else path.lineTo(px,py);
         }
         path.close();paint(color);c.drawPath(path,p);
@@ -514,16 +534,50 @@ public final class PlaylumiCityMapView extends ViewGroup {
     private void ellipse(Canvas c,float l,float t,float r,float b,int color){paint(color);rect.set(l,t,r,b);c.drawOval(rect,p);}
     private void round(Canvas c,float l,float t,float r,float b,float radius,int color){paint(color);rect.set(l,t,r,b);c.drawRoundRect(rect,radius,radius,p);}
     private void gradientOval(Canvas c,float l,float t,float r,float b,int top,int bottom){
-        paint(top);p.setShader(new LinearGradient(l,t,r,b,top,bottom,Shader.TileMode.CLAMP));
+        paint(top);p.setShader(gradients.get(l,t,r,b,top,bottom));
         rect.set(l,t,r,b);c.drawOval(rect,p);p.setShader(null);
     }
     private void gradientRound(Canvas c,float l,float t,float r,float b,float radius,int top,int bottom){
-        paint(top);p.setShader(new LinearGradient(l,t,r,b,top,bottom,Shader.TileMode.CLAMP));
+        paint(top);p.setShader(gradients.get(l,t,r,b,top,bottom));
         rect.set(l,t,r,b);c.drawRoundRect(rect,radius,radius,p);p.setShader(null);
     }
-    private void polygon(Canvas c,int color,float... points){
-        path.reset();path.moveTo(points[0],points[1]);
-        for(int i=2;i<points.length;i+=2)path.lineTo(points[i],points[i+1]);
+    // Fixed-arity paths avoid a temporary float[] for every roof and wall.
+    private void polygon(Canvas c,int color,float x1,float y1,float x2,float y2,float x3,float y3){
+        path.rewind();path.moveTo(x1,y1);path.lineTo(x2,y2);path.lineTo(x3,y3);
         path.close();paint(color);c.drawPath(path,p);
+    }
+    private void polygon(Canvas c,int color,float x1,float y1,float x2,float y2,float x3,float y3,float x4,float y4){
+        path.rewind();path.moveTo(x1,y1);path.lineTo(x2,y2);path.lineTo(x3,y3);path.lineTo(x4,y4);
+        path.close();paint(color);c.drawPath(path,p);
+    }
+    private void polygon(Canvas c,int color,float x1,float y1,float x2,float y2,float x3,float y3,
+                         float x4,float y4,float x5,float y5,float x6,float y6){
+        path.rewind();path.moveTo(x1,y1);path.lineTo(x2,y2);path.lineTo(x3,y3);
+        path.lineTo(x4,y4);path.lineTo(x5,y5);path.lineTo(x6,y6);
+        path.close();paint(color);c.drawPath(path,p);
+    }
+
+    /** Bounded, allocation-free lookups after first use. Exact coordinates keep
+     * each shader immutable; no per-call matrices or boxed cache keys. */
+    private static final class Gradients {
+        private static final int CAPACITY=192;
+        private final float[] left=new float[CAPACITY],top=new float[CAPACITY],
+                right=new float[CAPACITY],bottom=new float[CAPACITY];
+        private final int[] start=new int[CAPACITY],end=new int[CAPACITY];
+        private final LinearGradient[] values=new LinearGradient[CAPACITY];
+        private int count,next;
+        LinearGradient get(float l,float t,float r,float b,int a,int z){
+            for(int i=0;i<count;i++)if(left[i]==l&&top[i]==t&&right[i]==r&&bottom[i]==b&&start[i]==a&&end[i]==z)return values[i];
+            int slot;
+            if(count<CAPACITY)slot=count++;
+            else{slot=next;next=(next+1)%CAPACITY;}
+            left[slot]=l;top[slot]=t;right[slot]=r;bottom[slot]=b;start[slot]=a;end[slot]=z;
+            values[slot]=new LinearGradient(l,t,r,b,a,z,Shader.TileMode.CLAMP);
+            return values[slot];
+        }
+        void clear(){
+            for(int i=0;i<count;i++)values[i]=null;
+            count=0;next=0;
+        }
     }
 }

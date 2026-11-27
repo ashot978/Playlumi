@@ -208,6 +208,15 @@ def no_speech(nodes):
             assert not any(bad in value.lower() for bad in FORBIDDEN), "Unexpected speech/hint UI: " + value
 
 
+def correct_marker(nodes, answer):
+    normal = lambda text: " ".join(text.split())
+    marked = [node for node in nodes if node.get("class") == "android.widget.Button"
+              and normal(node.get("content-desc", "")) == normal(answer + ", goed gekozen")]
+    assert len(marked) == 1, "Correct answer has no unique accessible selection marker"
+    assert marked[0].get("selected") == "true" and marked[0].get("enabled") == "false", "Correct answer must remain selected and disabled"
+    assert normal(marked[0].get("text", "")) == normal("✓ " + answer), "Correct answer checkmark missing"
+
+
 def open_city(label):
     click_named("Open Lumi's stad", label + "-entry", False)
     page(49)
@@ -292,7 +301,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.107" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.108" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -321,7 +330,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.108" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.109" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -336,13 +345,13 @@ def test_debug_upgrade(baseline_apk, viewport):
     screenshot(viewport + "-upgrade-current-question",
                expected_texts=(after_question["prompt"], after_question["display"], *after_question["answers"]))
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.107", "candidateVersion": "0.108",
+        "baselineVersion": "0.108", "candidateVersion": "0.109",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.107 → 0.108 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts and exact unanswered quiz")
+    pass_check(viewport + ": actual debug 0.108 → 0.109 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts and exact unanswered quiz")
 
 
 def scroll_top():
@@ -406,6 +415,7 @@ def test_new_quiz_routes(viewport):
         assert rewarded["score_" + mode + "_tries"] == 1, "One answer created multiple attempts"
         solved_nodes = ui(label + "-correct")
         no_speech(solved_nodes)
+        correct_marker(solved_nodes, saved["answers"][saved["correct"]])
         assert any(exact("Volgende vraag")(node) and visible(node) for node in solved_nodes), "New quiz lost manual continuation"
         screenshot(label + "-correct")
         pass_check(viewport + ": " + title + " opens through HOME/world, displays all answer controls in safe area and credits one correct answer")
@@ -566,7 +576,7 @@ def test(viewport):
     click_named("Open kledingkast", prefix + "-outfit-wardrobe")
     page(10)
     click(find_control(description_prefix("Kleding"), prefix + "-clothes-tab"))
-    for item, name in ((6, "Astronautenpak"), (5, "Regenboogtrui")):
+    for item, name in ((6, "Astronautenpak"), (5, "Regenboogtrui"), (4, "Sterrenpak")):
         click(find_control(lambda node: name in node.get("content-desc", ""),
                            prefix + "-outfit-" + str(item)))
         state = wait_prefs(lambda p: p.get("wardrobe_worn_4") == item, name + " equipped")
@@ -575,7 +585,7 @@ def test(viewport):
         scroll_top()
         ui(prefix + "-outfit-" + str(item) + "-equipped")
         screenshot(prefix + "-outfit-" + str(item) + "-equipped")
-    pass_check(viewport + ": earned astronaut and rainbow outfits equip for free; preview screenshots captured")
+    pass_check(viewport + ": earned astronaut, rainbow and star outfits equip for free; preview screenshots captured")
 
     if viewport == "phone":
         shell("settings put system font_scale 1.5")
@@ -587,12 +597,426 @@ def test(viewport):
         pass_check("phone: city remains reachable with 150% system text; screenshot captured for visual review")
 
 
+def launch_native_home():
+    """A fresh normal launcher task; chosen_age comes from the explicit fixture."""
+    shell(f"am force-stop {APP}")
+    shell("logcat -c")
+    shell(f"am start -W -f 0x10008000 -a android.intent.action.MAIN "
+          f"-c android.intent.category.LAUNCHER -n {APP}/.MainActivity")
+    time.sleep(2)
+    page(1)
+
+
+def test_cosmetic_fixture(viewport):
+    # Explicit owned-items fixture for visual review; these accessories are not
+    # described as earned or purchased by this scenario.
+    label = viewport + "-cosmetic-fixture"
+    seed({"wardrobe_owned_4": 127})
+    launch_native_home()
+    open_city(label + "-city")
+    click_named("Open kledingkast", label + "-wardrobe")
+    page(10)
+    click(find_control(description_prefix("Kleding"), label + "-clothes-tab"))
+    for item, name in ((1, "Strikje"), (3, "Warme sjaal")):
+        click(find_control(lambda node: name in node.get("content-desc", ""), label + "-equip-" + str(item)))
+        state = wait_prefs(lambda p: p.get("wardrobe_worn_4") == item, "cosmetic fixture " + name + " equipped")
+        assert state["wardrobe_stars"] == 18 and state["wardrobe_owned_4"] == 127, "Equipping a fixture accessory changed ownership/wallet"
+        scroll_top()
+        screenshot(label + "-outfit-" + str(item) + "-equipped")
+    pass_check(viewport + ": explicitly seeded bow/scarf ownership is unchanged by real equip actions; both preview screenshots captured")
+
+
+def native_foreground(expected_page):
+    # Do not force-stop or clear the task: this resumes the actual Activity state.
+    shell(f"am start -W -f 0x10200000 -a android.intent.action.MAIN "
+          f"-c android.intent.category.LAUNCHER -n {APP}/.MainActivity")
+    time.sleep(1)
+    if expected_page is not None:
+        page(expected_page)
+
+
+def app_pid():
+    return adb("shell", "pidof " + APP, check=False).decode().strip()
+
+
+def background_app():
+    # The disposable emulator's launcher is disabled by the acceptance setup.
+    # A real external Activity still exercises onPause/onStop without a debug hook.
+    shell("am start -W -a android.settings.SETTINGS")
+    time.sleep(1)
+
+
+def patch_stopped_preferences(values):
+    assert not app_pid(), "Synthetic clock fixture may only be changed while the process is stopped"
+    raw = adb("exec-out", "run-as", APP, "cat", "shared_prefs/MainActivity.xml")
+    root = ET.fromstring(raw)
+    for key, value in values.items():
+        assert key in ("usage_day", "usage_seconds", "usage_limit", "usage_break_shown"), "Only explicit playtime fixture fields may be patched"
+        tag = "boolean" if isinstance(value, bool) else "int"
+        node = next((node for node in root if node.get("name") == key), None)
+        if node is None:
+            node = ET.SubElement(root, tag, name=key)
+        assert node.tag == tag, "Unexpected preference type for " + key
+        node.set("value", str(value).lower() if isinstance(value, bool) else str(value))
+    raw = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    shell(f"run-as {APP} sh -c 'cat > shared_prefs/MainActivity.xml; rm -f shared_prefs/MainActivity.xml.bak'", raw)
+
+
+def recreate_from_background(expected_page, clock_fixture=None):
+    old_pid = app_pid()
+    assert old_pid, "App was not running before lifecycle recreation"
+    background_app()
+    shell("am kill " + APP)
+    for _ in range(12):
+        if not app_pid():
+            break
+        time.sleep(.3)
+    assert not app_pid(), "Background process was not killed; recreation was not exercised"
+    if clock_fixture is not None:
+        patch_stopped_preferences(clock_fixture)
+    native_foreground(expected_page)
+    assert app_pid() and app_pid() != old_pid, "Expected a new Activity process"
+
+
+def open_drawing(label):
+    click(find_control(description_prefix("Kleurentuin"), label + "-world", False))
+    page(44)
+    click(find_control(description_prefix("Speel Mijn kunstwerk"), label + "-entry"))
+    page(25)
+    nodes = ui(label + "-canvas")
+    canvas = next((node for node in nodes if visible(node)
+                   and exact("Teken met je vinger op dit witte vel")(node)), None)
+    assert canvas is not None, "Native drawing canvas is not visible"
+    return canvas
+
+
+def drawing_file(label):
+    raw = adb("exec-out", "run-as", APP, "cat", "files/playlumi-kunstwerk.png")
+    assert raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw) > 100, "Missing/corrupt saved drawing"
+    (OUT / (label + ".png")).write_bytes(raw)
+    return raw
+
+
+def test_drawing_lifecycle(viewport):
+    label = viewport + "-lifecycle-drawing"
+    seed({})
+    launch_native_home()
+    open_drawing(label + "-blank")
+    click_named("Terug naar het magische dorp", label + "-blank-home", False)
+    page(1)
+    blank = drawing_file(label + "-blank-file")
+
+    canvas = open_drawing(label + "-stroke")
+    left, top, right, bottom = rect(canvas)
+    x1, y1 = int(left + .2*(right-left)), int(top + .35*(bottom-top))
+    x2, y2 = int(left + .8*(right-left)), int(top + .65*(bottom-top))
+    shell(f"input swipe {x1} {y1} {x2} {y2} 500")
+    screenshot(label + "-stroke")
+    click_named("Terug naar het magische dorp", label + "-stroke-home", False)
+    page(1)
+    painted = drawing_file(label + "-saved-file")
+    assert painted != blank, "The real touchstroke was not saved by the Home navigation"
+    autosaved = prefs()
+    assert autosaved["wardrobe_stars"] == 18 and not autosaved.get("drawing_saved_once", False), "Autosave incorrectly granted the explicit creative bonus"
+    assert autosaved.get("collection_world_5", 0) == 0, "Autosave incorrectly counted a creative completion"
+
+    open_drawing(label + "-reopen")
+    assert drawing_file(label + "-reopened-file") == painted, "Reopening changed/lost the saved drawing"
+    screenshot(label + "-reopened")
+    # A new stroke belongs to this live View, so Undo must remain available after
+    # explicit save and after the automatic save on a background/foreground cycle.
+    shell(f"input swipe {int(left+.25*(right-left))} {int(top+.70*(bottom-top))} "
+          f"{int(left+.75*(right-left))} {int(top+.20*(bottom-top))} 500")
+    click_named("💾 Bewaar tekening", label + "-explicit-save", False)
+    saved = wait_prefs(lambda p: p.get("drawing_saved_once") is True
+                      and p.get("wardrobe_stars") == 27 and p.get("collection_world_5") == 1,
+                      "drawing marker, one +9 bonus and world progress saved together")
+    assert saved["wardrobe_total_earned"] == 27, "Drawing earned total disagrees with the wallet"
+    assert drawing_file(label + "-second-stroke-file") != painted, "Second real stroke was not saved"
+    click_named("↩  Laatste lijn weg", label + "-undo-after-save", False)
+    click_named("💾 Bewaar tekening", label + "-save-again", False)
+    assert drawing_file(label + "-undo-after-save-file") == painted, "Explicit saving flattened the live undo history"
+    assert prefs()["wardrobe_stars"] == 27 and prefs()["collection_world_5"] == 1, "Repeated save paid/counts the drawing twice"
+    shell(f"input swipe {int(left+.2*(right-left))} {int(top+.75*(bottom-top))} "
+          f"{int(left+.8*(right-left))} {int(top+.75*(bottom-top))} 500")
+    old_pid = app_pid()
+    background_app()
+    native_foreground(25)
+    assert app_pid() == old_pid, "Expected a live-View pause/resume for the Undo check"
+    assert drawing_file(label + "-background-file") != painted, "Background autosave missed the new stroke"
+    click_named("↩  Laatste lijn weg", label + "-undo-after-background", False)
+    click_named("💾 Bewaar tekening", label + "-save-after-background", False)
+    assert drawing_file(label + "-undo-after-background-file") == painted, "Background saving flattened the live undo history"
+    launch_native_home()
+    open_drawing(label + "-restart")
+    click_named("💾 Bewaar tekening", label + "-save-after-restart", False)
+    restored = prefs()
+    assert restored["wardrobe_stars"] == 27 and restored["collection_world_5"] == 1 and restored["drawing_saved_once"], "Restart repeated/lost the creative reward"
+    screenshot(label + "-reward-restored")
+    pass_check(viewport + ": drawing touchstroke survives Home/reopen, Undo survives live save/pause, autosave is free and explicit save grants +9/one collection step only once across restart")
+
+
+def unlock_parent_gate(label):
+    nodes = ui(label + "-gate")
+    sums = [re.search(r"(\d+)\s*\+\s*(\d+)\s*=\s*\?", value)
+            for node in nodes for value in labels(node)]
+    question = next((value for value in sums if value is not None), None)
+    assert question is not None, "Parent gate has no visible native arithmetic challenge"
+    correct = int(question.group(1)) + int(question.group(2))
+    click_named("🔢 " + str(correct), label + "-answer", False)
+    page(27)
+
+
+def open_parent_settings(label):
+    click(find_control(description_prefix("⚙️ Instellingen"), label, True))
+    page(30)
+
+
+def test_parent_lifecycle(viewport):
+    label = viewport + "-lifecycle-parent"
+    seed({})
+    launch_native_home()
+    click(find_control(lambda node: exact("Ouderzone")(node)
+                       or description_prefix("Ouderzone")(node), label + "-entry", False))
+    page(26)
+    unlock_parent_gate(label + "-initial")
+    open_parent_settings(label + "-settings")
+    shell("input keyevent KEYCODE_BACK")
+    page(27)
+    open_parent_settings(label + "-settings-again")
+
+    background_app()
+    native_foreground(None)
+    require_parent_gate(label + "-background")
+    screenshot(label + "-background-gate", expected_texts=("🔐 Alleen voor ouders",))
+    unlock_parent_gate(label + "-after-background")
+    open_parent_settings(label + "-before-recreate")
+    recreate_from_background(None)
+    require_parent_gate(label + "-recreated")
+    screenshot(label + "-recreated-gate", expected_texts=("🔐 Alleen voor ouders",))
+    unlock_parent_gate(label + "-after-recreate")
+    assert prefs()["wardrobe_stars"] == 18, "Parent lifecycle navigation changed the wallet"
+    pass_check(viewport + ": real parent gate stays open for internal navigation, relocks after background and after process recreation")
+
+
+def require_parent_gate(label):
+    # A protected task may reopen at its gate or safely return to HOME on cold
+    # launch. In both cases entering the parent area must require the challenge.
+    for _ in range(12):
+        pages = re.findall(r"screen=(\d+)", shell("logcat -d -s PlaylumiQA:I"))
+        current = int(pages[-1]) if pages else -1
+        if current in (1, 26):
+            break
+        time.sleep(.5)
+    assert current in (1, 26), "Parent area remained unlocked after leaving/recreating the app"
+    if current == 1:
+        click(find_control(lambda node: exact("Ouderzone")(node)
+                           or description_prefix("Ouderzone")(node), label + "-entry", False))
+    page(26)
+
+
+def same_quiz(before, after, label):
+    for field in ("id", "age", "level", "count", "total", "attempts", "solved", "hadMistake",
+                  "rejected", "feedback", "prompt", "display", "color", "correct", "fingers", "answers", "colors"):
+        assert after[field] == before[field], label + " changed saved question field: " + field
+
+
+def open_ideas(label):
+    scroll_top()
+    click_named("Open speelideeën", label + "-entry")
+    page(50)
+
+
+def idea_cards(label):
+    titles, seen_texts = [], set()
+    scroll_top()
+    for index in range(1, 4):
+        button = find_control(description_prefix("Speelidee " + str(index) + ": "), label + "-card-" + str(index))
+        titles.append(button.get("content-desc").split(": ", 1)[1])
+        nodes = ui(label + "-visible-" + str(index))
+        no_speech(nodes)
+        seen_texts.update(" ".join(value.split()) for node in nodes if visible(node) for value in labels(node))
+    assert len(set(titles)) == 3, "Play ideas duplicate a visible exercise"
+    return titles, seen_texts
+
+
+def idea_click(index, title, label):
+    scroll_top()
+    click_named("Speelidee " + str(index) + ": " + title, label)
+
+
+def real_history_fingerprint():
+    prefixes = ("wardrobe_", "score_", "library_resume_", "library_rounds_", "library_completed_",
+                "daily_", "collection_world_", "learn_", "play_day_")
+    return {key: value for key, value in prefs().items()
+            if key.startswith(prefixes) or key in ("completed_all", "library_played")}
+
+
+def parent_world_summary(world, rounds, completed, unfinished, label):
+    counted = f"{rounds} getelde rondes · {completed} oefeningen met een afgeronde ronde"
+    saved = str(unfinished) + (" begonnen ronde om verder te spelen" if unfinished == 1
+                               else " begonnen rondes om verder te spelen")
+    w, h = dimensions()
+    for _ in range(10):
+        nodes = ui(label)
+        title = next((node for node in nodes if node.get("text") == world and visible(node)), None)
+        if title is not None:
+            parent = next((node for node in nodes if title in list(node)), None)
+            values = {" ".join(value.split()) for child in parent.iter("node") if visible(child)
+                      for value in labels(child)} if parent is not None else set()
+            if counted in values and saved in values:
+                screenshot(label)
+                return
+        shell(f"input swipe {w//2} {int(h*.78)} {w//2} {int(h*.34)} 400")
+    raise AssertionError("Parent world summary does not match actually played history: " + world)
+
+
+def test_play_ideas(viewport):
+    label = viewport + "-ideas"
+    # Start with an empty profile. Every completion and unfinished game below is
+    # created through native play; only the later playtime threshold is a fixture.
+    seed({})
+    launch_native_home()
+    click(find_control(description_prefix("Rekenraket"), label + "-rocket", False))
+    page(44)
+    click(find_control(description_prefix("Speel Getallenrace"), label + "-first-board"))
+    page(45)
+    for number in (1, 2, 3):
+        click_named("Kies " + str(number), label + "-first-number-" + str(number))
+    board_route = "0:6:0:0"
+    board_key = "library_resume_v2_0_" + board_route
+    rounds_key = "library_rounds_v1_0_" + board_route
+    wait_prefs(lambda p: p.get(rounds_key) == 1 and p.get("wardrobe_stars") == 33,
+               "one actually completed interactive board and its first +15 reward")
+    click_named("Terug naar het magische dorp", label + "-home", False)
+    page(1)
+    click(find_control(description_prefix("Vormkasteel"), label + "-shapes", False))
+    page(44)
+    click(find_control(description_prefix("Speel Vormen zoeken"), label + "-shape-quiz"))
+    page(6)
+    quiz_route = "2:0:3:0"
+    quiz_key = "library_resume_v2_0_" + quiz_route
+    answer_saved(quiz_route, 1, 48, label + "-first-quiz-answer")
+    saved_quiz = snapshot(quiz_route)
+    correct_marker(ui(label + "-first-correct"), saved_quiz["answers"][saved_quiz["correct"]])
+    shell("input keyevent KEYCODE_BACK")
+    page(44)
+    open_ideas(label + "-library")
+    titles, texts = idea_cards(label + "-real-history")
+    assert titles[0] == "Vormen zoeken" and titles[1] == "Getallenrace", "Ideas did not prioritize the actual unfinished quiz and completed board"
+    assert {"Verder spelen", "Nog eens spelen", "Ontdekken"} <= texts, "Idea labels do not distinguish resume, replay and discovery"
+    assert "1 ronde gespeeld · Tijd voor een nieuwe ronde?" in texts, "Ideas invented or lost the actual replay count"
+    scroll_top()
+    screenshot(label + "-three-kinds", expected_texts=("Speelideeën",))
+
+    before = real_history_fingerprint()
+    variation = prefs().get("play_ideas_variation_v1", 0)
+    click_named("Andere speelideeën", label + "-other")
+    page(50)
+    assert prefs().get("play_ideas_variation_v1") == variation + 1, "Other ideas did not remember the chosen variation"
+    changed, _ = idea_cards(label + "-varied")
+    assert changed[0] == "Vormen zoeken" and changed[1] == "Getallenrace", "Variation replaced the available saved/replay actions"
+    assert real_history_fingerprint() == before, "Choosing other ideas changed earned history or saved rounds"
+
+    if viewport == "phone":
+        shell("settings put system font_scale 1.3")
+        time.sleep(1)
+        page(50)
+        scroll_top()
+        screenshot(label + "-large-font-top", expected_texts=("Speelideeën",))
+        find_control(description_prefix("Speelidee 3: "), label + "-large-font-third")
+        screenshot(label + "-large-font-bottom")
+        shell("settings put system font_scale 1.0")
+        time.sleep(1)
+        page(50)
+
+    idea_click(1, "Vormen zoeken", label + "-resume-quiz")
+    page(6)
+    same_quiz(saved_quiz, snapshot(quiz_route), "Ideas resume")
+    correct_marker(ui(label + "-resumed-correct"), saved_quiz["answers"][saved_quiz["correct"]])
+    assert prefs()["wardrobe_stars"] == 48, "Resuming the selected correct answer paid twice"
+    shell("input keyevent KEYCODE_BACK")
+    page(50)
+
+    idea_click(2, "Getallenrace", label + "-replay-board")
+    page(45)
+    click_named("Kies 1", label + "-replay-first-step")
+    first_step = wait_prefs(lambda p: board_key in p and json.loads(p[board_key])["count"] == 1,
+                            "actual unfinished replay for newest-save priority")
+    saved_board = json.loads(first_step[board_key])
+    shell("input keyevent KEYCODE_BACK")
+    page(50)
+    titles, _ = idea_cards(label + "-newest-save")
+    assert titles[0] == "Getallenrace", "Latest actual unfinished game is not first"
+    idea_click(1, "Getallenrace", label + "-resume-board")
+    page(45)
+    restored_board = json.loads(prefs()[board_key])
+    for field in ("id", "age", "seed", "engine", "count", "total"):
+        assert restored_board[field] == saved_board[field], "Ideas changed the unfinished interactive board: " + field
+    click_named("Kies 2", label + "-replay-two")
+    click_named("Kies 3", label + "-replay-three")
+    wait_prefs(lambda p: p.get(rounds_key) == 2 and p.get("wardrobe_stars") == 51 and board_key not in p,
+               "second actually completed board pays exactly +3 and clears its save")
+    screenshot(label + "-interactive-completion")
+    click_named("Terug naar speelideeën", label + "-completion-return", False)
+    page(50)
+    pass_check(viewport + ": three honest ideas come from real played history; variation is free, newest quiz/board saves resume exactly and interactive Back/completion return to ideas")
+
+    idea_click(1, "Vormen zoeken", label + "-before-pause")
+    page(6)
+    before_recreate = snapshot(quiz_route)
+    date = datetime.date.fromisoformat(shell("date +%Y-%m-%d"))
+    # Deterministic 15-minute threshold, only while the synthetic process is dead.
+    # The actual question, answers, wallet and replay history remain untouched.
+    recreate_from_background(6, {"usage_day": date.year*10000 + date.month*100 + date.day,
+                                 "usage_seconds": 900, "usage_limit": 15, "usage_break_shown": False})
+    same_quiz(before_recreate, snapshot(quiz_route), "Process recreation before pause")
+    correct_marker(ui(label + "-recreated-correct"), before_recreate["answers"][before_recreate["correct"]])
+    click_named("Volgende vraag", label + "-pause-trigger", False)
+    page(31)
+    paused = snapshot(quiz_route)
+    assert paused["count"] == 1 and not paused["solved"], "Pause did not preserve the newly prepared unanswered question"
+    assert prefs()["usage_break_shown"] is True and prefs()["wardrobe_stars"] == 51, "Pause changed earned stars or lost its shown marker"
+    screenshot(label + "-pause")
+    recreate_from_background(31)
+    same_quiz(paused, snapshot(quiz_route), "Paused process recreation")
+    click_named("🌟 Nog even verder spelen", label + "-pause-continue", False)
+    page(6)
+    same_quiz(paused, snapshot(quiz_route), "Continue after pause")
+    answer_saved(quiz_route, 2, 54, label + "-after-pause-answer")
+    shell("input keyevent KEYCODE_BACK")
+    page(50)
+    assert prefs()[rounds_key] == 2, "Pause/restart changed completed replay history"
+    pass_check(viewport + ": real quiz task and break reminder survive background process recreation; exact question, one-time wallet and return to ideas remain intact")
+
+    click_named("Terug naar het magische dorp", label + "-parent-home", False)
+    page(1)
+    click(find_control(lambda node: exact("Ouderzone")(node)
+                       or description_prefix("Ouderzone")(node), label + "-parent-entry", False))
+    page(26)
+    unlock_parent_gate(label + "-parent")
+    parent_world_summary("Rekenraket", 2, 1, 0, label + "-parent-rounds")
+    parent_world_summary("Vormkasteel", 0, 0, 1, label + "-parent-unfinished")
+    assert prefs()["wardrobe_stars"] == 54, "Reading parent history changed the wallet"
+    pass_check(viewport + ": parent overview shows two actually played rounds, one completed board route and one unfinished quiz in their correct worlds")
+
+    scroll_top()
+    click_named("Terug naar het magische dorp", label + "-city-home", False)
+    page(1)
+    open_city(label + "-city")
+    open_ideas(label + "-city-ideas")
+    shell("input keyevent KEYCODE_BACK")
+    page(49)
+    assert prefs()["wardrobe_stars"] == 54, "City/ideas navigation awarded currency"
+    pass_check(viewport + ": native city ideas entry returns to its originating city without changing progress")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.107 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.108 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -612,6 +1036,10 @@ if __name__ == "__main__":
             test_debug_upgrade(args.baseline_apk, args.viewport)
         test(args.viewport)
         test_new_quiz_routes(args.viewport)
+        test_play_ideas(args.viewport)
+        test_cosmetic_fixture(args.viewport)
+        test_drawing_lifecycle(args.viewport)
+        test_parent_lifecycle(args.viewport)
     finally:
         (OUT / "checks.json").write_text(json.dumps({"viewport": args.viewport, "passed": CHECKS,
             "scope": "Native UI and persistence on a disposable emulator; synthetic fixtures explicitly labelled."},
