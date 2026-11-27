@@ -24,7 +24,7 @@ public class PlaylumiInteractiveTest {
             int count=0;
             for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age))
                 if(e.kind==PlaylumiGameCatalog.INTERACTIVE)count++;
-            assertEquals(new int[]{10,12,13}[age],count);
+            assertEquals(new int[]{11,13,14}[age],count);
         }
     }
 }
