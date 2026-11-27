@@ -1,8 +1,14 @@
-name: Playlumi 0.123 fixed horizontal pages and upgrade acceptance
+name: Playlumi 0.126 upgrade, Dierensudoku and native release acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.123']
+    branches: ['feature/playlumi-0.126']
   workflow_dispatch:
+    inputs:
+      full_regression:
+        description: 'Run all historical native regression groups after the required clean-quiz gate'
+        type: boolean
+        required: false
+        default: false
 jobs:
   quiz-ui:
     runs-on: ubuntu-latest
@@ -39,19 +45,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build pinned 0.122 baseline with the same disposable debug key
+      - name: Build pinned 0.123 baseline with the same disposable debug key
         shell: bash
         run: |
           set -euo pipefail
-          PLAYLUMI_BASELINE_SHA=76bb79efee76c04d249da5b7154fb34320fe3278
-          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0122-baseline"
+          PLAYLUMI_BASELINE_SHA=49899d604f65f70e57128f6dba5f3495f530a70a
+          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0123-baseline"
           git worktree add --detach "$PLAYLUMI_BASELINE_DIR" "$PLAYLUMI_BASELINE_SHA"
           trap 'git worktree remove --force "$PLAYLUMI_BASELINE_DIR"' EXIT
-          PLAYLUMI_BASELINE_LOG="$RUNNER_TEMP/playlumi-0122-baseline-gradle.log"
+          PLAYLUMI_BASELINE_LOG="$RUNNER_TEMP/playlumi-0123-baseline-gradle.log"
           # Dependency hosts can briefly rate-limit concurrent clean runners.
           # Retry only transient HTTP failures; compilation failures still stop the job.
           for PLAYLUMI_BASELINE_ATTEMPT in 1 2 3; do
-            if PLAYLUMI_BUILD_CODE=601023 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug 2>&1 | tee "$PLAYLUMI_BASELINE_LOG"; then
+            if PLAYLUMI_BUILD_CODE=601024 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug 2>&1 | tee "$PLAYLUMI_BASELINE_LOG"; then
               break
             fi
             if [[ "$PLAYLUMI_BASELINE_ATTEMPT" -eq 3 ]] || ! grep -Eq 'Received status code (429|500|502|503|504)' "$PLAYLUMI_BASELINE_LOG"; then
@@ -60,14 +66,14 @@ jobs:
             sleep "$((15 * PLAYLUMI_BASELINE_ATTEMPT))"
           done
           mkdir -p build/upgrade-baseline
-          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0122-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0122-debug.apk | grep -F "versionCode='601023'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0122-debug.apk | grep -F "versionName='0.122'"
+          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0123-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0123-debug.apk | grep -F "versionCode='601024'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0123-debug.apk | grep -F "versionName='0.123'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
-          sha256sum build/upgrade-baseline/playlumi-0122-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.123 source
+          sha256sum build/upgrade-baseline/playlumi-0123-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
+      - name: Build debug variant of exact 0.126 source
         env:
-          PLAYLUMI_BUILD_CODE: '601024'
+          PLAYLUMI_BUILD_CODE: '601027'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -75,8 +81,10 @@ jobs:
             sudo chown root:kvm /dev/kvm
             sudo chmod 666 /dev/kvm
           fi
-      - name: Test upgrade, quiz, city, simplified navigation and drawings on phone and Fold
+      - name: Required clean quiz and focused release acceptance on phone and Fold
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          PLAYLUMI_FULL_NATIVE: ${{ inputs.full_regression || false }}
         with:
           api-level: 35
           target: default
@@ -86,8 +94,8 @@ jobs:
           disable-linux-hw-accel: auto
           emulator-boot-timeout: 390
           script: |
-            python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0122-debug.apk
+            timeout --kill-after=15s 300s python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
+            if [ "$PLAYLUMI_FULL_NATIVE" = "true" ]; then timeout --kill-after=15s 1900s python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0123-debug.apk; else timeout --kill-after=15s 900s python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0123-debug.apk --release-smoke; fi
       - name: Collect host diagnostics after emulator failure
         if: failure()
         shell: bash
@@ -99,7 +107,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0123-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0126-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/

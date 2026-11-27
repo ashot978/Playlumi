@@ -35,6 +35,23 @@ public final class PlaylumiPagePlanTest {
         assertEquals(2,PlaylumiPagePlan.libraryRows(780,1f));
         assertEquals(218,PlaylumiPagePlan.libraryTileHeight(850,2));
     }
+    @Test public void semanticPageLabelsAndCompactShelvesRemainStable(){
+        assertEquals("Bouwtekening · 2/5",PlaylumiPagePlan.caption("Bouwtekening",1,5));
+        assertEquals("Pagina 5 van 5",PlaylumiPagePlan.caption("",8,5));
+        assertEquals("Accessoires · 1/1",PlaylumiPagePlan.caption("Accessoires",-1,0));
+        assertEquals(1,PlaylumiPagePlan.shelfRows(540,1f));
+        assertEquals(2,PlaylumiPagePlan.shelfRows(740,1f));
+        assertEquals(1,PlaylumiPagePlan.shelfRows(740,1.5f));
+    }
+    @Test public void reflowKeepsTheVisibleBlockAndVerticalGestureStaysVertical(){
+        List<PlaylumiPagePlan.Page> pages=PlaylumiPagePlan.pack(Arrays.asList(block(0,50),block(100,160),block(200,280)),120,1);
+        assertEquals(2,PlaylumiPagePlan.resolvePage(pages,0,-1,205,-1));
+        assertEquals(1,PlaylumiPagePlan.resolvePage(pages,0,1,205,-1));
+        assertEquals(0,PlaylumiPagePlan.resolvePage(pages,2,1,205,20));
+        int axis=PlaylumiPagePlan.lockAxis(0,3,28,14);
+        assertEquals(PlaylumiPagePlan.AXIS_VERTICAL,axis);
+        assertEquals(axis,PlaylumiPagePlan.lockAxis(axis,180,4,14));
+    }
     @Test public void onlyDeliberateHorizontalSwipesChangePages(){
         assertEquals(0,PlaylumiPagePlan.swipe(0,500,48,true));
         assertEquals(0,PlaylumiPagePlan.swipe(20,500,48,true));
@@ -43,5 +60,26 @@ public final class PlaylumiPagePlanTest {
         assertEquals(0,PlaylumiPagePlan.swipe(-200,0,48,false));
         assertEquals(1,PlaylumiPagePlan.swipe(-200,15,48,true));
         assertEquals(-1,PlaylumiPagePlan.swipe(200,15,48,true));
+    }
+    @Test public void hiddenPagesCannotBeTappedThroughThePinnedChrome(){
+        List<PlaylumiPagePlan.Page> pages=PlaylumiPagePlan.pack(Arrays.asList(
+                block(0,100),block(120,220),block(240,340)),100,1);
+        PlaylumiPagePlan.Page visible=pages.get(1);
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,80));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,280));
+        assertTrue(PlaylumiPagePlan.containsPoint(visible,320,0,120));
+        assertTrue(PlaylumiPagePlan.containsPoint(visible,320,319.5f,219.5f));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,-.5f,160));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,320,160));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,220));
+    }
+    @Test public void scaledBoardsRemainInteractiveAcrossTheirWholeVisiblePage(){
+        PlaylumiPagePlan.Page page=PlaylumiPagePlan.pack(
+                Arrays.asList(block(100,700)),300,1).get(0);
+        assertEquals(.5f,page.scale,0f);
+        for(float screenY:new float[]{0,1,149,299.5f})
+            assertTrue(PlaylumiPagePlan.containsPoint(page,320,160,page.start+screenY/page.scale));
+        assertFalse(PlaylumiPagePlan.containsPoint(page,320,160,page.start-1));
+        assertFalse(PlaylumiPagePlan.containsPoint(page,320,160,page.start+300/page.scale));
     }
 }

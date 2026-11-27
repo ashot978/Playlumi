@@ -8,7 +8,7 @@ import java.util.Random;
 /** Four hands-on activities with deterministic, restorable rounds. */
 public final class PlaylumiInteractive {
     public static final int NUMBERS=0, LETTERS=1, HABITATS=2, MOSAIC=3;
-    public static final String[] TITLES={"Getallenrace","Lettertrein","Dierenwereld: thuis","Kleurmozaïek","Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart"};
+    public static final String[] TITLES={"Getallenrace","Lettertrein","Dierenwereld: thuis","Kleurmozaïek","Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart","Dierensudoku"};
     public static final String[] INSTRUCTIONS={"Bouw de raket: tik de cijfers op volgorde.","Bouw de trein: tik de letters van het voorbeeld.","Help ieder dier naar zijn eigen huis.","Bouw het voorbeeld na: kies een kleur voor elk vak."};
     private static final String[][] WORDS={{"VIS","KAT","ZON"},{"BOOM","MAAN","ROOS"},{"STERREN","RAKET","BLOEMEN"}};
     private static final String[] ANIMALS={"🐠","🐄","🐒","🐬","🐑","🦜"};
@@ -35,7 +35,7 @@ public final class PlaylumiInteractive {
         puzzle=PlaylumiPuzzle.supported(kind)?new PlaylumiPuzzle(kind,level,seed,progress,mask):null;
         if(puzzle!=null){
             targets=new String[0];answers=new String[0];ArrayList<String> cells=new ArrayList<>();
-            for(int i=0;i<puzzle.cells();i++)cells.add(""+i);options=Collections.unmodifiableList(cells);this.progress=progress;return;
+            for(int i=0;i<puzzle.optionCount();i++)cells.add(""+i);options=Collections.unmodifiableList(cells);this.progress=progress;return;
         }
         Random r=new Random(seed);
         ArrayList<String> opts=new ArrayList<>();

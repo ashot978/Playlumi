@@ -147,7 +147,7 @@ public final class PlaylumiOddOneOutTest {
             assertEquals("Wat hoort erbij?",PlaylumiGameCatalog.find(age,"4:0:15:0").title);
             assertTrue(PlaylumiGameCatalog.filter(age,4,Collections.emptySet()).stream().anyMatch(e->e.id.equals(entry.id)));
             assertEquals(1,PlaylumiGameCatalog.filter(age,PlaylumiGameCatalog.FAVORITES,Collections.singleton(entry.id)).size());
-            assertEquals(new int[]{36,61,88}[age],PlaylumiGameCatalog.entries(age).size());
+            assertEquals(new int[]{37,62,89}[age],PlaylumiGameCatalog.entries(age).size());
         }
         assertEquals(5,LearningGame.maxVariant(15));assertEquals(24,PlaylumiScores.CATEGORIES);
     }

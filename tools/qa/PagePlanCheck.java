@@ -23,6 +23,11 @@ public final class PagePlanCheck {
                 require(page.start>=prev&&page.end>page.start,"Overlapping or empty pages");
                 require(page.blocks<=limit,"Too many blocks");
                 require(page.scale>0&&page.scale<=1&&(page.end-page.start)*page.scale<=height+.01f,"Page exceeds viewport");
+                require(PlaylumiPagePlan.containsPoint(page,320,160,page.start),"Visible page cannot receive taps");
+                require(!PlaylumiPagePlan.containsPoint(page,320,160,page.start-1)&&
+                        !PlaylumiPagePlan.containsPoint(page,320,160,page.end),"Hidden content receives taps through fixed chrome");
+                require(!PlaylumiPagePlan.containsPoint(page,320,-1,page.start)&&
+                        !PlaylumiPagePlan.containsPoint(page,320,320,page.start),"Outside edge receives taps");
                 prev=page.end;
             }
             for(PlaylumiPagePlan.Block item:items){
@@ -60,6 +65,18 @@ public final class PagePlanCheck {
                 for(int i=0;i<n;i+=capacity)seen+=Math.min(capacity,n-i);
                 require(seen==n,"Missing a library card");
             }
+        }
+        for(int count=1;count<=60;count++)for(int i=-1;i<=count;i++){
+            int actual=PlaylumiPagePlan.safePage(i,count)+1;
+            require(PlaylumiPagePlan.caption("Bouwtekening",i,count).equals("Bouwtekening · "+actual+"/"+count),"Incorrect semantic page label");
+            require(PlaylumiPagePlan.caption("",i,count).equals("Pagina "+actual+" van "+count),"Incorrect fallback page label");
+        }
+        for(int height:new int[]{320,450,620,740,900})for(float font:new float[]{1f,1.3f,1.5f}){
+            int rows=PlaylumiPagePlan.shelfRows(height,font);
+            require(rows==1||rows==2,"Too many shelf rows");
+            int capacity=2*rows,seen=0;
+            for(int i=0;i<7;i+=capacity)seen+=Math.min(capacity,7-i);
+            require(seen==7,"Accessory missing");
         }
         System.out.println("PASS: "+cases+" randomized page decks, "+blocks+" intact measured controls, "+swipes+" swipe-direction checks and compact city pages.");
     }

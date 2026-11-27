@@ -248,7 +248,7 @@ public final class FoundationsCheck {
     private static void catalog()throws Exception{
         for(int age=0;age<3;age++){
             List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
-            require(entries.size()==new int[]{36,61,88}[age],"catalog size");
+            require(entries.size()==new int[]{37,62,89}[age],"catalog size");
             Set<String> ids=new HashSet<>();List<String> legacy=new ArrayList<>();
             for(PlaylumiGameCatalog.Entry entry:entries){
                 require(ids.add(entry.id),"duplicate route");
