@@ -12,7 +12,7 @@ import android.widget.TextView;
 public final class PlaylumiInteractiveBoard extends LinearLayout {
     private final PlaylumiInteractive round;
     private final TextView[] cells;
-    private TextView animal,animalName,homeProgress;
+    private TextView animal,animalName;
     private TextView[] exampleCells;
     private boolean revealed;
     private final int columns;
@@ -22,22 +22,19 @@ public final class PlaylumiInteractiveBoard extends LinearLayout {
         columns=round.realMosaic()?round.mosaicColumns():PlaylumiLayout.interactiveCellColumns(panelWidth,round.total());
         if(round.kind==PlaylumiInteractive.HABITATS){
             cells=null;
-            addView(label("Waar woont dit dier?",18,PlaylumiMagicArt.CREAM));
-            animal=label("",58,PlaylumiMagicArt.INK);animal.setMinHeight(dp(92));
+            animal=label("",72,PlaylumiMagicArt.INK);animal.setMinHeight(dp(120));
             animal.setBackground(surface(0xfffff1d4,0xffffd891));
             LayoutParams ap=new LayoutParams(-1,-2);ap.setMargins(dp(8),dp(5),dp(8),dp(3));addView(animal,ap);
             animalName=label("",18,PlaylumiMagicArt.CREAM);addView(animalName,new LayoutParams(-1,-2));
-            homeProgress=label("",14,PlaylumiMagicArt.GOLD);addView(homeProgress,new LayoutParams(-1,-2));
         }else{
             if(round.kind==PlaylumiInteractive.LETTERS||round.kind==PlaylumiInteractive.MOSAIC){
                 if(round.wordPuzzle()){
                     TextView clue=label(round.picture(),48,PlaylumiMagicArt.CREAM);
                     clue.setContentDescription("Plaatje bij het woord");addView(clue);
-                    addView(label("Woordraadsel",14,PlaylumiMagicArt.GOLD));
                 }else addView(label("Voorbeeld",14,PlaylumiMagicArt.GOLD));
                 exampleCells=addCells(true);
             }
-            addView(label(round.kind==PlaylumiInteractive.NUMBERS?"🚀 Bouw jouw raket":round.kind==PlaylumiInteractive.LETTERS?"🚂 Jouw lettertrein":"Jouw mozaïek",18,PlaylumiMagicArt.CREAM));
+            if(exampleCells!=null)addView(label("Jij",14,PlaylumiMagicArt.GOLD));
             cells=addCells(false);
         }
         refresh();
@@ -85,7 +82,6 @@ public final class PlaylumiInteractiveBoard extends LinearLayout {
             animal.setContentDescription(round.solved()?"Alle dieren thuis":"Dier "+(round.progress()+1)+" van "+round.total()+": "+round.target(round.progress()));
             animalName.setText(round.solved()?"Alle dieren zijn thuis!":round.animalName(round.progress()));
             animalName.setVisibility(round.solved()||!round.animalName(round.progress()).isEmpty()?VISIBLE:GONE);
-            homeProgress.setText(round.progress()+" van "+round.total()+" dieren thuis");
             return;
         }
         for(int i=0;i<cells.length;i++){
@@ -93,7 +89,7 @@ public final class PlaylumiInteractiveBoard extends LinearLayout {
             TextView cell=cells[i];
             if(round.kind==PlaylumiInteractive.MOSAIC){
                 int fill=complete?PlaylumiHandsOn.color(round.target(i)):next?0xff553681:0xff3f285e;
-                cell.setText(complete?"✓":next?"·":"");
+                cell.setText("");
                 cell.setTextColor(complete?PlaylumiWorldStyle.contrastingInk(fill):PlaylumiMagicArt.GOLD);
                 cell.setBackground(surface(fill,complete?0xffffe3a8:next?0xffffdc88:0xff8b68b2));
             }else{

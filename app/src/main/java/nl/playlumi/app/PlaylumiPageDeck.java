@@ -1,10 +1,12 @@
 package nl.playlumi.app;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -63,10 +65,10 @@ public final class PlaylumiPageDeck extends ViewGroup {
         };content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(true);content.setClipToPadding(true);addView(content,new LayoutParams(-1,-2));
         controls=new LinearLayout(context);controls.setGravity(Gravity.CENTER_VERTICAL);controls.setPadding(dp(4),0,dp(4),0);
-        GradientDrawable bg=new GradientDrawable();bg.setColor(0xff563782);bg.setCornerRadius(dp(15));bg.setStroke(dp(1),0xffb49adc);controls.setBackground(bg);
+        GradientDrawable bg=new GradientDrawable();bg.setColor(0xe639215c);bg.setCornerRadius(dp(14));controls.setBackground(bg);
         previous=arrow("‹","Vorige inhoudspagina");next=arrow("›","Volgende inhoudspagina");
         counter=new TextView(context);counter.setGravity(Gravity.CENTER);counter.setTextColor(0xfffff1cf);
-        counter.setTextSize(13);counter.setMaxLines(2);counter.setTypeface(Typeface.DEFAULT,Typeface.BOLD);counter.setIncludeFontPadding(false);
+        counter.setTextSize(13);counter.setMaxLines(2);counter.setTypeface(Typeface.DEFAULT,Typeface.NORMAL);counter.setIncludeFontPadding(false);
         counter.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         controls.addView(previous,new LinearLayout.LayoutParams(dp(54),-1));
         controls.addView(counter,new LinearLayout.LayoutParams(0,-1,1f));
@@ -79,7 +81,8 @@ public final class PlaylumiPageDeck extends ViewGroup {
     private Button arrow(String glyph,String description){
         Button b=new Button(getContext());b.setAllCaps(false);b.setText(glyph);b.setTextSize(26);b.setTextColor(0xffffefc5);
         b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(0,0,0,0);
-        b.setBackground(new android.graphics.drawable.ColorDrawable(0x00000000));b.setContentDescription(description);
+        GradientDrawable surface=new GradientDrawable();surface.setColor(0x00000000);surface.setCornerRadius(dp(12));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x26ffe3a2),surface,null));b.setStateListAnimator(null);b.setContentDescription(description);
         return b;
     }
     public void keepTogether(View view){if(view!=null)atomic.add(view);requestLayout();}

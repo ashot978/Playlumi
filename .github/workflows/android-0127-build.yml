@@ -1,0 +1,96 @@
+name: Android Playlumi 0.127 APK packaging only
+on:
+  push:
+    branches: ['feature/playlumi-0.127']
+  workflow_dispatch:
+
+concurrency:
+  group: playlumi-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+# This release follows the user's explicit request to skip testing.
+# No unit tests, Java QA, lint, debug builds, emulator or native checks run here.
+# The existing verification workflows remain available separately.
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PLAYLUMI_BUILD_CODE: '601028'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-read-only: false
+      - name: Compile production APK only
+        run: gradle --no-daemon -PplaylumiPackagingOnly=true assembleRelease
+
+      - name: Confirm APK identity and included illustrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLAYLUMI_APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s "$PLAYLUMI_APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$PLAYLUMI_APK" > build-release-package.txt
+          grep -F "package: name='nl.playlumi.app'" build-release-package.txt
+          grep -F "versionCode='601028'" build-release-package.txt
+          grep -F "versionName='0.127'" build-release-package.txt
+          for PLAYLUMI_ASSET in \
+            "playlumi_village.webp:bc39c748fb82a101e0280d16d6d3de1cd3e44d39453f87bb6d30870e155f5804" \
+            "magic/colors.webp:0f4e75126f1837234049742116f76bec0b800a67a98647661c9d42c8c098351e" \
+            "magic/letters.webp:45beccb5df3be63c21965e04c31b43d24d71a378b42a20f40a70b719284d2484" \
+            "magic/memory.webp:f3b8b045a44c75e1bac2d76a2ae886b5d02642ebfa2376f5a7a50b7eee8d61df" \
+            "magic/music.webp:9ccf7ef1ec5d705c88f350a5f84bab3610a200d3ac3d802f5788219fec99df78"; do
+            IFS=: read -r PLAYLUMI_ASSET_PATH PLAYLUMI_EXPECTED_HASH <<< "$PLAYLUMI_ASSET"
+            PLAYLUMI_ACTUAL_HASH=$(unzip -p "$PLAYLUMI_APK" "assets/$PLAYLUMI_ASSET_PATH" | sha256sum | awk '{print $1}')
+            [[ "$PLAYLUMI_ACTUAL_HASH" == "$PLAYLUMI_EXPECTED_HASH" ]] || { echo "Missing or changed illustration: $PLAYLUMI_ASSET_PATH" >&2; exit 1; }
+            echo "Included original illustration: $PLAYLUMI_ASSET_PATH"
+          done
+          sha256sum "$PLAYLUMI_APK" > build-release-unsigned-sha256.txt
+          printf '%s\n' \
+            'Playlumi 0.127 / 601028' \
+            'Scope: production compilation and APK packaging only.' \
+            'Tests, lint, native/emulator checks and upgrade trials were not run, as requested by the user.' \
+            'User acceptance is pending.' > build-release-scope.txt
+
+      - name: Copy official tools for private release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/signing-tools/lib
+          PLAYLUMI_SDK_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          cp "$PLAYLUMI_SDK_TOOLS/apksigner" build/signing-tools/apksigner
+          cp "$PLAYLUMI_SDK_TOOLS/lib/apksigner.jar" build/signing-tools/lib/apksigner.jar
+          cp "$PLAYLUMI_SDK_TOOLS/zipalign" build/signing-tools/zipalign
+          chmod +x build/signing-tools/apksigner build/signing-tools/zipalign
+          (cd build/signing-tools && sha256sum apksigner lib/apksigner.jar zipalign > tool-checksums.txt)
+
+      - name: Upload unsigned production APK for private signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-0127-unsigned-release
+          path: |
+            app/build/outputs/apk/release/app-release-unsigned.apk
+            build-release-unsigned-sha256.txt
+            build-release-package.txt
+            build-release-scope.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload official signing utilities
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlumi-0127-offline-signing-tools
+          path: build/signing-tools/
+          if-no-files-found: error
+          retention-days: 30

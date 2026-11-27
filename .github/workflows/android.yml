@@ -1,6 +1,9 @@
 name: Android Playlumi 0.126 release candidate
 on:
   push:
+    # The user explicitly requested delivery without testing for 0.127.
+    # Its isolated packaging workflow leaves these full verification gates intact.
+    branches-ignore: ['feature/playlumi-0.127']
   workflow_dispatch:
 
 concurrency:
