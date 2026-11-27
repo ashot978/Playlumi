@@ -1,165 +1,106 @@
-# Playlumi — 0.99 release candidate and roadmap to 1.0
+# Playlumi — ontwikkeling en roadmap
 
-Status: 0.108 / build 601009. Test build, not a production launch. Future builds use 0.109, 0.110, etc., and strictly increasing Android version codes.
+Laatste geverifieerde testbouw: **0.108 / 601009**. In ontwikkeling: **0.109 / 601010**. Daarna volgen 0.110, 0.111 enzovoort met steeds hogere Android-versiecodes. Versie 1.0 blijft een afzonderlijk besluit na acceptatie; een geslaagde testbouw is geen productiepublicatie.
 
-## 0.99: release candidate
-- [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
-- [x] Analog clocks: whole hours, quarter hours and five-minute steps by level; no 24-hour ambiguity without day part. Hour shifts retain minutes.
-- [x] Weather scenarios with a specific question and one intended response. Safer crossing and found-medicine examples.
-- [x] Star Catch awards normal progress once per completed round. Interactive correct steps count as a play day.
-- [x] Parent information about local storage, offline voice and deleting all app data.
-- [x] Mandatory dependency-free seeded Java regression gate for all catalogue routes, adaptive levels and legacy quiz configurations. Full Android unit tests and lint after APK packaging.
-- [x] 0.99.0 gate, APK package and full unit tests/lint passed on Actions run 45894018546.
-- [x] 0.99.1 gate, APK package and full unit tests/lint passed on Actions run 45897062350.
-- [ ] Repeat all checks for 0.99.2.
-- [x] 0.99.0 signed and verified with existing release certificate.
-- [ ] Verify signed 0.99.1 APK.
-- [ ] Physical-device tests on compact phone, opened Fold, tablet (portrait and landscape) and Android 15+ insets.
-- [ ] Run every exposed title at each supported age; confirm educational content and uniquely defensible answers. Generated tests are not a substitute for manual content acceptance.
+## Vaste uitgangspunten
 
-## 0.99.1: resume and lifecycle fixes
-- [x] Save and resume minigames, memory matches, melodies, bubbles and stars independently per age/profile/game. No repeat credit for completed rounds.
-- [x] Keep exact minigame state through configuration recreation and pause reminder; commit navigation before visual transitions.
-- [x] Stop delayed music preview on pause or navigation; relock parent access on leaving the parent area.
-- [x] Expand rhyme choices and prevent advanced letter/rhyme quizzes from silently dropping to the middle age tier.
-- [x] Add 1,620 deterministic mini state restoration checks to the release gate.
-- [ ] Confirm end-to-end restoration and reward counts on actual phones and Fold.
+- Lumi is de gouden ster en het hoofdpersonage. De zes werelden bieden leeftijdspassend spel voor 3–4, 5–6 en 7+.
+- Spelregels blijven zoveel mogelijk onafhankelijk van de interface. Bestaande routes, kledingcodes, profielgegevens en opslagkeys behouden hun betekenis.
+- De stad, beloningen, herhalingen en overzichten volgen echte opgeslagen gebeurtenissen. Een scherm weergeven of opnieuw openen verandert geen voortgang.
+- De app blijft lokaal bruikbaar zonder accounts, advertenties, trackers of extra toestemmingen. Dagopdrachten zijn optioneel; verdiende spullen vervallen niet door een overgeslagen dag.
+- De oorspronkelijke illustraties en de originele releasehandtekening blijven behouden. Native bediening en aangepaste indelingen vullen het tekenwerk aan.
+- De app voegt geen gesproken instructies toe. Schermlezers, muziek, feedbackgeluiden en minder beweging blijven afzonderlijk te bedienen.
+- Buildcontrole, emulatorproeven, privé ondertekenen, fysieke toestelacceptatie en publicatie zijn afzonderlijke stappen.
 
-## 0.99.2: improved everyday play
-- [x] Search by title, description and relevant keywords, within the chosen age group.
-- [x] Dedicated complete list of unfinished games ordered by recent use.
-- [x] Optional strategy hints, previously attempted answer state and explanations after solving; automatic next question remains.
-- [x] More compact short-answer layouts and filled numeric sequences after solving.
-- [x] 0.99.2 release gate, APK signature, full unit tests and lint passed on Actions run 45897467652.
-- [ ] Manual acceptance of search, answer selection and Fold layout.
+## 0.108 — afgeronde testbouw
 
-## 0.99.3: learning depth and pace
-- [x] 28 curated Dutch spelling contexts for the oldest age tier, with specific hints and explanations.
-- [x] Letter matching draws from 10, 18 or 26 letters according to level; still only 3, 4 or 6 choices.
-- [x] More missing-letter positions and complete visual patterns after solving.
-- [x] Automatic, calm and manual quiz progression per profile; existing automatic mode remains default.
-- [x] Additional 2,500 spelling and 3,600 letter regression samples and pacing checks.
-- [x] 0.99.3 build, signature, unit tests and lint verified, Actions run 45899377905.
-- [ ] Real-device interaction.
- 
-## 0.99.4: interactive learning depth
-- [x] Number race uses distractors for middle and older children, skip counting and descending sequences for older children.
-- [x] Letter train uses picture and word clues, incomplete examples and optional reveal instead of mandatory copying at older ages.
-- [x] Version interactive seeds so legacy unfinished rounds retain their original rules and tiles.
-- [x] Preserve final manual-pace quiz feedback across activity recreation.
-- [x] Additional 1,440 versioned interactive sessions tested by the release gate.
-- [x] 0.99.4 build, signing, Android unit tests and lint verified, Actions run 45900454569.
-- [ ] Real-device interaction.
+Bronversie: [06bf09abae45cea79143bee00924cecabb474bea](https://github.com/ashot978/Playlumi/commit/06bf09abae45cea79143bee00924cecabb474bea). De volledige functiebeschrijving staat in [RELEASE-0.108.md](RELEASE-0.108.md).
 
-## 0.99.5: advanced arithmetic
-- [x] Three additional 7+ routes: basic multiplication tables, exact division, and mixed addition/subtraction to 100.
-- [x] Separate route IDs retain existing arithmetic, favorites, and save slots.
-- [x] Correct quiz hints, explanations, speech operators and restored variant selection.
-- [x] Additional 3,600 advanced arithmetic regression samples.
-- [x] 0.99.5 full build, signature, Android unit tests and lint verified on Actions run 45901750270.
-- [ ] Real-device acceptance.
+### Uitgevoerd
 
-## 0.99.6: completion and celebration
-- [x] Reusable responsive completion panel for quizzes, story missions, minigames, music, stars and interactive boards.
-- [x] Display base round reward and actual saved wallet balance separately; rendering cannot grant currency.
-- [x] New persistent per-profile and age-specific completion marks, dedicated library filter, and count in achievements.
-- [x] Mark only completed catalog routes after the existing reward event; no guessed backfill for previous versions.
-- [x] Reuse scalable medal artwork and adapt medal size to screen height.
-- [x] Additional catalog completion and replay checks.
-- [ ] Verify full CI, signing and physical layout, including long labels and Fold.
+- [x] Een groeiende stadskaart met zeven afzonderlijke gebouwen, parken, een podium, brug en monument. Verdiende prestaties bepalen wat verschijnt; ieder perceel heeft een native knop met de echte voorwaarde, voortgang en cadeau.
+- [x] Getekende cape, sterrenpak, regenboogtrui en astronautenpak rond Lumi's stervorm, plus strik en sjaal. Bestaande eigendom en kledingcodes blijven gelijk.
+- [x] Drie nieuwe vaste spelroutes: Evenveel, Eerst en daarna, Tientallen en eenheden. Het aanbod telt 25 / 43 / 68 routes per leeftijdsgroep, met afzonderlijke inhoudscontroles.
+- [x] Dagopdrachten openen passende quizzen en geven voorrang aan een bruikbare begonnen ronde. Kalenderafhankelijke informatie wordt na terugkeer en bij een nieuwe dag vernieuwd.
+- [x] Herhalingsmijlpalen, werkelijk bewaarde sterren en een verwijzing naar nieuw verdiende stadsplekken op de eindpanelen. Geen extra mijlpaalvaluta of verzonnen historische rondes.
+- [x] Gezamenlijke opslag van score, beloning, voortgang en rondegegevens voor meer speltypes, waaronder interactieve borden, minispellen, muziek, bellen en sterren vangen.
+- [x] Native bediening over de oorspronkelijke telefoonillustratie, een leesbaardere indeling in smal landschap, tekstafhankelijke stadskolommen en antwoorden die verticaal kunnen groeien.
 
-## 0.100: simplified quiz interface and versioning
-- [x] Remove the quiz hint row, including hints after incorrect answers.
-- [x] Remove spoken instructions from game screens and parent settings; keep music, feedback sounds and Android accessibility.
-- [x] Hide the quiz continuation row until a correct answer; keep manual and automatic continuation and existing progress.
-- [x] Use the actual APK version in settings and remove obsolete voice information from the privacy dialog.
-- [x] 0.99.7 release compilation, artwork verification, tests and lint passed on Actions run 45902862452.
-- [x] Interim 1.0 (build 601000) compiled and passed unit tests/lint; superseded by the requested 0.100 numbering.
-- [x] 0.100 production APK, tests and lint passed on Actions run 45907665732; signed offline with the existing release certificate and verified ZIP alignment and payload integrity.
-- [ ] 0.100 emulator checks still pending; prior emulator test stopped at home navigation before reaching the quiz.
-- [ ] Physical-device acceptance still required. Version 0.100 is not authorization to publish.
+### Geverifieerd en opgeleverd
 
-## 0.101: resume at the chosen quiz pace
-- [x] Keep the solved question and manual Next action when reopening a saved unfinished quiz in manual mode; automatic and calm modes continue to the next question.
-- [x] Restore rejected choices without showing old hints; preserve whether a wrong answer was attempted.
-- [x] Reset stale final-feedback state for new and resumed sessions.
-- [x] Regression test for restored solved questions, disabled rejected choices, and prevention of repeat answer acceptance.
-- [ ] Run full CI, verify signing and emulator acceptance.
+- [x] [Android-run 45992312167](https://github.com/ashot978/Playlumi/actions/runs/45992312167): debug en release gebouwd; pakket, versie en oorspronkelijke illustraties gecontroleerd; **205 unit-tests in 51 suites geslaagd**.
+- [x] Android Lint op dezelfde bron: **0 fouten en 167 waarschuwingen**. De resterende meldingen zijn geen afgerond kwaliteitswerk en worden niet als een foutloos rapport voorgesteld.
+- [x] [UI-run 45992312107](https://github.com/ashot978/Playlumi/actions/runs/45992312107): telefoon- en Fold-emulatorproeven geslaagd, inclusief quizherstel, dagbeloningen, stad, kleding, nieuwe oefeningen en herstel van interactieve spellen.
+- [x] Updateproef van vastgepinde 0.107 naar 0.108 met dezelfde tijdelijke debughandtekening binnen één runner; opgeslagen voortgang en een echte begonnen quiz behouden.
+- [x] Echte screenshots beoordeeld van home, vergrendelde en vrijgespeelde stadsplekken, grote tekst, outfits en de volledig zichtbare onderkant van de stad.
+- [x] De productie-APK privé ondertekend met het oorspronkelijke releasecertificaat; pakket, versie, certificaat, ZIP-uitlijning en ongewijzigde inhoud gecontroleerd.
 
-## 0.102: save a quiz from its first question
-- [x] Persist an opened catalog quiz at 0/8 even before the first answer, including the exact question and answer order.
-- [x] Validate saved quiz counts and solved flags; exclude completed and inconsistent sessions.
-- [x] Restrict quiz snapshot writes to catalog play; retain independent age/profile/route keys.
-- [x] Restore the last played game and clear outdated feedback before saving the next question.
-- [x] Add unit tests for zero-attempt, wrong-answer, solved, completed and inconsistent session states.
-- [ ] Verify full CI, signing and device acceptance.
+SHA-256 van de opgeleverde 0.108-APK:
 
-## 0.103: robust quiz restoration
-- [x] Restore rejected answers by their original index mapping when legacy spatial options are reordered.
-- [x] Validate every saved answer and color; invalid question data never replaces a valid generated question.
-- [x] Preserve valid session counters and regenerate only a damaged saved question without awarding points.
-- [x] Add regression tests for legacy reordering and invalid choices.
-- [x] 0.102 production APK, unit tests, lint and offline signing verified (Actions run 45908000090).
-- [x] 0.103 release APK, unit tests, lint and existing certificate verification passed (Actions run 45908623299).
-- [ ] Emulator and physical-device acceptance still pending.
+```text
+b6f2fcc48c2ce2c7be2d888788007179eedf3aef629966f086ab51fb44c23c3b
+```
 
-## 0.104: consistent quiz answer persistence
-- [x] Stage score, wallet, learning progress, play-day/collection progress, completion marker and quiz snapshot in a single profile-preferences editor per answer.
-- [x] Keep existing preference keys and save methods for other game types.
-- [x] Reject invalid answer indices before mutating score.
-- [x] Add emulator assertions for saved score, answer attempts, stars and quiz state after incorrect/correct choices.
-- [ ] Verify CI, signing and emulator/device acceptance.
+SHA-256 van het oorspronkelijke releasecertificaat:
 
-## 0.105: restart acceptance and emulator isolation
-- [x] 0.104 production APK compiled, unit tests and lint passed on Actions run 45909144731; offline signature, package, version and unchanged APK payload verified.
-- [x] Separate phone and unfolded Fold acceptance jobs; bounded ADB calls and diagnostic screenshots/logs on failure.
-- [x] Debug-only library entry to isolate quiz interactions from emulator home navigation; production releases cannot use it.
-- [x] Exercise real quiz cards and answers, restart at 0/8, restart after a wrong answer, and restart after a manual correct answer. Assert saved question, rejected answer, scores, stars and continuation.
-- [ ] Emulator tests have not yet completed; production navigation and real physical device acceptance remain open.
-- [x] 0.105 APK, full unit tests and lint succeeded on Actions run 45909514573. Offline signature and APK payload/alignment verified.
-- [x] Phone emulator opened the real vegetable quiz; diagnostic screenshot showed six answer buttons with no hints or speech control. Acceptance script then failed because it expected village-only safe-area log fields (run 45909514604).
+```text
+d2b74f018bf6111382f901c2acdc03e787811ce207d6c4435fcca9559ae9b0ef
+```
 
-## 0.106: correct native quiz safe-area acceptance
-- [x] Report actual quiz safe-area padding in debug logs without changing release layout.
-- [x] Read only the quiz-specific insets; wait for the actual inset event.
-- [x] Verify the zero-answer snapshot has been persisted before force-stop, and compare saved questions and choices after reopening.
-- [x] Keep all existing learning, wallet, rejection and continuation checks.
-- [x] 0.106 release CI, unit tests, lint and independent phone/Fold acceptance passed (45909894600, 45909894635).
+[PR 92](https://github.com/ashot978/Playlumi/pull/92) is een concept en is niet gemerged. De APK is een testoplevering; er is geen openbare release of Play Store-publicatie. Fysieke Samsung-bediening en een update met de oorspronkelijke releasehandtekening op dat toestel zijn nog niet uitgevoerd.
 
-## 0.107: Lumi's city, daily challenges and replay
-- [x] Restore the original hero ID 0 as Lumi, a golden star with existing wardrobe and owned items. Legacy avatar choice remains stored; no new character chooser.
-- [x] Three optional local-calendar challenges: four correct quiz answers in each of two rotating worlds and one completed quiz round. Automatic earned-star bonuses, once per goal, with a full-set bonus. Per-profile state saved with quiz answers and wallet; no login penalty or expiry of earned items.
-- [x] Persist actual replay counts per age and route; label games as playable again and show five mastery tiers. Legacy completion marks remain intact; no invented historical round counts.
-- [x] City hub with seven permanent landmark/achievement rewards that unlock existing outfits and friends. Keep previously owned items. Reconnect the friend park and room with Lumi's outfit.
-- [x] Daily and city entry points on phone and wide home, plus daily shortcut in the library.
-- [x] Full build, new engine checks, unit tests and lint (45986125945), phone/Fold quiz acceptance (45986125973), and offline signature with the original certificate.
+## 0.109 — lopend werk
 
-## 0.108: visible city growth, new exercises and reliable rewards
-- [x] Dedicated growing city map with seven distinct shaded buildings/parks/bridge/monument. Locked land remains a landscaped plot; actual earned achievements determine the buildings. Native controls expose each place, requirement, progress and gift. The approved home artwork stays intact.
-- [x] Native clothing for Lumi: cape, star suit, rainbow sweater, astronaut, bow and scarf; keep original outfit IDs and old purchases.
-- [x] Three new stable routes: Evenveel (all ages), Eerst en daarna (5–6 and 7+), Tientallen en eenheden (7+). Catalog totals are 25 / 43 / 68. New independent seeded and semantic content checks.
-- [x] Every daily play button launches a compatible quiz for the chosen age, preferring a real unfinished round. Back returns to daily goals. Refresh calendar-dependent hubs after resume and while open across midnight.
-- [x] Replay mastery shown on every catalog round-completion panel; actual next milestone, stored wallet and new-city notice. No additional mastery currency or invented historic counts.
-- [x] Atomic preferences transactions for interactive, memory/shape/balloon, bubbles, star-catching, music, friend-care and gardening reward events. Preserve original save keys and earned amounts.
-- [x] Native focusable controls over the original phone-home buildings and navigation; wider readable layouts in narrow landscape; city columns adapt to text size; quiz answers can grow vertically.
-- [x] Required CI now builds and verifies both APK variants and runs full unit tests/lint before making release artifacts available.
-- [x] Added acceptance tests for city/daily/replay/gifts, interactive restoration, new question UI, large text, outfit previews and a same-runner debug upgrade from pinned 0.107. Tests use explicitly synthetic, disposable emulator profiles.
-- [ ] Complete 0.108 GitHub build and emulator checks, inspect screenshots, then verify offline signature/package/payload/alignment.
-- [ ] Physical Samsung Fold interaction and original-signed device upgrade remain separate acceptance work. No Play Store publication is implied.
-- [ ] Further content review and illustrated world detail can follow feedback on this build; optional weekly goals are not implemented.
+Baseline is de hierboven geverifieerde 0.108. De beschrijving van de nieuwe bouw staat in [RELEASE-0.109.md](RELEASE-0.109.md). De onderstaande bronwijzigingen moeten nog als één definitieve Android-bouw worden geverifieerd; er wordt hier geen geslaagde 0.109-CI-run geclaimd.
 
-## Remaining acceptance checks
-- [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.
-- [ ] Verify navigation, fold/unfold, rotation, back, multi-profile isolation and parent gate.
-- [ ] Verify screen reader, text sizing, muted audio, reduced motion, and absence of app-generated speech.
-- [ ] Test long sessions and app background/foreground, no repeated awards.
-- [ ] Review all wording and artwork licensing; final privacy notice, store Data Safety and target audience declarations must match the actual app and distribution.
+### Werkpakket
 
-## 1.0: only after approval
-- [ ] No known release-blocking crashes, content errors, lost progress or signing incompatibility.
-- [ ] Complete remaining real-device and store-policy checks; confirm closed/internal tester acceptance.
-- [ ] Prepare approved listing, screenshots, privacy URL, release notes and signed production AAB.
-- [ ] Owner expressly approves submission. No automatic Play Store publication.
+- Drie optionele speelideeën uit de werkelijke geschiedenis van het gekozen profiel en de gekozen leeftijd: verder spelen, opnieuw spelen en ontdekken. Geen extra beloning bij kiezen of verversen.
+- Een ouderoverzicht met feitelijke gespeelde rondes, oefeningen met een afgeronde ronde en verder te spelen rondes per wereld. Oudere voltooiing zonder rondetelling blijft herkenbaar zonder schatting.
+- Duidelijkere antwoordfeedback met een vinkje, native geselecteerde status en betekenisvolle schermlezertekst; bestaande antwoord- en herstelgegevens behouden.
+- Betrouwbaarder bewaren van tekeningen, ook bij het huisje in de kop: eerst geslaagde opslag, daarna de bestaande eenmalige beloning. Actief werk blijft beschikbaar als opslaan mislukt.
+- Hergebruik van avatarpaden, gradients en vaste navigatiegeometrie; een begrensde cache voor identieke gebouwgradients. Dit verwijdert terugkerende allocaties, zonder een gemeten FPS-winst te claimen.
+- Een gouden gezichtsuitsparing voor de volledige outfits. Strik en sjaal blijven volledig herkenbaar; Lumi's glimlach ligt binnen de stervorm.
+- De ouderpoort opnieuw sluiten bij achtergrondgebruik en Activity-herstel, met behoud van de bestaande lokale bediening.
 
-## After 1.0
-Consider new games, more original illustration/audio and expanded parent reports only after release stability. No ads, paid streak recovery, notifications pressuring daily play, or loss of earned badges.
+### Nog vóór oplevering
+
+- [ ] Alle bronwijzigingen en onafhankelijke controles op één vastgelegde commit samenbrengen en de verplichte regressiepoort opnieuw uitvoeren.
+- [ ] Debug en release bouwen; volledige unit-tests, Android Lint, pakket-/versiecontrole en oorspronkelijke artworkcontrole laten slagen.
+- [ ] De native speelideeën, terugnavigatie, ouderoverzichten, antwoordmarkering en tekenen bedienen op telefoon- en Fold-emulators.
+- [ ] Nieuwe screenshots beoordelen, inclusief grote tekst en de gewijzigde kledingstukken: strik, sjaal, sterrenpak, regenboogtrui en astronaut.
+- [ ] Een update van exact 0.108 naar 0.109 testen met controle van profielen, sterren, eigendom, favorieten en begonnen rondes.
+- [ ] De gecontroleerde productie-APK privé met de oorspronkelijke sleutel ondertekenen en pakket, versie, certificaat, inhoud en uitlijning verifiëren.
+- [ ] Definitieve commit, workflowreferenties, testresultaten, APK-hash en resterende grenzen bij de oplevering vastleggen.
+
+## Eerdere mijlpalen
+
+De individuele veranderingen blijven terug te vinden in de Git-geschiedenis. Deze samenvatting vervangt verouderde open vakjes voor inmiddels opgevolgde testbouwen.
+
+| Bouw | Belangrijkste ontwikkeling |
+| --- | --- |
+| 0.99.1–0.99.6 | Herstel per profiel/leeftijd/spel, zoeken en begonnen spellen, leeftijdspassende verdieping, instelbaar quiztempo, uitgebreid rekenen en consistente eindpanelen. |
+| 0.100 | Eenvoudigere quizbediening, geen hint- of spraakrij, werkelijk versienummer in instellingen en voortzetting van de gevraagde 0.xxx-nummering. |
+| 0.101–0.106 | Quizzen vanaf de eerste vraag bewaren, exacte keuzes en afgewezen antwoorden herstellen, consistente beloningsopslag en afzonderlijke telefoon-/Fold-proeven. |
+| 0.107 | Lumi als gouden ster, optionele dagopdrachten, echte herhalingsmijlpalen en zeven blijvende stadsbeloningen met bestaande outfits en vriendjes. |
+
+Bekende verificatiereferenties: 0.106 [build 45909894600](https://github.com/ashot978/Playlumi/actions/runs/45909894600) en [telefoon/Fold 45909894635](https://github.com/ashot978/Playlumi/actions/runs/45909894635); 0.107 [build 45986125945](https://github.com/ashot978/Playlumi/actions/runs/45986125945) en [telefoon/Fold 45986125973](https://github.com/ashot978/Playlumi/actions/runs/45986125973).
+
+## Open acceptatie en verdere verbetering
+
+- [ ] Op een fysiek Samsung Fold-toestel de oorspronkelijk ondertekende APK bijwerken en bestaande gegevens controleren. Ook oudere geïnstalleerde versies moeten hun voortgang behouden.
+- [ ] Op echte compacte telefoons, Fold en tablet: navigatie, vouwen/uitvouwen, rotatie, terug, profielscheiding, ouderpoort en systeeminsets controleren.
+- [ ] Schermlezer, grote tekst, focusvolgorde, raakvlakken, gedempt geluid en minder beweging daadwerkelijk bedienen.
+- [ ] Lange sessies en achtergrond/voorgrondwissels controleren op exact herstel, herhaalde beloningen en opgeslagen tekeningen.
+- [ ] Iedere aangeboden oefening voor de betreffende leeftijd handmatig beoordelen op begrijpelijkheid en een verdedigbaar antwoord. Gegenereerde tests alleen zijn daarvoor onvoldoende.
+- [ ] Overgebleven lintmeldingen inhoudelijk beoordelen; herstel op basis van werkelijk risico en effect, zonder algemene onderdrukking.
+- [ ] Teksten, artworkrechten en de privacy-informatie laten aansluiten op de uiteindelijke app en de gekozen distributie.
+
+Nieuwe leerstof en extra geïllustreerde details volgen op basis van feedback op de geteste bouwen. Wekelijkse doelen zijn geen onderdeel van 0.108 of het huidige 0.109-werkpakket. Advertenties, betaalde herstelopties, drukke terugkeermeldingen en verlies van verdiende badges passen niet binnen de uitgangspunten.
+
+## 1.0 — na afzonderlijke acceptatie
+
+- [ ] Geen bekende blokkerende crashes, inhoudsfouten, verloren voortgang of onverenigbare handtekening.
+- [ ] Fysieke toestelacceptatie en inhoudelijke beoordeling afgerond, met bevestiging van de eigenaar/testers.
+- [ ] Wanneer publicatie wordt gevraagd: goedgekeurde winkeltekst, screenshots, privacy-URL, leeftijds-/doelgroepverklaringen, releasebeschrijving en ondertekende productie-AAB voorbereiden.
+- [ ] De eigenaar geeft uitdrukkelijk opdracht tot de gewenste indiening of publicatie. Geen automatische Play Store-publicatie.

@@ -1,12 +1,12 @@
-name: Playlumi 0.108 city, upgrade and quiz acceptance
+name: Playlumi 0.109 city, upgrade and quiz acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.108']
+    branches: ['feature/playlumi-0.109']
   workflow_dispatch:
 jobs:
   quiz-ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -24,30 +24,37 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Offline play ideas and factual overview contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/play-ideas-check
+          javac -encoding UTF-8 -d build/play-ideas-check -sourcepath app/src/main/java tools/qa/PlayIdeasCheck.java app/src/main/java/nl/playlumi/app/PlaylumiPlayIdeas.java app/src/main/java/nl/playlumi/app/PlaylumiPlayOverview.java
+          timeout 90s java -cp build/play-ideas-check nl.playlumi.app.PlayIdeasCheck | tee build/play-ideas-check/report.txt
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build pinned 0.107 baseline with the same disposable debug key
+      - name: Build pinned 0.108 baseline with the same disposable debug key
         shell: bash
         run: |
           set -euo pipefail
-          PLAYLUMI_BASELINE_SHA=d18a6279672ef8b045028be8df25109f4c777d3f
-          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0107-baseline"
+          PLAYLUMI_BASELINE_SHA=06bf09abae45cea79143bee00924cecabb474bea
+          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0108-baseline"
           git worktree add --detach "$PLAYLUMI_BASELINE_DIR" "$PLAYLUMI_BASELINE_SHA"
           trap 'git worktree remove --force "$PLAYLUMI_BASELINE_DIR"' EXIT
-          PLAYLUMI_BUILD_CODE=601008 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug
+          PLAYLUMI_BUILD_CODE=601009 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug
           mkdir -p build/upgrade-baseline
-          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0107-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0107-debug.apk | grep -F "versionCode='601008'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0107-debug.apk | grep -F "versionName='0.107'"
+          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0108-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0108-debug.apk | grep -F "versionCode='601009'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0108-debug.apk | grep -F "versionName='0.108'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
-          sha256sum build/upgrade-baseline/playlumi-0107-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.108 source
+          sha256sum build/upgrade-baseline/playlumi-0108-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
+      - name: Build debug variant of exact 0.109 source
         env:
-          PLAYLUMI_BUILD_CODE: '601009'
+          PLAYLUMI_BUILD_CODE: '601010'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -67,7 +74,7 @@ jobs:
           emulator-boot-timeout: 390
           script: |
             python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0107-debug.apk
+            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0108-debug.apk
       - name: Collect host diagnostics after emulator failure
         if: failure()
         shell: bash
@@ -79,9 +86,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0108-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0109-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/
             build/upgrade-baseline/*.txt
+            build/play-ideas-check/report.txt
           if-no-files-found: warn
