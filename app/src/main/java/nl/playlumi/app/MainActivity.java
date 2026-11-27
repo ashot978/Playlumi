@@ -719,7 +719,18 @@ public class MainActivity extends Activity {
         header("☀ Lumi's daguitdagingen","Kies een avontuur voor vandaag");
         LinearLayout summary=personalPanel();
         homeAdd(summary,text(daily.completed()+"/3 uitdagingen · ★ "+wardrobe.stars(),22,TEXT),0,5);
-        homeAdd(summary,text("De speelknop opent meteen een passend spel voor "+AGES[PlaylumiRocketCurriculum.level(age)]+". Een begonnen ronde kun je gewoon verder spelen.",15,SUB),0,5);
+        LinearLayout milestones=new LinearLayout(this);milestones.setGravity(Gravity.CENTER);
+        for(int i=0;i<PlaylumiDailyChallenges.COUNT;i++){
+            boolean done=(daily.mask()&(1<<i))!=0;
+            int color=done?0xffd3f0d7:i==2?0xffffedc5:PlaylumiWorldStyle.pale(daily.world(i));
+            TextView mark=text((done?"✓":"✦")+" "+daily.progress(i)+"/"+daily.goal(i),17,TEXT);
+            mark.setBackground(rounded(color,14));mark.setPadding(dp(4),dp(7),dp(4),dp(7));
+            mark.setContentDescription(daily.title(i)+", "+daily.progress(i)+" van "+daily.goal(i));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);milestones.addView(mark,lp);
+        }
+        homeAdd(summary,milestones,0,5);
+        homeAdd(summary,text("Dagbeloningen: "+daily.claimedReward()+" / "+daily.totalReward()+" sterren vrijgespeeld",15,0xff715021),0,4);
+        homeAdd(summary,text("Kies een avontuur voor "+AGES[PlaylumiRocketCurriculum.level(age)]+".",14,SUB),0,3);
         homeAdd(summary,text(daily.completed()==3?"✓ Alle drie behaald · de bonus is al in je sterrenpot!":"Alle drie behaald? +"+PlaylumiDailyChallenges.BONUS+" bonussterren.",16,0xff715021),0,2);
         homeAdd(summary,text("Speel wanneer je zin hebt. Morgen zijn er nieuwe opdrachten; verdiende sterren en cadeaus blijven van jou.",14,SUB),3,2);
         addWidget(summary,3,6);
@@ -3433,6 +3444,7 @@ public class MainActivity extends Activity {
         int built=PlaylumiCityRewards.count(mask);
         LinearLayout summary=personalPanel();
         homeAdd(summary,text(built+" / "+PlaylumiCityRewards.ALL.length+" plekken · ★ "+wardrobe.stars(),21,TEXT),0,3);
+        parentProgressBar(summary,PlaylumiCityRewards.ALL.length,built,0xff9670cf,built+" van "+PlaylumiCityRewards.ALL.length+" stadsplekken vrijgespeeld");
         homeAdd(summary,text("Tik op een plek om te ontdekken wat je er kunt doen en welk cadeau erbij hoort.",14,SUB),0,2);
         int unseen=PlaylumiCityProgress.unseen(mask,prefs().getInt("city_seen_v1",0));
         if(unseen!=0){
@@ -3451,7 +3463,9 @@ public class MainActivity extends Activity {
             PlaylumiAchievements.Milestone milestone=PlaylumiAchievements.ALL[landmark.achievement];
             LinearLayout target=personalPanel();
             homeAdd(target,text("Een volgende ontdekking: "+landmark.name,19,TEXT),0,4);
-            homeAdd(target,text(milestone.description+" · "+PlaylumiCityProgress.progress(next,mask,stats)+" / "+milestone.goal,15,SUB),0,4);
+            int progress=PlaylumiCityProgress.progress(next,mask,stats);
+            homeAdd(target,text(milestone.description+" · "+progress+" / "+milestone.goal,15,SUB),0,4);
+            parentProgressBar(target,milestone.goal,progress,0xff9670cf,landmark.name+", "+progress+" van "+milestone.goal);
             Button open=tile("Bekijk deze plek","Cadeau: "+landmark.gift(),0xffd5f5df,68);
             target.addView(open,new LinearLayout.LayoutParams(-1,-2));open.setOnClickListener(v->showCityLandmark(next));
             addWidget(target,3,5);
@@ -4319,52 +4333,73 @@ public class MainActivity extends Activity {
             });
         }
     }
+    private java.util.List<PlaylumiParentProgress.World> parentProgress(){
+        PlayHistory history=playHistory();
+        java.util.Map<String,PlaylumiLearningProfile> profiles=new java.util.HashMap<>();
+        for(PlaylumiGameCatalog.Entry entry:PlaylumiGameCatalog.entries(age))
+            if(entry.kind==PlaylumiGameCatalog.QUIZ)profiles.put(entry.id,learningProfile(entry));
+        return PlaylumiParentProgress.summarize(age,history.unfinished,history.completed,history.rounds,profiles);
+    }
+    private void parentProgressBar(LinearLayout card,int max,int value,int color,String description){
+        ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(Math.max(1,max));bar.setProgress(Math.max(0,Math.min(max,value)));
+        bar.setProgressTintList(ColorStateList.valueOf(color));
+        bar.setContentDescription(description);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(9));lp.setMargins(0,dp(3),0,dp(5));
+        card.addView(bar,lp);
+    }
+    private LinearLayout parentWorldCard(PlaylumiParentProgress.World report,boolean openDetails){
+        PlaylumiPlayOverview.WorldSummary summary=report.summary;
+        int world=summary.world;
+        LinearLayout card=personalPanel();
+        homeAdd(card,homeLabel(PlaylumiWorldStyle.NAMES[world],19,PlaylumiWorldStyle.deep(world),true),0,3);
+        String counted=summary.countedRounds+(summary.countedRounds==1?" getelde ronde":" getelde rondes");
+        String completed=summary.completedRoutes+(summary.completedRoutes==1?" oefening met een afgeronde ronde":" oefeningen met een afgeronde ronde");
+        homeAdd(card,homeLabel(counted+" · "+completed,14,SUB,false),0,4);
+        homeAdd(card,homeLabel(summary.unfinishedRoutes+(summary.unfinishedRoutes==1?" begonnen ronde om verder te spelen":" begonnen rondes om verder te spelen"),14,0xff27684d,false),0,5);
+        homeAdd(card,homeLabel(summary.completedRoutes+" van "+summary.roundBasedRoutes+" rondespellen afgerond",14,SUB,false),0,1);
+        parentProgressBar(card,summary.roundBasedRoutes,summary.completedRoutes,PlaylumiWorldStyle.accent(world),
+                summary.completedRoutes+" van "+summary.roundBasedRoutes+" rondespellen afgerond");
+        if(report.percent()<0){
+            homeAdd(card,homeLabel(report.samples==0?"Nog geen nieuwe oefengegevens":"Nog te weinig gegevens voor een percentage",13,SUB,false),0,1);
+            if(report.total>0)homeAdd(card,homeLabel(report.total+" opgeloste quizvragen",13,SUB,false),0,1);
+        }else{
+            homeAdd(card,homeLabel(report.percent()+"% in één keer goed · "+report.total+" opgeloste vragen",14,SUB,false),0,2);
+            homeAdd(card,homeLabel("Gebaseerd op "+report.samples+" recente quizvragen.",12,SUB,false),0,1);
+            parentProgressBar(card,100,report.percent(),0xff8057ad,"Recente eerste antwoorden "+report.percent()+" procent");
+        }
+        if(openDetails){
+            Button details=tile("Bekijk spellen","",PlaylumiWorldStyle.pale(world),52);
+            details.setContentDescription("Bekijk spellen "+PlaylumiWorldStyle.NAMES[world]);
+            card.addView(details,new LinearLayout.LayoutParams(-1,-2));
+            details.setOnClickListener(v->{parentWorld=world;parentStatsPage=0;move(PARENT_STATS);});
+        }
+        return card;
+    }
+    private void parentDataNote(){
+        addText("Voor "+AGES[PlaylumiRocketCurriculum.level(age)]+". Rondes worden sinds versie 0.107 geteld. Oudere afgeronde oefeningen blijven zichtbaar.",14,SUB,0,4);
+        addText("Percentages komen uit maximaal 12 recente antwoorden per quiz. Geen rapportcijfer of vergelijking met andere kinderen. Tekenen telt niet als ronde.",13,SUB,0,5);
+    }
     private void showLearningSummary(){
         addText("Spelen en oefenen",22,TEXT,6,4);
-        addText("Voor "+AGES[PlaylumiRocketCurriculum.level(age)]+". Rondes worden sinds versie 0.107 geteld. Oudere afgeronde oefeningen staan ook in dit overzicht.",14,SUB,0,5);
-        addText("Recente eerste antwoorden per quiz worden gemeten vanaf 0.97. Dit is oefenvoortgang, geen beoordeling.",14,SUB,0,6);
-        PlayHistory history=playHistory();
-        java.util.List<PlaylumiPlayOverview.WorldSummary> overview=PlaylumiPlayOverview.summarize(age,history.unfinished,history.completed,history.rounds);
-        java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
-        for(int world=0;world<6;world++){
-            int samples=0,good=0;long total=0;
-            for(PlaylumiGameCatalog.Entry e:entries)if(e.world==world&&e.kind==PlaylumiGameCatalog.QUIZ){
-                PlaylumiLearningProfile data=learningProfile(e);samples+=data.samples;
-                good+=Integer.bitCount(data.bits);total+=data.total;
-            }
-            LinearLayout card=personalPanel();
-            homeAdd(card,homeLabel(PlaylumiWorldStyle.NAMES[world],17,TEXT,true),0,3);
-            PlaylumiPlayOverview.WorldSummary summary=overview.get(world);
-            String counted=summary.countedRounds+(summary.countedRounds==1?" getelde ronde":" getelde rondes");
-            String completed=summary.completedRoutes+(summary.completedRoutes==1?" oefening met een afgeronde ronde":" oefeningen met een afgeronde ronde");
-            homeAdd(card,homeLabel(counted+" · "+completed,14,SUB,false),0,4);
-            homeAdd(card,homeLabel(summary.unfinishedRoutes+(summary.unfinishedRoutes==1?" begonnen ronde om verder te spelen":" begonnen rondes om verder te spelen"),14,0xff27684d,false),0,5);
-            if(samples<4){
-                homeAdd(card,homeLabel(samples==0?"Nog geen nieuwe oefengegevens":"Nog te weinig gegevens voor een percentage",13,SUB,false),0,0);
-            }else{
-                int percent=(100*good+samples/2)/samples;
-                homeAdd(card,homeLabel(percent+"% in één keer goed · "+total+" opgeloste vragen",14,SUB,false),0,3);
-                ProgressBar bar=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
-                bar.setMax(100);bar.setProgress(percent);bar.setProgressTintList(ColorStateList.valueOf(0xff8057ad));
-                card.addView(bar,new LinearLayout.LayoutParams(-1,dp(8)));
-            }
-            addWidget(card,2,3);
-        }
+        parentDataNote();
+        for(PlaylumiParentProgress.World world:parentProgress())addWidget(parentWorldCard(world,true),2,3);
     }
     private void showParentHome() {
         header("👨‍👩‍👧 Voor ouders",PlaylumiProfiles.ageLabel(age)+". Alles blijft op dit toestel.");
         saveUsage();
-        int correct=0,attempts=0,badges=0;
-        for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
-            correct+=scores.get(i).correct;
-            attempts+=scores.get(i).attempts;
-            badges+=scores.get(i).earnedBadges();
+        long correct=0;int badges=0;
+        for(int i=0;i<PlaylumiScores.CATEGORIES;i++){
+            correct+=Math.max(0,scores.get(i).correct);badges+=scores.get(i).earnedBadges();
         }
-        addText("⭐ "+correct+" goede antwoorden",23,0xff34856d,10,6);
-        addText("🏅 "+badges+" van 144 badges verdiend",19,0xff9166b7,2,6);
-        addText("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",16,SUB,0,12);
-        showLearningSummary();
-        Button overview=tile("📊 Bekijk de voortgang","Scores en badges per leerwereld",
+        LinearLayout overviewCard=personalPanel();
+        homeAdd(overviewCard,homeLabel("Op dit toestel",17,TEXT,true),0,3);
+        homeAdd(overviewCard,homeLabel("⭐ "+correct+" goede antwoorden",23,0xff34856d,true),0,4);
+        homeAdd(overviewCard,homeLabel("🏅 "+badges+" van "+(PlaylumiScores.CATEGORIES*6)+" badges verdiend",17,TEXT,false),0,4);
+        homeAdd(overviewCard,homeLabel("⏱️ Vandaag ongeveer "+usage.minutes()+" minuten gespeeld",15,SUB,false),0,2);
+        homeAdd(overviewCard,homeLabel("Daguitdagingen vandaag: "+dailyChallenges().completed()+"/3",15,SUB,false),0,2);
+        addWidget(overviewCard,3,5);
+        Button overview=tile("📊 Bekijk de voortgang","Zes speelwerelden, per spel",
                 0xffd7eefe,104);
         addTile(overview,9);
         overview.setOnClickListener(v->move(PARENT_WORLDS));
@@ -4372,6 +4407,7 @@ public class MainActivity extends Activity {
                 0xffe8dcff,104);
         addTile(settings,9);
         settings.setOnClickListener(v->move(PARENT_SETTINGS));
+        showLearningSummary();
         Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
         addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
                 .setTitle("Privacy en gegevens")
@@ -4381,38 +4417,49 @@ public class MainActivity extends Activity {
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
     }
     private void showParentWorlds() {
-        header("📊 Voortgang","Kies een leerwereld.");
-        for(int w=0;w<3;w++) {
-            final int index=w;
-            int correct=0;
-            for(int i=w*8;i<w*8+8;i++)correct+=scores.get(i).correct;
-            Button b=tile(WORLD_ICONS[w]+"  "+WORLDS[w],
-                    "⭐ "+correct+" goed beantwoorde opdrachten",
-                    COLORS[w],104);
-            addTile(b,10);
-            b.setOnClickListener(v->{parentWorld=index;parentStatsPage=0;move(PARENT_STATS);});
-        }
+        header("📊 Voortgang","Kies een van de zes speelwerelden.");
+        parentDataNote();
+        for(PlaylumiParentProgress.World report:parentProgress())addWidget(parentWorldCard(report,true),2,4);
     }
     private void showParentStats() {
-        header(WORLD_ICONS[parentWorld]+" "+WORLDS[parentWorld],
-                "Overzicht per leeractiviteit");
-        addText("Pagina "+(parentStatsPage+1)+" / 4",16,0xff8766b0,0,12);
-        for(int i=parentWorld*8+parentStatsPage*2;i<parentWorld*8+parentStatsPage*2+2;i++) {
-            PlaylumiScores.Score score=scores.get(i);
-            String title=ICONS[i]+"  "+LearningGame.GAME_NAMES[i];
-            String info="⭐ "+score.correct+" goed  •  "+score.attempts+
-                    " pogingen  •  🏅 "+score.earnedBadges()+"/6 badges";
-            Button b=tile(title,info,COLORS[i%6],130);
-            b.setClickable(false);b.setFocusable(false);
-            addTile(b,9);
+        if(!PlaylumiWorldStyle.valid(parentWorld))parentWorld=0;
+        PlaylumiParentProgress.World report=parentProgress().get(parentWorld);
+        header(PlaylumiWorldStyle.NAMES[parentWorld],"Voortgang per spel");
+        addWidget(parentWorldCard(report,false),2,4);
+        int pageSize=PlaylumiParentProgress.pageSize(getResources().getConfiguration().screenWidthDp,getResources().getConfiguration().fontScale);
+        parentStatsPage=PlaylumiParentProgress.safePage(parentStatsPage,report.games.size(),pageSize);
+        int pages=PlaylumiParentProgress.pageCount(report.games.size(),pageSize);
+        addText("Spellen · pagina "+(parentStatsPage+1)+" van "+pages,17,TEXT,6,2);
+        addText("Spellen met opgeslagen resultaten staan bovenaan.",13,SUB,0,4);
+        int end=Math.min(report.games.size(),(parentStatsPage+1)*pageSize);
+        for(int i=parentStatsPage*pageSize;i<end;i++){
+            PlaylumiParentProgress.Game game=report.games.get(i);
+            LinearLayout card=personalPanel();
+            homeAdd(card,homeLabel(game.entry.icon+"  "+game.entry.title,18,PlaylumiWorldStyle.deep(parentWorld),true),0,3);
+            String state=game.rounds>0?game.rounds+(game.rounds==1?" getelde ronde":" getelde rondes"):
+                    game.completed?"Afgerond · oudere ronde, aantal onbekend":"Nog geen afgeronde ronde";
+            homeAdd(card,homeLabel(state,15,TEXT,false),0,3);
+            if(game.unfinished)homeAdd(card,homeLabel("Een begonnen ronde is opgeslagen.",14,0xff27684d,false),0,3);
+            if(game.entry.kind==PlaylumiGameCatalog.QUIZ){
+                if(game.total>0)homeAdd(card,homeLabel(game.total+" opgeloste quizvragen",14,SUB,false),0,3);
+                if(game.percent()>=0){
+                    homeAdd(card,homeLabel(game.percent()+"% in één keer goed · "+game.samples+" recente vragen",14,SUB,false),0,2);
+                    parentProgressBar(card,100,game.percent(),0xff8057ad,"Recente eerste antwoorden "+game.percent()+" procent");
+                }else homeAdd(card,homeLabel(game.samples==0?"Nog geen quizgegevens":"Nog te weinig recente vragen voor een percentage",13,SUB,false),0,2);
+                if(game.total>0&&game.level>=0)homeAdd(card,homeLabel("Adaptief oefenniveau: "+AGES[game.level]+(catalogAdaptive()?"":" (adaptief oefenen staat uit)"),13,SUB,false),0,1);
+            }else homeAdd(card,homeLabel("Interactief spel · voortgang per ronde",13,SUB,false),0,1);
+            addWidget(card,2,3);
         }
-        Button more=tile(parentStatsPage<3?"Meer categorieën →":"↩ Eerste categorieën","",
-                0xffe8dcff,80);
-        addTile(more,12);
-        more.setOnClickListener(v->{
-            parentStatsPage=parentStatsPage<3?parentStatsPage+1:0;
-            showPage();
-        });
+        LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER);
+        Button previous=tile("‹ Vorige","",0xffe8dcff,56),next=tile("Volgende ›","",0xffd5f5df,56);
+        previous.setEnabled(parentStatsPage>0);next.setEnabled(parentStatsPage+1<pages);
+        previous.setContentDescription("Vorige pagina met spellen");next.setContentDescription("Volgende pagina met spellen");
+        for(Button b:new Button[]{previous,next}){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);navigation.addView(b,lp);
+        }
+        addWidget(navigation,4,6);
+        previous.setOnClickListener(v->{parentStatsPage--;showPage();});
+        next.setOnClickListener(v->{parentStatsPage++;showPage();});
     }
     private void showParentSettings() {
         header("⚙️ Instellingen","Deze instellingen blijven op dit toestel.");

@@ -47,4 +47,17 @@ public final class PlaylumiCityDailyTest {
         assertEquals("Diamant",PlaylumiCompletion.mastery(20));
         assertEquals(6,PlaylumiCompletion.nextMastery(3));
     }
+    @Test public void visibleDailyRewardTotalsOnlyDescribeExistingClaims(){
+        PlaylumiDailyChallenges day=new PlaylumiDailyChallenges(42,42,0,0,0,0,0);
+        assertEquals(70,day.totalReward());assertEquals(0,day.claimedReward());
+        for(int i=0;i<4;i++)day.correct(day.world(0),false);
+        assertEquals(15,day.claimedReward());
+        for(int i=0;i<4;i++)day.correct(day.world(1),false);
+        assertEquals(30,day.claimedReward());
+        day.correct(day.world(0),true);
+        assertEquals(70,day.claimedReward());
+        PlaylumiDailyChallenges restored=new PlaylumiDailyChallenges(42,42,4,4,1,7,1);
+        assertEquals(70,restored.claimedReward());assertEquals(0,restored.correct(restored.world(0),true));
+        assertEquals(0,new PlaylumiDailyChallenges(43,42,4,4,1,7,1).claimedReward());
+    }
 }

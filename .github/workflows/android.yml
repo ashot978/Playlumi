@@ -1,4 +1,4 @@
-name: Android Playlumi 0.117 release candidate
+name: Android Playlumi 0.118 release candidate
 on:
   push:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/rc-check
-          javac -encoding UTF-8 -d build/rc-check -sourcepath app/src/main/java tools/qa/ReleaseCandidateCheck.java tools/qa/ThinkingPracticeCheck.java tools/qa/PlayIdeasCheck.java tools/qa/FoundationsCheck.java tools/qa/DrawingHistoryCheck.java tools/qa/SkillPracticeCheck.java tools/qa/HandsOnCheck.java app/src/main/java/nl/playlumi/app/PlaylumiPlayIdeas.java app/src/main/java/nl/playlumi/app/PlaylumiPlayOverview.java
+          javac -encoding UTF-8 -d build/rc-check -sourcepath app/src/main/java tools/qa/ReleaseCandidateCheck.java tools/qa/ThinkingPracticeCheck.java tools/qa/PlayIdeasCheck.java tools/qa/FoundationsCheck.java tools/qa/DrawingHistoryCheck.java tools/qa/SkillPracticeCheck.java tools/qa/HandsOnCheck.java tools/qa/ParentProgressCheck.java app/src/main/java/nl/playlumi/app/PlaylumiPlayIdeas.java app/src/main/java/nl/playlumi/app/PlaylumiPlayOverview.java
           timeout 90s java -cp build/rc-check nl.playlumi.app.ReleaseCandidateCheck | tee build/rc-check/report.txt
           timeout 90s java -cp build/rc-check nl.playlumi.app.ThinkingPracticeCheck | tee -a build/rc-check/report.txt
           timeout 90s java -cp build/rc-check nl.playlumi.app.PlayIdeasCheck | tee -a build/rc-check/report.txt
@@ -32,6 +32,7 @@ jobs:
           timeout 90s java -cp build/rc-check nl.playlumi.app.DrawingHistoryCheck | tee -a build/rc-check/report.txt
           timeout 90s java -cp build/rc-check nl.playlumi.app.SkillPracticeCheck | tee -a build/rc-check/report.txt
           timeout 90s java -cp build/rc-check nl.playlumi.app.HandsOnCheck | tee -a build/rc-check/report.txt
+          timeout 90s java -cp build/rc-check nl.playlumi.app.ParentProgressCheck | tee -a build/rc-check/report.txt
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -40,7 +41,7 @@ jobs:
           gradle-version: '8.9'
           cache-read-only: false
       - name: Pin release versionCode
-        run: echo "PLAYLUMI_BUILD_CODE=601018" >> "$GITHUB_ENV"
+        run: echo "PLAYLUMI_BUILD_CODE=601019" >> "$GITHUB_ENV"
       - name: Compile debug and production APKs
         run: gradle --no-daemon assembleDebug assembleRelease
 
@@ -67,8 +68,8 @@ jobs:
               echo "PASS: approved game art $asset $actual"
             done
             "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='nl.playlumi.app'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='601018'"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.117'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='601019'"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.118'"
           done
           sha256sum app/build/outputs/apk/release/app-release-unsigned.apk > build-release-unsigned-sha256.txt
 
@@ -90,7 +91,7 @@ jobs:
       - name: Upload unsigned production release for offline signing only
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0117-unsigned-release
+          name: playlumi-0118-unsigned-release
           path: |
             app/build/outputs/apk/release/app-release-unsigned.apk
             build-release-unsigned-sha256.txt
@@ -101,7 +102,7 @@ jobs:
       - name: Upload standard Android SDK signing utilities
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0117-offline-signing-tools
+          name: playlumi-0118-offline-signing-tools
           path: build/signing-tools/
           if-no-files-found: error
           retention-days: 30
@@ -112,7 +113,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0117-full-qa
+          name: playlumi-0118-full-qa
           path: |
             app/build/reports/tests/
             app/build/reports/lint-results-debug.*

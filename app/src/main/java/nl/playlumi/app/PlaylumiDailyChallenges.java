@@ -33,6 +33,8 @@ public final class PlaylumiDailyChallenges {
     public int progress(int i){return progress[i];}
     public int mask(){return mask;}
     public int completed(){return Integer.bitCount(mask);}
+    public int totalReward(){int total=BONUS;for(int reward:REWARDS)total+=reward;return total;}
+    public int claimedReward(){int total=mask==7?BONUS:0;for(int i=0;i<COUNT;i++)if((mask&(1<<i))!=0)total+=reward(i);return total;}
     public int completedSets(){return completedSets;}
     public String title(int i){return i==2?"Speel een hele quizronde":PlaylumiWorldStyle.NAMES[world(i)];}
     public String description(int i){return i==2?"Beantwoord alle vragen in een quizronde.":"Geef "+ANSWERS+" goede antwoorden in deze wereld.";}
