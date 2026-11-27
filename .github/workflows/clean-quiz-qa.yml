@@ -1,8 +1,14 @@
-name: Playlumi 0.125 named screen sheets and upgrade acceptance
+name: Playlumi 0.126 upgrade, Dierensudoku and native release acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.125']
+    branches: ['feature/playlumi-0.126']
   workflow_dispatch:
+    inputs:
+      full_regression:
+        description: 'Run all historical native regression groups after the required clean-quiz gate'
+        type: boolean
+        required: false
+        default: false
 jobs:
   quiz-ui:
     runs-on: ubuntu-latest
@@ -65,9 +71,9 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0123-debug.apk | grep -F "versionName='0.123'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
           sha256sum build/upgrade-baseline/playlumi-0123-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.125 source
+      - name: Build debug variant of exact 0.126 source
         env:
-          PLAYLUMI_BUILD_CODE: '601026'
+          PLAYLUMI_BUILD_CODE: '601027'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -75,8 +81,10 @@ jobs:
             sudo chown root:kvm /dev/kvm
             sudo chmod 666 /dev/kvm
           fi
-      - name: Test upgrade, quiz, city, simplified navigation and drawings on phone and Fold
+      - name: Required clean quiz and focused release acceptance on phone and Fold
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          PLAYLUMI_FULL_NATIVE: ${{ inputs.full_regression || false }}
         with:
           api-level: 35
           target: default
@@ -86,8 +94,8 @@ jobs:
           disable-linux-hw-accel: auto
           emulator-boot-timeout: 390
           script: |
-            python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0123-debug.apk
+            timeout --kill-after=15s 300s python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
+            if [ "$PLAYLUMI_FULL_NATIVE" = "true" ]; then timeout --kill-after=15s 1900s python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0123-debug.apk; else timeout --kill-after=15s 900s python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0123-debug.apk --release-smoke; fi
       - name: Collect host diagnostics after emulator failure
         if: failure()
         shell: bash
@@ -99,7 +107,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0125-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0126-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/

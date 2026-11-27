@@ -3,10 +3,10 @@ import java.util.*;
 
 /** Versioned, deterministic board games with exact saved cell selections. */
 public final class PlaylumiPuzzle {
-    public static final int NUMBER_HUNT=4,WORD_PATH=5,MAZE=6,RHYTHM=7,SORT=8,PIXEL=9,SUMS=10,SYMMETRY=11,MAP=12,VERSION=4,LAST=MAP;
-    private static final String[] TITLES={"Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart"};
-    private static final String[] ICONS={"🔢","🔎","🏰","♫","🍎","▦","➕","◧","🗺️"};
-    private static final String[] DESCRIPTIONS={"Zoek getallen op het speelbord in volgorde","Vind woorden via aangrenzende letters","Volg het doolhofpad naar de schat","Onthoud en speel een reeks dierengeluiden na","Verzamel alle voorwerpen die bij een groep horen","Herstel de verschillen tussen twee pixelplaten","Los sommen op en vind het antwoord op het bord","Herstel het spiegelbeeld","Vind schatten met letters en cijfers op een kaart"};
+    public static final int NUMBER_HUNT=4,WORD_PATH=5,MAZE=6,RHYTHM=7,SORT=8,PIXEL=9,SUMS=10,SYMMETRY=11,MAP=12,SUDOKU=13,VERSION=4,LAST=SUDOKU;
+    private static final String[] TITLES={"Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart","Dierensudoku"};
+    private static final String[] ICONS={"🔢","🔎","🏰","♫","🍎","▦","➕","◧","🗺️","🐾"};
+    private static final String[] DESCRIPTIONS={"Zoek getallen op het speelbord in volgorde","Vind woorden via aangrenzende letters","Volg het doolhofpad naar de schat","Onthoud en speel een reeks dierengeluiden na","Verzamel alle voorwerpen die bij een groep horen","Herstel de verschillen tussen twee pixelplaten","Los sommen op en vind het antwoord op het bord","Herstel het spiegelbeeld","Vind schatten met letters en cijfers op een kaart","Geef ieder dier een plek: één keer per rij en kolom"};
     private static final String[][] WORDS={{"KAT","VIS","ZON","MUS","PEN","UIL"},{"BOEK","VORK","TUIN","STER","FLES","MELK"},{"FIETS","PLANT","RAKET","SCHIP","WOLK","BLOEM","FRUIT","VLUCHT"}};
     private static final String[][] GROUPS={{"🍎","🍌","🍇","🍓","🍐","🍊","🍉","🍒"},{"🐶","🐱","🐭","🐰","🐸","🐝","🦋","🐢"},{"🚗","🚌","🚲","🚂","🚁","🚀","🚢","🚕"},{"👕","👖","🧦","🧢","🧤","👗","👢","🧣"}};
     private static final String[] GROUP_NAMES={"fruit","dieren","voertuigen","kleding"};
@@ -16,11 +16,12 @@ public final class PlaylumiPuzzle {
     private final String[] board,reference,questions;private final int[] order;
     private final boolean unordered;private final int initial,goal,allowedMask,step;private final String topic;
     private int progress,mask;
+    private final PlaylumiAnimalSudoku sudoku;
     public static boolean supported(int kind){return kind>=4&&kind<=LAST;}
-    public static boolean offered(int kind,int age){return supported(kind)&&age>=0&&age<=2&&(kind<SUMS||kind<=SYMMETRY&&age>=1||kind==MAP&&age==2);}
+    public static boolean offered(int kind,int age){return supported(kind)&&age>=0&&age<=2&&(kind<SUMS||kind<=SYMMETRY&&age>=1||kind==MAP&&age==2||kind==SUDOKU);}
     public static String title(int k){return TITLES[k-4];}public static String icon(int k){return ICONS[k-4];}public static String description(int k){return DESCRIPTIONS[k-4];}
-    public static int world(int k){switch(k){case NUMBER_HUNT:case SUMS:return 0;case WORD_PATH:return 1;case MAZE:case SYMMETRY:case MAP:return 2;case RHYTHM:return 3;case SORT:return 4;case PIXEL:return 5;default:throw new IllegalArgumentException("puzzle");}}
-    public static int scoreCategory(int k){switch(k){case NUMBER_HUNT:return LearningGame.NUMBERS;case WORD_PATH:return LearningGame.WORDS;case MAZE:case MAP:return 18;case RHYTHM:case SYMMETRY:return LearningGame.PATTERNS;case SORT:return ExtraGames.CATEGORIES;case PIXEL:return LearningGame.COLORS;case SUMS:return ExtraGames.MATH;default:throw new IllegalArgumentException("puzzle");}}
+    public static int world(int k){switch(k){case NUMBER_HUNT:case SUMS:return 0;case WORD_PATH:return 1;case MAZE:case SYMMETRY:case MAP:case SUDOKU:return 2;case RHYTHM:return 3;case SORT:return 4;case PIXEL:return 5;default:throw new IllegalArgumentException("puzzle");}}
+    public static int scoreCategory(int k){switch(k){case NUMBER_HUNT:return LearningGame.NUMBERS;case WORD_PATH:return LearningGame.WORDS;case MAZE:case MAP:return 18;case RHYTHM:case SYMMETRY:case SUDOKU:return LearningGame.PATTERNS;case SORT:return ExtraGames.CATEGORIES;case PIXEL:return LearningGame.COLORS;case SUMS:return ExtraGames.MATH;default:throw new IllegalArgumentException("puzzle");}}
     public static PlaylumiPuzzle start(int kind,int age,long seed){return new PlaylumiPuzzle(kind,age,seed,0,0);}
     private static ArrayList<Integer> positions(int n,Random r){ArrayList<Integer> a=new ArrayList<>();for(int i=0;i<n;i++)a.add(i);Collections.shuffle(a,r);return a;}
     private static int[] first(List<Integer> a,int n){int[] b=new int[n];for(int i=0;i<n;i++)b[i]=a.get(i);return b;}
@@ -30,6 +31,7 @@ public final class PlaylumiPuzzle {
     public PlaylumiPuzzle(int kind,int level,long seed,int count,int savedMask){
         if(!offered(kind,level))throw new IllegalArgumentException("puzzle age or kind");
         this.kind=kind;this.level=level;this.seed=seed;Random r=new Random(seed);
+        sudoku=kind==SUDOKU?new PlaylumiAnimalSudoku(level,seed):null;
         String[] b,ref=null,qs=null;int[] sequence;boolean any=false;int start=-1,end=-1,inc=1;String subject="";
         int w=level==0?3:4,h=level==0?3:level==1?3:4;
         switch(kind){
@@ -80,6 +82,12 @@ public final class PlaylumiPuzzle {
                 for(int pos:sequence){String s;do{s=PIXELS[r.nextInt(level+3)];}while(s.equals(ref[pos]));b[pos]=s;}break;
             }
             case MAP:{w=h=4;b=new String[w*h];Arrays.fill(b,"·");sequence=first(positions(b.length,r),5);break;}
+            case SUDOKU:{
+                w=h=sudoku.size;b=new String[w*h];ref=new String[b.length];sequence=new int[sudoku.total()];
+                for(int i=0;i<b.length;i++){b[i]=sudoku.clue(i);ref[i]=sudoku.solvedCell(i);}
+                for(int i=0;i<sequence.length;i++)sequence[i]=sudoku.cellAt(i);
+                break;
+            }
             default:throw new IllegalArgumentException("puzzle");
         }
         cols=w;rows=h;board=b;reference=ref;questions=qs;order=sequence;unordered=any;initial=start;goal=end;topic=subject;step=inc;
@@ -92,18 +100,23 @@ public final class PlaylumiPuzzle {
     public int total(){return order.length;}public int progress(){return progress;}public int mask(){return mask;}public boolean solved(){return progress==total();}
     public int cells(){return board.length;}public boolean unordered(){return unordered;}public int startCell(){return initial;}public int goalCell(){return goal;}
     public boolean selected(int i){return i>=0&&i<cells()&&(mask&(1<<i))!=0;}
-    public int currentCell(){return kind==MAZE?(progress==0?initial:order[progress-1]):-1;}
+    public int currentCell(){return kind==SUDOKU?(solved()?-1:order[progress]):kind==MAZE?(progress==0?initial:order[progress-1]):-1;}
+    public int optionCount(){return kind==SUDOKU?sudoku.size:cells();}
+    public String optionIcon(int option){return sudoku==null?"":sudoku.icon(option);}
+    public String optionName(int option){return sudoku==null?"":sudoku.name(option);}
+    public String animalName(int cell){return sudoku==null?"":sudoku.name(sudoku.solutionValue(cell));}
     public String topic(){return topic;}public String coordinate(int i){return ""+(char)('A'+i%cols)+(1+i/cols);}
     public String original(int i){return board[i];}public String reference(int i){return reference==null?"":reference[i];}public int referenceCount(){return reference==null?0:reference.length;}
     public String display(int i){
         if(kind==MAZE){if(i==currentCell())return solved()?"🏆":"🚀";if(i==goal)return "⭐";return "#".equals(board[i])?"▧":selected(i)||i==initial?"✓":"·";}
+        if(kind==SUDOKU)return selected(i)?reference[i]:board[i];
         if(kind==MAP)return selected(i)?"💎":"·";if((kind==PIXEL||kind==SYMMETRY)&&selected(i))return reference[i];return board[i];
     }
-    public boolean blocked(int i){return kind==MAZE&&"#".equals(board[i])||kind==SYMMETRY&&i%cols<cols/2;}
+    public boolean blocked(int i){return kind==SUDOKU&&sudoku.given(i)||kind==MAZE&&"#".equals(board[i])||kind==SYMMETRY&&i%cols<cols/2;}
     public static int paint(String s){for(int i=0;i<PIXELS.length;i++)if(PIXELS[i].equals(s))return PAINTS[i];return 0xfff6e8ff;}
-    public boolean accepts(int i){return !solved()&&i>=0&&i<cells()&&(unordered?(allowedMask&(1<<i))!=0&&!selected(i):i==order[progress]);}
-    public int expected(){if(solved())return -1;if(!unordered)return order[progress];for(int i:order)if(!selected(i))return i;return -1;}
-    public boolean tap(int i){if(!accepts(i))return false;if(kind!=RHYTHM)mask|=1<<i;progress++;return true;}
+    public boolean accepts(int i){if(kind==SUDOKU)return !solved()&&i>=0&&i<optionCount()&&i==sudoku.answerAt(progress);return !solved()&&i>=0&&i<cells()&&(unordered?(allowedMask&(1<<i))!=0&&!selected(i):i==order[progress]);}
+    public int expected(){if(solved())return -1;if(kind==SUDOKU)return sudoku.answerAt(progress);if(!unordered)return order[progress];for(int i:order)if(!selected(i))return i;return -1;}
+    public boolean tap(int i){if(!accepts(i))return false;if(kind!=RHYTHM)mask|=1<<(kind==SUDOKU?order[progress]:i);progress++;return true;}
     public String instruction(){switch(kind){
         case NUMBER_HUNT:return "Begin bij "+topic+". Tel steeds "+step+" verder.";
         case WORD_PATH:return "Zoek "+topic+". Tik de letters naast elkaar.";
@@ -114,6 +127,7 @@ public final class PlaylumiPuzzle {
         case SUMS:return "Los de som op. Zoek het antwoord op het bord.";
         case SYMMETRY:return "Vergelijk links en rechts. Herstel de verkeerde vakjes rechts.";
         case MAP:return "Lees de letter en het cijfer. Vind dat vak op de schatkaart.";
+        case SUDOKU:return level==0?"Elk dier één keer per rij en kolom.":"Elk dier één keer per rij, kolom en blok van vier.";
         default:return "";}}
     public String prompt(){if(solved())return "Alles gelukt!";switch(kind){
         case NUMBER_HUNT:return progress==0?"Start bij "+topic:"Tel "+step+" verder vanaf "+board[order[progress-1]];
@@ -122,7 +136,7 @@ public final class PlaylumiPuzzle {
         case RHYTHM:return "Speel toon "+(progress+1)+" van "+total();
         case SORT:return "Nog "+(total()-progress)+" "+topic+" zoeken";
         case PIXEL:case SYMMETRY:return "Nog "+(total()-progress)+" vakjes herstellen";
-        case SUMS:return questions[progress];case MAP:return "Zoek schat "+coordinate(order[progress]);default:return "";}}
+        case SUMS:return questions[progress];case MAP:return "Zoek schat "+coordinate(order[progress]);case SUDOKU:return "Welk dier hoort in het gouden vak?";default:return "";}}
     public String hint(){switch(kind){
         case MAZE:return "Kies een vak naast de raket op het pad.";
         case PIXEL:return "Vergelijk dezelfde plek in beide platen.";
@@ -132,6 +146,7 @@ public final class PlaylumiPuzzle {
         case RHYTHM:return "Bekijk of beluister de reeks opnieuw.";
         case SUMS:return "Reken rustig uit en probeer een ander vak.";
         case MAP:return "De letters staan bovenaan, de cijfers links.";
+        case SUDOKU:return level==0?"Kijk welk dier nog mist in de rij en kolom.":"Kijk naar de rij, kolom en het blok. Welk dier mist nog?";
         default:return "Tel rustig verder en probeer opnieuw.";}}
     public String rhythmTrail(){if(kind!=RHYTHM)return "";StringBuilder s=new StringBuilder();for(int i=0;i<total();i++){if(i>0)s.append("  ");s.append(i<progress?reference[i]:"○");}return s.toString();}
 }

@@ -2633,7 +2633,10 @@ public class MainActivity extends Activity {
         }
         int width=Math.min(620,PlaylumiLayout.libraryContentWidth(getResources().getConfiguration().screenWidthDp)-24);
         int height=getResources().getConfiguration().screenHeightDp;
-        if(height<740)width=Math.min(width,Math.max(160,(height-220)*(puzzle.cols)/(puzzle.rows+(puzzle.kind==PlaylumiPuzzle.PIXEL?puzzle.rows:0))));
+        // Sudoku keeps the animal choices together with the full board. Reserve
+        // their height before sizing the grid so a short phone stays playable.
+        int choiceHeight=puzzle.kind==PlaylumiPuzzle.SUDOKU?86:0;
+        if(height<740)width=Math.min(width,Math.max(160,(height-220-choiceHeight)*(puzzle.cols)/(puzzle.rows+(puzzle.kind==PlaylumiPuzzle.PIXEL?puzzle.rows:0))));
         board[0]=new PlaylumiPuzzleBoard(this,puzzle,width,(index,button)->{
             if(page!=INTERACTIVE||interactive!=round||moving||round.solved()||melodyPreviewActive)return;
             preview.setVisibility(View.GONE);
@@ -3983,19 +3986,21 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams ap=side?new LinearLayout.LayoutParams(-1,0,1f):new LinearLayout.LayoutParams(dp(width<340?80:104),-1);
         preview.addView(character,ap);character.setOnClickListener(v->{character.wave();sound.hello();});
         LinearLayout stats=new LinearLayout(this);stats.setOrientation(LinearLayout.VERTICAL);stats.setGravity(Gravity.CENTER_VERTICAL);
-        final TextView balance=text("★ "+wardrobe.stars()+" speelsterren",18,0xff715021);
-        final TextView owned=text((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld",12,SUB);
+        final TextView balance=text("★ "+wardrobe.stars(),18,0xff715021);
+        balance.setContentDescription(wardrobe.stars()+" speelsterren");
+        final TextView owned=text((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+"/36 accessoires",13,SUB);
         final TextView feedback=text("Kies een accessoire.",13,SUB);
-        feedback.setMaxLines(2);feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        final Button chooseCategory=tile("Andere accessoires","",0xffe8dcff,44);
-        chooseCategory.setMinHeight(dp(44));chooseCategory.setContentDescription("Kies een andere accessoirecategorie");
-        for(View child:new View[]{balance,owned,feedback,chooseCategory})stats.addView(child,new LinearLayout.LayoutParams(-1,-2));
+        feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        // Keep only the compact wallet beside Lumi. Long feedback and actions
+        // belong to the measured content sheets, where they cannot be clipped.
+        for(View child:new View[]{balance,owned})stats.addView(child,new LinearLayout.LayoutParams(-1,-2));
         preview.addView(stats,side?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-1,1f));
-        int previewExtent=side?Math.min(230,width/3):height<570?118:140;
+        int previewExtent=side?Math.min(230,width/3):Math.round(96+64*Math.max(0,getResources().getConfiguration().fontScale-1f));
         pageDeck.setPinnedView(preview,dp(previewExtent),side);
 
         LinearLayout categories=personalPanel();
         homeAdd(categories,homeLabel("Kies wat je wilt veranderen",18,TEXT,true),0,3);
+        homeAdd(categories,feedback,0,3);
         final LinearLayout items=new LinearLayout(this);items.setOrientation(LinearLayout.VERTICAL);
         final Button[] tabs=new Button[PlaylumiWardrobe.SLOTS];
         final Runnable render=()->{
@@ -4005,7 +4010,7 @@ public class MainActivity extends Activity {
                 tabs[i].setText(PlaylumiWardrobe.SLOT_ICONS[i]+" "+PlaylumiWardrobe.SLOT_NAMES[i]+(selected?" ✓":""));
                 tabs[i].setContentDescription(PlaylumiWardrobe.SLOT_NAMES[i]+(selected?", geselecteerd":""));
             }
-            renderClosetItems(items,balance,owned,feedback);
+            renderClosetItems(items,balance,owned,feedback,categories);
         };
         final int tabColumns=width<300?1:side?3:2;
         for(int first=0;first<PlaylumiWardrobe.SLOTS;first+=tabColumns){
@@ -4019,21 +4024,29 @@ public class MainActivity extends Activity {
             categories.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
         fixedSheet(categories,"Accessoires");
-        chooseCategory.setOnClickListener(v->pageDeck.reveal(categories));
         root.addView(items,new LinearLayout.LayoutParams(-1,-2));pageDeck.splitChildren(items);
         selectedSlot=Math.max(0,Math.min(PlaylumiWardrobe.SLOTS-1,selectedSlot));render.run();
         Button done=tile("Klaar!","",0xffd5f5df,70);done.setOnClickListener(v->onBackPressed());fixedSheet(done,"Klaar");
     }
-    private void renderClosetItems(LinearLayout items,TextView balance,TextView owned,TextView feedback){
+    private void renderClosetItems(LinearLayout items,TextView balance,TextView owned,TextView feedback,View categories){
         items.removeAllViews();
         int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
         boolean side=width>=540&&landscapeScreen();
         final int slot=selectedSlot,columns=width<300?1:2;
         final int rows=side&&height>=400?2:PlaylumiPagePlan.shelfRows(height,getResources().getConfiguration().fontScale);
         final Button[] choices=new Button[PlaylumiWardrobe.OPTIONS];
+        final ArrayList<TextView> sheetMessages=new ArrayList<>();
+        class ClosetFeedback{
+            void show(String value){
+                feedback.setText(value);
+                for(TextView label:sheetMessages)label.setText(value);
+            }
+        }
+        final ClosetFeedback showFeedback=new ClosetFeedback();
         final Runnable refresh=()->{
-            balance.setText("★ "+wardrobe.stars()+" speelsterren");
-            owned.setText((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld");
+            balance.setText("★ "+wardrobe.stars());
+            balance.setContentDescription(wardrobe.stars()+" speelsterren");
+            owned.setText((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+"/36 accessoires");
             for(int i=0;i<choices.length;i++){
                 Button button=choices[i];if(button==null)continue;
                 String label=PlaylumiWardrobe.ITEM_ICONS[slot][i]+" "+PlaylumiWardrobe.ITEM_NAMES[slot][i];
@@ -4051,6 +4064,12 @@ public class MainActivity extends Activity {
             if(first%(columns*rows)==0){
                 sheet=personalPanel();
                 homeAdd(sheet,homeLabel(PlaylumiWardrobe.SLOT_ICONS[slot]+" "+PlaylumiWardrobe.SLOT_NAMES[slot],18,TEXT,true),0,3);
+                Button other=tile("Andere accessoires","",0xffe8dcff,44);
+                other.setContentDescription("Kies een andere accessoirecategorie");
+                other.setOnClickListener(v->pageDeck.reveal(categories));homeAdd(sheet,other,0,3);
+                TextView sheetFeedback=text(feedback.getText().toString(),13,SUB);
+                sheetFeedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+                homeAdd(sheet,sheetFeedback,0,3);sheetMessages.add(sheetFeedback);
                 items.addView(sheet,new LinearLayout.LayoutParams(-1,-2));pageDeck.keepTogether(sheet);pageDeck.namePage(sheet,PlaylumiWardrobe.SLOT_NAMES[slot]);
             }
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
@@ -4064,19 +4083,19 @@ public class MainActivity extends Activity {
                 final Runnable equip=()->{
                     if(page!=CLOSET||selectedSlot!=slot)return;
                     int result=wardrobe.buyOrEquip(slot,item);
-                    if(result==PlaylumiWardrobe.NOT_ENOUGH){feedback.setText("Nog niet genoeg speelsterren. Speel rustig verder!");return;}
-                    if(result==PlaylumiWardrobe.ACHIEVEMENT_REQUIRED){feedback.setText("Deze beloning verdien je met een prestatie.");return;}
+                    if(result==PlaylumiWardrobe.NOT_ENOUGH){showFeedback.show("Nog niet genoeg speelsterren. Speel rustig verder!");return;}
+                    if(result==PlaylumiWardrobe.ACHIEVEMENT_REQUIRED){showFeedback.show("Deze beloning verdien je met een prestatie.");return;}
                     saveWardrobe();refresh.run();
-                    feedback.setText(result==PlaylumiWardrobe.PURCHASED?"✨ Nieuw accessoire vrijgespeeld!":"✨ Wat staat dat mooi!");
+                    showFeedback.show(result==PlaylumiWardrobe.PURCHASED?"✨ Nieuw accessoire vrijgespeeld!":"✨ Wat staat dat mooi!");
                     sound.equip();
                     if(character!=null){character.wave();PlaylumiDelight.sprinkle(stage,character);}
                 };
                 b.setOnClickListener(v->{
                     if(wardrobe.owned(slot,item)){equip.run();return;}
                     PlaylumiCityRewards.Landmark reward=PlaylumiCityRewards.forItem(slot,item);
-                    if(reward!=null){feedback.setText("Behaal "+reward.requirement()+" om "+reward.gift()+" vrij te spelen.");return;}
+                    if(reward!=null){showFeedback.show("Behaal "+reward.requirement()+" om "+reward.gift()+" vrij te spelen.");return;}
                     int price=wardrobe.price(slot,item);
-                    if(wardrobe.stars()<price){feedback.setText("Je hebt nog "+(price-wardrobe.stars())+" speelsterren nodig.");return;}
+                    if(wardrobe.stars()<price){showFeedback.show("Je hebt nog "+(price-wardrobe.stars())+" speelsterren nodig.");return;}
                     new android.app.AlertDialog.Builder(this).setTitle(PlaylumiWardrobe.ITEM_NAMES[slot][item])
                             .setMessage("Vrijspelen voor "+price+" speelsterren?").setNegativeButton("Nog niet",null)
                             .setPositiveButton("Vrijspelen",(d,which)->equip.run()).show();

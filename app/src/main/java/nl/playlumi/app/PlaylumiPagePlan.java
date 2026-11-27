@@ -72,6 +72,10 @@ public final class PlaylumiPagePlan {
         return height<620||fontScale>=1.35f&&height<760?1:2;
     }
     public static int safePage(int index,int count){return Math.max(0,Math.min(index,Math.max(0,count-1)));}
+    /** Touch coordinates have already been transformed into the natural content space. */
+    public static boolean containsPoint(Page page,int width,float x,float y){
+        return x>=0&&x<width&&y>=page.start&&y<page.end;
+    }
     public static int pageFor(List<Page> pages,int coordinate){
         if(pages.isEmpty())return 0;
         for(int i=0;i<pages.size();i++)if(coordinate<pages.get(i).end)return i;

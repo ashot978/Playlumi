@@ -61,4 +61,25 @@ public final class PlaylumiPagePlanTest {
         assertEquals(1,PlaylumiPagePlan.swipe(-200,15,48,true));
         assertEquals(-1,PlaylumiPagePlan.swipe(200,15,48,true));
     }
+    @Test public void hiddenPagesCannotBeTappedThroughThePinnedChrome(){
+        List<PlaylumiPagePlan.Page> pages=PlaylumiPagePlan.pack(Arrays.asList(
+                block(0,100),block(120,220),block(240,340)),100,1);
+        PlaylumiPagePlan.Page visible=pages.get(1);
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,80));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,280));
+        assertTrue(PlaylumiPagePlan.containsPoint(visible,320,0,120));
+        assertTrue(PlaylumiPagePlan.containsPoint(visible,320,319.5f,219.5f));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,-.5f,160));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,320,160));
+        assertFalse(PlaylumiPagePlan.containsPoint(visible,320,160,220));
+    }
+    @Test public void scaledBoardsRemainInteractiveAcrossTheirWholeVisiblePage(){
+        PlaylumiPagePlan.Page page=PlaylumiPagePlan.pack(
+                Arrays.asList(block(100,700)),300,1).get(0);
+        assertEquals(.5f,page.scale,0f);
+        for(float screenY:new float[]{0,1,149,299.5f})
+            assertTrue(PlaylumiPagePlan.containsPoint(page,320,160,page.start+screenY/page.scale));
+        assertFalse(PlaylumiPagePlan.containsPoint(page,320,160,page.start-1));
+        assertFalse(PlaylumiPagePlan.containsPoint(page,320,160,page.start+300/page.scale));
+    }
 }

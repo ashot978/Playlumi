@@ -23,6 +23,11 @@ public final class PagePlanCheck {
                 require(page.start>=prev&&page.end>page.start,"Overlapping or empty pages");
                 require(page.blocks<=limit,"Too many blocks");
                 require(page.scale>0&&page.scale<=1&&(page.end-page.start)*page.scale<=height+.01f,"Page exceeds viewport");
+                require(PlaylumiPagePlan.containsPoint(page,320,160,page.start),"Visible page cannot receive taps");
+                require(!PlaylumiPagePlan.containsPoint(page,320,160,page.start-1)&&
+                        !PlaylumiPagePlan.containsPoint(page,320,160,page.end),"Hidden content receives taps through fixed chrome");
+                require(!PlaylumiPagePlan.containsPoint(page,320,-1,page.start)&&
+                        !PlaylumiPagePlan.containsPoint(page,320,320,page.start),"Outside edge receives taps");
                 prev=page.end;
             }
             for(PlaylumiPagePlan.Block item:items){

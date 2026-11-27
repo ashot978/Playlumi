@@ -50,7 +50,17 @@ public final class PlaylumiPageDeck extends ViewGroup {
         super(context);this.allowSwipe=allowSwipe;this.game=game;
         maxBlocks=game?Integer.MAX_VALUE:4;
         setClipChildren(true);setClipToPadding(true);
-        content=new LinearLayout(context);content.setOrientation(LinearLayout.VERTICAL);
+        content=new LinearLayout(context){
+            @Override public boolean dispatchTouchEvent(MotionEvent event){
+                // clipBounds limits drawing, but Android hit testing still sees
+                // the full natural layout behind the pinned header and footer.
+                // Only a visible page may begin a new child interaction.
+                if(event.getActionMasked()==MotionEvent.ACTION_DOWN&&
+                        !pages.isEmpty()&&!PlaylumiPagePlan.containsPoint(
+                                pages.get(selected),getWidth(),event.getX(),event.getY()))return false;
+                return super.dispatchTouchEvent(event);
+            }
+        };content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(true);content.setClipToPadding(true);addView(content,new LayoutParams(-1,-2));
         controls=new LinearLayout(context);controls.setGravity(Gravity.CENTER_VERTICAL);controls.setPadding(dp(4),0,dp(4),0);
         GradientDrawable bg=new GradientDrawable();bg.setColor(0xff563782);bg.setCornerRadius(dp(15));bg.setStroke(dp(1),0xffb49adc);controls.setBackground(bg);
@@ -230,7 +240,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
         String name="";int best=Integer.MAX_VALUE;
         for(Map.Entry<View,String> entry:pageNames.entrySet()){
             View anchor=entry.getKey();if(anchor==null||anchor.getVisibility()!=VISIBLE)continue;
-            int y=topOf(anchor);if(y>=page.start&&y<page.end&&y<best){best=y;name=entry.getValue();}
+            int anchorY=topOf(anchor);if(anchorY>=page.start&&anchorY<page.end&&anchorY<best){best=anchorY;name=entry.getValue();}
         }
         counter.setText(PlaylumiPagePlan.caption(name,selected,pages.size()));
         counter.setContentDescription("Inhoudspagina "+(selected+1)+" van "+pages.size());

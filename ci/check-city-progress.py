@@ -425,7 +425,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.125" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.126" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     PAGED_UI = True
     installed = prefs()
     for key in fixture:
@@ -462,7 +462,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.123", "candidateVersion": "0.125",
+        "baselineVersion": "0.123", "candidateVersion": "0.126",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -472,7 +472,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.123 → 0.125 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.123 → 0.126 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1828,12 +1828,176 @@ def test_simplified_navigation(viewport):
     pass_check(viewport + ": simplified worlds and city navigation, no separate ideas or player controls; native replay and exact saved progress retained")
 
 
+def sudoku_step(nodes, size):
+    """Solve the highlighted native cell from visible clues, independently of the game model."""
+    cells, current, options = {}, [], {}
+    for node in nodes:
+        description = node.get("content-desc", "")
+        match = re.fullmatch(r"Sudoku rij (\d+), kolom (\d+): (.+)", description)
+        if match and visible(node):
+            position = (int(match.group(1)) - 1, int(match.group(2)) - 1)
+            value = match.group(3)
+            assert position not in cells, "Duplicate native Sudoku cell"
+            cells[position] = None if value.startswith("leeg") else value.split(", ")[0]
+            if value.endswith(", nu invullen"):
+                current.append(position)
+        option = re.fullmatch(r"Kies (.+) voor het gemarkeerde vak", description)
+        if option and visible(node) and node.get("enabled") == "true":
+            assert option.group(1) not in options, "Duplicate Sudoku animal option"
+            options[option.group(1)] = node
+    assert len(cells) == size * size, "Native Sudoku grid is clipped or incomplete"
+    assert len(options) == size and len(current) == 1, "One highlighted blank and all animal options must be visible together"
+    row, column = current[0]
+    assert cells[current[0]] is None, "Highlighted Sudoku cell is not blank"
+    used = {value for (r, c), value in cells.items()
+            if value is not None and (r == row or c == column or
+                size == 4 and r // 2 == row // 2 and c // 2 == column // 2)}
+    choices = set(options) - used
+    assert len(choices) == 1, "Highlighted cell is not independently solvable from visible clues"
+    return options, choices.pop(), cells
+
+
+def test_animal_sudoku(viewport):
+    route = "2:6:13:0"
+    for age in (0, 1, 2):
+        label = viewport + "-sudoku-age-" + str(age)
+        key = "library_resume_v2_" + str(age) + "_" + route
+        rounds_key = "library_rounds_v1_" + str(age) + "_" + route
+        seed({"chosen_age": age})
+        launch_native_home()
+        click(find_control(description_prefix("Vormkasteel"), label + "-world", False))
+        page(44)
+        click(find_control(description_prefix("Speel Dierensudoku"), label + "-entry"))
+        page(45)
+        size = 2 if age == 0 else 4
+        nodes = screenshot(label + "-initial")
+        options, answer, cells = sudoku_step(nodes, size)
+        total = sum(value is None for value in cells.values())
+        assert total >= (2 if age == 0 else 4), "Sudoku has no meaningful empty cells"
+        before = real_history_fingerprint()
+        wrong = next(animal for animal in options if animal != answer)
+        click(options[wrong])
+        after_wrong = ui(label + "-wrong")
+        _, same_answer, same_cells = sudoku_step(after_wrong, size)
+        assert same_cells == cells and same_answer == answer, "Incorrect Sudoku choice changed the puzzle"
+        assert real_history_fingerprint() == before, "Incorrect Sudoku choice changed saved progress or currency"
+        options, answer, _ = sudoku_step(after_wrong, size)
+        click(options[answer])
+        first_state = wait_prefs(lambda p: key in p and json.loads(p[key])["count"] == 1,
+                                 "First correct Sudoku cell persisted")
+        saved = json.loads(first_state[key])
+        assert saved["id"] == route and saved["age"] == age and saved["engine"] == 4, "Wrong Sudoku identity or engine"
+        assert saved["total"] == total and saved["mask"] != 0, "Sudoku cell mask or total was not persisted"
+        assert first_state["wardrobe_stars"] == 18, "Partial Sudoku paid a completion reward"
+        if age == 2:
+            first_cells = sudoku_step(ui(label + "-before-restart"), size)[2]
+            launch_native_home()
+            click(find_control(description_prefix("Vormkasteel"), label + "-restart-world", False))
+            page(44)
+            click(find_control(description_prefix("Verder spelen Dierensudoku"), label + "-resume"))
+            page(45)
+            restored = json.loads(prefs()[key])
+            for field in ("id", "age", "seed", "engine", "count", "mask", "total"):
+                assert restored[field] == saved[field], "Sudoku restart changed " + field
+            assert sudoku_step(ui(label + "-restored"), size)[2] == first_cells, "Restart changed visible Sudoku clues or filled cells"
+        for count in range(2, total + 1):
+            options, answer, _ = sudoku_step(ui(label + "-cell-" + str(count)), size)
+            click(options[answer])
+            if count < total:
+                current = wait_prefs(lambda p: key in p and json.loads(p[key])["count"] == count,
+                                     "Sudoku cell " + str(count) + " persisted")
+                assert current["wardrobe_stars"] == 18, "Incomplete Sudoku awarded stars"
+        completed = wait_prefs(lambda p: key not in p and p.get(rounds_key) == 1,
+                               "One complete Sudoku round and cleared unfinished state")
+        assert completed["wardrobe_stars"] == 33, "First Sudoku must award one answer and one badge (+15)"
+        assert route in completed.get("library_completed_v1_" + str(age), set()), "Sudoku completion was not recorded"
+        screenshot(label + "-complete")
+        launch_native_home()
+        assert prefs()["wardrobe_stars"] == 33 and prefs()[rounds_key] == 1, "Restart duplicated Sudoku completion rewards"
+        pass_check(viewport + ": age " + str(age) + " native Dierensudoku has a complete " + str(size) + "x" + str(size) +
+                   " grid, rejects a wrong animal without progress, solves " + str(total) + " cells from visible row/column/box clues, and pays one completion reward")
+    pass_check(viewport + ": 4x4 Sudoku preserves its exact seed, engine, count, selected-cell mask and visible board across a full restart")
+
+
+def test_release_expedition(viewport):
+    label = viewport + "-release-expedition"
+    seed({})
+    launch_native_home()
+    open_expedition(label)
+    nodes = screenshot(label + "-first", expected_texts=("0 van 30 opdrachten · 0 van 6 zegels",))
+    mission = next((n for n in nodes if exact("Expeditie opdracht 1 spelen")(n) and visible(n)), None)
+    map_button = next((n for n in nodes if exact("Bekijk avonturenkaart")(n) and visible(n)), None)
+    assert mission is not None and map_button is not None, "Next mission and map must be directly available on the first sheet"
+    click(map_button)
+    nodes = screenshot(label + "-map")
+    assert any(description_prefix("Expeditiekaart:")(n) and visible(n) for n in nodes), "Expedition map shortcut shows the wrong sheet"
+    click_named("Expeditie opdracht 1 spelen", label + "-mission")
+    page(45)
+    click(find_control(lambda n: re.fullmatch(r"Vak \d+: 1", n.get("content-desc", "")) is not None,
+                       label + "-first-move", False))
+    key = "library_resume_v2_0_0:6:4:0"
+    state = wait_prefs(lambda p: key in p and json.loads(p[key])["count"] == 1, "Expedition shortcut starts the actual first puzzle")
+    assert state.get("expedition_v1_progress_0", 0) == 0 and state["wardrobe_stars"] == 18, "Partial expedition mission was credited"
+    pass_check(viewport + ": named expedition sheets expose mission and map directly and launch a real saved puzzle without premature credit")
+
+
+def test_release_menus(viewport):
+    label = viewport + "-release-menus"
+    # An explicitly owned-color fixture tests equipping, not purchase or earning.
+    seed({"wardrobe_owned_0": 3, "wardrobe_worn_0": 0})
+    launch_native_home()
+    open_city(label + "-city")
+    click_named("Open kledingkast", label + "-wardrobe")
+    page(10)
+    initial = ui(label + "-categories")
+    preview = next(n for n in initial if exact("Lumi, voorbeeld van je outfit")(n) and visible(n))
+    preview_rect = rect(preview)
+    click(find_control(description_prefix("Medaillonkleur"), label + "-colors"))
+    color = find_control(lambda n: "Suikerspinroze" in n.get("content-desc", ""), label + "-owned-color")
+    after = ui(label + "-pinned-preview")
+    assert any(exact("Lumi, voorbeeld van je outfit")(n) and rect(n) == preview_rect for n in after), "Wardrobe preview disappeared or moved between sheets"
+    assert any(exact("Kies een andere accessoirecategorie")(n) and visible(n) for n in after), "Pinned category shortcut disappeared"
+    click(color)
+    wait_prefs(lambda p: p.get("wardrobe_worn_0") == 1, "Owned color equipped")
+    assert prefs()["wardrobe_stars"] == 18, "Equipping an owned accessory charged stars"
+    screenshot(label + "-equipped")
+    click_named("Kies een andere accessoirecategorie", label + "-category-shortcut", False)
+    assert any(description_prefix("Hoedjes")(n) and visible(n) for n in ui(label + "-categories-returned")), "Category shortcut did not reveal the category sheet"
+    launch_native_home()
+    assert prefs()["wardrobe_worn_0"] == 1, "Equipped color was lost on restart"
+    click(find_control(lambda n: exact("Ouderzone")(n) or description_prefix("Ouderzone")(n), label + "-parent", False))
+    page(26)
+    unlock_parent_gate(label + "-gate")
+    nodes = screenshot(label + "-parent-first")
+    for title in ("📊 Bekijk de voortgang", "⚙️ Instellingen", "Speelgegevens"):
+        assert any(any(value.startswith(title) for value in labels(n)) and visible(n) for n in nodes), "Parent first sheet is missing " + title
+    assert not any("spelers op dit toestel" in value.lower() for n in nodes for value in labels(n)), "Retired player selector returned"
+    click_named("Speelgegevens", label + "-totals", False)
+    totals = ui(label + "-totals-shown")
+    assert any("0 goede antwoorden" in value for n in totals for value in labels(n)), "Parent totals shortcut opened the wrong sheet"
+    click(find_control(description_prefix("⚙️ Instellingen"), label + "-settings"))
+    page(30)
+    background_app()
+    native_foreground(None)
+    require_parent_gate(label + "-locked-after-background")
+    assert prefs()["wardrobe_stars"] == 18, "Menu navigation changed wallet"
+    pass_check(viewport + ": wardrobe keeps Lumi visible, equips an owned color persistently, and jumps to categories; parent first sheet has direct navigation and relocks on background")
+
+
+def run_stage(name, action, *arguments):
+    started = time.monotonic()
+    print("START:", name, flush=True)
+    action(*arguments)
+    print("FINISH:", name, "in", round(time.monotonic() - started, 1), "seconds", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
     parser.add_argument("--baseline-apk", help="Optional exact 0.123 debug APK built with the same runner's debug key")
+    parser.add_argument("--release-smoke", action="store_true", help="Focused 0.126 acceptance: exact upgrade, paging, new Sudoku, changed menus, expedition shortcuts and real construction; full regression remains the default")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1850,24 +2014,22 @@ if __name__ == "__main__":
                 shell("wm density 210")
         time.sleep(2)
         if args.baseline_apk:
-            test_debug_upgrade(args.baseline_apk, args.viewport)
-        test_fixed_pages(args.viewport)
-        test(args.viewport)
-        test_new_quiz_routes(args.viewport)
-        test_simplified_navigation(args.viewport)
-        test_hands_on_worlds(args.viewport)
-        test_memory_refresh(args.viewport)
-        test_puzzle_board(args.viewport)
-        test_expedition(args.viewport)
-        test_builder(args.viewport)
-        test_cosmetic_fixture(args.viewport)
-        test_drawing_lifecycle(args.viewport)
-        test_drawing_tools(args.viewport)
-        test_drawing_compaction(args.viewport)
-        test_parent_lifecycle(args.viewport)
+            run_stage("exact-0.123-upgrade", test_debug_upgrade, args.baseline_apk, args.viewport)
+        if args.release_smoke:
+            stages = (test_fixed_pages, test_animal_sudoku, test_release_menus,
+                      test_release_expedition, test_builder)
+        else:
+            stages = (test_fixed_pages, test, test_new_quiz_routes, test_simplified_navigation,
+                      test_hands_on_worlds, test_memory_refresh, test_puzzle_board,
+                      test_animal_sudoku, test_expedition, test_builder, test_cosmetic_fixture,
+                      test_drawing_lifecycle, test_drawing_tools, test_drawing_compaction,
+                      test_parent_lifecycle)
+        for stage in stages:
+            run_stage(stage.__name__, stage, args.viewport)
     finally:
         (OUT / "checks.json").write_text(json.dumps({"viewport": args.viewport, "passed": CHECKS,
-            "scope": "Native UI and persistence on a disposable emulator; synthetic fixtures explicitly labelled."},
+            "suite": "0.126 release smoke" if args.release_smoke else "full native regression",
+            "scope": "Native UI and persistence on a disposable emulator; synthetic fixtures explicitly labelled. Release smoke covers the exact upgrade, drawing preservation, paging, all Sudoku ages, changed menus, expedition shortcuts and construction; it does not replace the full historical regression."},
             indent=2, ensure_ascii=False))
         for filename, command in (("logcat.txt", ("logcat", "-d", "-v", "brief")),
                                   ("window.txt", ("shell", "dumpsys window")),
