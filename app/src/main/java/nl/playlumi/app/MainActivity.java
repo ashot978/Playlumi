@@ -113,13 +113,11 @@ public class MainActivity extends Activity {
     private int parentWorld,parentStatsPage,adultA,adultB,breakReturn=HOME;
     // This Activity keeps one storage identity until it is recreated for another player.
     private int activeProfile;
-    private boolean profileSwitchPending;
     // Tracks which village building started a screen, so Back returns logically.
     private int villageLaunch=-1;
     private int libraryFilter=PlaylumiGameCatalog.OVERVIEW;
-    private static final int LIBRARY_COMPLETED=-6;
     private static int availableLibraryFilter(int filter){
-        return PlaylumiWorldStyle.valid(filter)||filter==PlaylumiGameCatalog.OVERVIEW||filter==PlaylumiGameCatalog.ALL||filter==LIBRARY_COMPLETED?filter:PlaylumiGameCatalog.OVERVIEW;
+        return PlaylumiWorldStyle.valid(filter)||filter==PlaylumiGameCatalog.OVERVIEW?filter:PlaylumiGameCatalog.OVERVIEW;
     }
     private TextView quizNext;
     private LinearLayout quizFeedbackRow;
@@ -773,9 +771,6 @@ public class MainActivity extends Activity {
         int completeCount=PlaylumiCompletion.completed(age,completedRoutes()).size();
         homeAdd(summary,text("✓ "+completeCount+" spellen met een hele ronde gespeeld",17,0xff286e54),5,3);
         homeAdd(summary,text("Elk spel kun je opnieuw spelen. Nieuwe rondes tellen mee voor meesterschap.",12,SUB),0,3);
-        TextView allCompleted=homeAction("Bekijk eerder gespeelde spellen",true,()->{});
-        libraryClick(allCompleted,"Bekijk eerder gespeelde spellen",()->openLibrary(LIBRARY_COMPLETED));
-        homeAdd(summary,allCompleted,2,0);
         addWidget(summary,3,7);
         LinearLayout filters=new LinearLayout(this);filters.setGravity(Gravity.CENTER);
         String[] filterNames={"Alle ("+PlaylumiAchievements.ALL.length+")","Behaald ("+Long.bitCount(mask)+")","Nog te ontdekken"};
@@ -1270,6 +1265,9 @@ public class MainActivity extends Activity {
     private void showPage() {
         autoAdvanceToken++;melodyPreviewToken++;autoRoundVisible=false;
         renderedCalendarDay=PlaylumiPlayDays.today();
+        // Retired screens may still exist in a saved Activity after an update.
+        if(page==IDEAS)page=ideasReturn==CITY?CITY:LIBRARY;
+        if(page==PROFILES){page=PARENT_GATE;parentAllowed=false;}
         if(page==HOME&&!PlaylumiProfiles.hasChosenAge(age))page=AGE;
         // Restore old navigation destinations directly into the new library.
         if(page==VILLAGE_MENU){page=LIBRARY;libraryFilter=PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiGameCatalog.OVERVIEW;}
@@ -1421,7 +1419,6 @@ public class MainActivity extends Activity {
             case ACHIEVEMENTS: showAchievements();break;
             case DAILY: showDailyChallenges();break;
             case CITY: showCity();break;
-            case IDEAS: showPlayIdeas();break;
             case TROPHY_CATS: showTrophyCats();break;
             case STORY_LIBRARY: showStoryLibrary();break;
             case STORY_PLAY: showStoryPlay();break;
@@ -1434,7 +1431,6 @@ public class MainActivity extends Activity {
             case PARENT_STATS: showParentStats();break;
             case PARENT_SETTINGS: showParentSettings();break;
             case BREAK_SCREEN: showBreakScreen();break;
-            case PROFILES: showProfiles();break;
             case STAR_STAGE: showStarStage();break;
             case FRIEND_CARE: showFriendCare();break;
             case FRIEND_ALBUM: showFriendAlbum();break;
@@ -1457,10 +1453,11 @@ public class MainActivity extends Activity {
         }
     }
     private void move(int next) {
-        if(moving||profileSwitchPending)return;
+        if(moving)return;
+        if(next==IDEAS)next=page==CITY?CITY:LIBRARY;
+        if(next==PROFILES)next=PARENT_GATE;
         if(next==HOME&&!PlaylumiProfiles.hasChosenAge(age))next=AGE;
         if(next==DAILY&&(page==HOME||page==CITY||page==AVATAR||page==LIBRARY))dailyReturn=page;
-        if(next==IDEAS&&(page==LIBRARY||page==CITY))ideasReturn=page;
         autoAdvanceToken++;melodyPreviewToken++;
         if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
@@ -1488,7 +1485,7 @@ public class MainActivity extends Activity {
         moving=false;page=next;showPage();
     }
     private void showAge() {
-        header("🎈 Hoe oud ben jij?",PlaylumiProfiles.label(activeProfile)+" · Kies jouw leeftijd. We onthouden dit!");
+        header("🎈 Hoe oud ben jij?","Kies jouw leeftijd. We onthouden dit!");
         hero(105);
         String[] descriptions={"Ontdek vormen en kleuren","Leer woorden en tellen","Meer uitdaging en puzzels"};
         String[] emoji={"🐣","🦋","🚀"};
@@ -1501,11 +1498,6 @@ public class MainActivity extends Activity {
                 prefs().edit().putInt("chosen_age",age).apply();
                 move(HOME);
             });
-        }
-        if(activeProfile>0&&!PlaylumiProfiles.hasChosenAge(prefs().getInt("chosen_age",-1))){
-            Button players=tile("Andere speler (voor ouders)","Een ouder kan terug naar een andere speler",0xffe8dcff,72);
-            players.setContentDescription("Andere speler (voor ouders)");addTile(players,8);
-            players.setOnClickListener(v->requestParents());
         }
     }
     private void startEasyPlay() {
@@ -1717,7 +1709,6 @@ public class MainActivity extends Activity {
     }
     private LinearLayout wideHomeProfile(int width,int stars,int discovered){
         LinearLayout panel=homePanel();panel.setGravity(Gravity.CENTER_HORIZONTAL);
-        homeAdd(panel,text(PlaylumiProfiles.ICONS[activeProfile]+" "+PlaylumiProfiles.label(activeProfile),17,PlaylumiMagicArt.GOLD),0,3);
         PlaylumiAvatar pal=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
         int size=width<650?80:width<1100?96:112;
         LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(size),dp(size));pp.gravity=Gravity.CENTER;
@@ -1741,13 +1732,7 @@ public class MainActivity extends Activity {
         LinearLayout panel=homePanel();
         homeAdd(panel,homeLabel("Snel spelen",19,PlaylumiMagicArt.GOLD,true),0,5);
         homeAdd(panel,homeAction("☀ Daguitdagingen "+dailyChallenges().completed()+"/3",true,()->move(DAILY)),0,5);
-        java.util.List<PlaylumiGameCatalog.Entry> suggested=learningSuggestions();
-        if(!suggested.isEmpty()){
-            final PlaylumiGameCatalog.Entry pick=suggested.get(0);
-            homeAdd(panel,homeLabel("Speciaal voor jou",14,PlaylumiMagicArt.GOLD,true),4,1);
-            homeAdd(panel,homeAction("▶ "+pick.title,false,()->startFromWideHome(pick)),1,3);
-        }
-        homeAdd(panel,homeAction("Alle spellen",false,()->openLibrary(PlaylumiGameCatalog.ALL)),3,3);
+        homeAdd(panel,homeAction("Werelden",false,()->openLibrary(PlaylumiGameCatalog.OVERVIEW)),3,3);
         homeAdd(panel,homeAction("Mijn schatten",false,()->visitVillagePlace(PlaylumiVillageView.COLLECTION)),2,0);
         return panel;
     }
@@ -1769,12 +1754,11 @@ public class MainActivity extends Activity {
         return librarySet(PlaylumiCompletion.key(age));
     }
     private int catalogReturnPage(){
-        return catalogReturn==DAILY?DAILY:catalogReturn==CITY?CITY:catalogReturn==IDEAS?IDEAS:LIBRARY;
+        return catalogReturn==DAILY?DAILY:catalogReturn==CITY?CITY:LIBRARY;
     }
     private void describeCatalogReturn(Button button){
         if(!libraryReturn||storyStage>=0)return;
-        if(catalogReturn==IDEAS){button.setText("Speelideeën");button.setContentDescription("Terug naar speelideeën");}
-        else if(catalogReturn==DAILY){button.setText("Daguitdagingen");button.setContentDescription("Terug naar daguitdagingen");}
+        if(catalogReturn==DAILY){button.setText("Daguitdagingen");button.setContentDescription("Terug naar daguitdagingen");}
         else if(catalogReturn==CITY){button.setText("Mijn stad");button.setContentDescription("Terug naar mijn stad");}
     }
     /** One validated snapshot of the current age and profile for the visible page. */
@@ -1797,60 +1781,6 @@ public class MainActivity extends Activity {
             }
         }
         return history;
-    }
-    private void showPlayIdeas(){
-        header("Speelideeën","Voor "+AGES[PlaylumiRocketCurriculum.level(age)]+" · Jij kiest waar je zin in hebt");
-        addText("Wat zullen we spelen?",23,TEXT,3,4);
-        addText("Verder met een ronde, iets opnieuw doen of een oefening ontdekken.",15,SUB,0,9);
-        PlayHistory history=playHistory();
-        java.util.List<PlaylumiPlayIdeas.Idea> ideas=PlaylumiPlayIdeas.choose(age,history.unfinished,
-                history.completed,history.rounds,prefs().getLong("play_ideas_variation_v1",0L));
-        boolean sideBySide=getResources().getConfiguration().screenWidthDp>=840&&
-                getResources().getConfiguration().fontScale<1.2f;
-        LinearLayout cards=new LinearLayout(this);
-        cards.setOrientation(sideBySide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
-        cards.setGravity(Gravity.TOP);
-        for(int i=0;i<ideas.size();i++){
-            final PlaylumiPlayIdeas.Idea idea=ideas.get(i);
-            PlaylumiGameCatalog.Entry entry=idea.entry;
-            LinearLayout card=personalPanel();
-            String kind=idea.kind==PlaylumiPlayIdeas.CONTINUE?"Verder spelen":
-                    idea.kind==PlaylumiPlayIdeas.REPLAY?"Nog eens spelen":"Ontdekken";
-            homeAdd(card,homeLabel(kind,14,0xff715021,true),1,4);
-            LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
-            TextView icon=text(entry.icon,30,TEXT);icon.setBackground(rounded(COLORS[entry.world],15));
-            heading.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(48)));
-            TextView title=homeLabel(entry.title,20,TEXT,true);title.setPadding(dp(10),0,0,0);
-            heading.addView(title,new LinearLayout.LayoutParams(0,-2,1f));
-            homeAdd(card,heading,0,5);
-            homeAdd(card,homeLabel(PlaylumiWorldStyle.NAMES[entry.world],13,SUB,false),0,4);
-            String reason;
-            if(idea.resume){
-                org.json.JSONObject saved=history.snapshots.get(entry.id);
-                reason=saved.optInt("count",0)+" van "+saved.optInt("total",SESSION_ROUNDS)+" klaar · Ga verder waar je was.";
-            }else if(idea.kind==PlaylumiPlayIdeas.REPLAY){
-                reason=idea.rounds>0?idea.rounds+(idea.rounds==1?" ronde gespeeld":" rondes gespeeld")+" · Tijd voor een nieuwe ronde?":
-                        "Eerder een ronde afgerond · Speel gerust nog eens.";
-            }else reason="Ontdek deze oefening. Nog geen ronde afgerond.";
-            homeAdd(card,homeLabel(reason,14,SUB,false),1,7);
-            Button play=tile(idea.resume?"▶ Verder spelen":idea.kind==PlaylumiPlayIdeas.REPLAY?"↻ Nog eens spelen":"▶ Spelen","",COLORS[entry.world],58);
-            play.setContentDescription("Speelidee "+(i+1)+": "+entry.title);
-            card.addView(play,new LinearLayout.LayoutParams(-1,-2));
-            final FrameLayout ideasScreen=stage;
-            play.setOnClickListener(v->{if(page==IDEAS&&stage==ideasScreen)launchCatalog(idea.entry,idea.resume,IDEAS);});
-            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(sideBySide?0:-1,-2,sideBySide?1f:0f);
-            cp.setMargins(dp(3),dp(4),dp(3),dp(4));cards.addView(card,cp);
-        }
-        addWidget(cards,0,7);
-        Button other=tile("↻ Andere ideeën","",0xffe7dcff,60);other.setContentDescription("Andere speelideeën");
-        addTile(other,4);
-        other.setOnClickListener(v->{
-            if(page!=IDEAS||moving)return;
-            long variation=prefs().getLong("play_ideas_variation_v1",0L);
-            prefs().edit().putLong("play_ideas_variation_v1",variation==Long.MAX_VALUE?0L:variation+1L).apply();
-            showPage();
-        });
-        addText("Kies op je eigen tempo. Je kunt alle spellen blijven spelen.",13,SUB,3,3);
     }
     private void recordCompletion(PlaylumiGameCatalog.Entry entry,int done,int total){
         SharedPreferences.Editor edit=prefs().edit();
@@ -2145,7 +2075,7 @@ public class MainActivity extends Activity {
     }
     private void launchCatalog(PlaylumiGameCatalog.Entry entry,boolean resume,int returnPage){
         if(moving||entry==null)return;
-        catalogReturn=returnPage==DAILY?DAILY:returnPage==CITY?CITY:returnPage==IDEAS?IDEAS:LIBRARY;
+        catalogReturn=returnPage==DAILY?DAILY:returnPage==CITY?CITY:LIBRARY;
         libraryReturn=true;villageLaunch=entry.world;storyStage=-1;rememberCatalog(entry);
         SharedPreferences discovery=getSharedPreferences("playlumi-village-"+activeProfile,MODE_PRIVATE);
         discovery.edit().putInt("visited",PlaylumiVillageProgress.markVisited(discovery.getInt("visited",0),entry.world)).apply();
@@ -2289,20 +2219,20 @@ public class MainActivity extends Activity {
         libraryFilter=filter;libraryScrollY=0;
         renderLibraryContents(0);
     }
-    private static final String[] LIBRARY_TAB_LABELS={"Dorp","Werelden","Spellen"};
-    private static final String[] LIBRARY_TAB_ICONS={"⌂","✦","▶"};
-    private static final int[] LIBRARY_TAB_FILTERS={Integer.MIN_VALUE,PlaylumiGameCatalog.OVERVIEW,PlaylumiGameCatalog.ALL};
+    private static final String[] LIBRARY_TAB_LABELS={"Dorp","Werelden"};
+    private static final String[] LIBRARY_TAB_ICONS={"⌂","✦"};
+    private static final int[] LIBRARY_TAB_FILTERS={Integer.MIN_VALUE,PlaylumiGameCatalog.OVERVIEW};
     private void refreshLibraryNavigation(){
         if(libraryTabs==null)return;
         for(int i=0;i<libraryTabs.length;i++){
             TextView tab=libraryTabs[i];
-            boolean selected=LIBRARY_TAB_FILTERS[i]==libraryFilter||(i==1&&(libraryFilter>=0||libraryFilter==LIBRARY_COMPLETED));
+            boolean selected=LIBRARY_TAB_FILTERS[i]==libraryFilter||(i==1&&libraryFilter>=0);
             String label=LIBRARY_TAB_LABELS[i];
             tab.setText(LIBRARY_TAB_ICONS[i]+"\n"+label);
             tab.setSelected(selected);tab.setTextColor(selected?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
             tab.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),
                     selected?PlaylumiMagicArt.creamPlate(this):rounded(0xff573785,13),null));
-            tab.setContentDescription((i==2?"Alle spellen":label)+(selected?", geselecteerd":""));
+            tab.setContentDescription(label+(selected?", geselecteerd":""));
         }
     }
     private Drawable libraryCardSurface(int world){
@@ -2385,31 +2315,15 @@ public class MainActivity extends Activity {
         java.util.Collections.sort(entries,(x,y)->Long.compare(updates.get(y.id),updates.get(x.id)));
         return entries;
     }
-    private void addLibraryTools(){
-        int count=PlaylumiCompletion.completed(age,completedRoutes()).size();
-        TextView collection=homeAction("✓ Eerder gespeeld ("+count+")",libraryFilter==LIBRARY_COMPLETED,()->{});
-        libraryClick(collection,"Bekijk "+count+" eerder gespeelde spellen",()->libraryFilter(LIBRARY_COMPLETED));
-        addWidget(collection,0,4);
-        Button ideas=tile("✦ Speelideeën","Drie keuzes die passen bij jouw voortgang",0xffffe4b5,65);
-        ideas.setContentDescription("Open speelideeën");ideas.setOnClickListener(v->move(IDEAS));
-        addWidget(ideas,0,4);
-    }
     private void renderLibraryBody(){
-        header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:
-                libraryFilter==LIBRARY_COMPLETED?"Eerder gespeeld":
-                libraryFilter==PlaylumiGameCatalog.ALL?"Alle spellen":"Spellen","");
+        header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:"Werelden","");
         addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
         java.util.Set<String> played=librarySet("library_played");
         final int width=getResources().getConfiguration().screenWidthDp;
         final int columns=PlaylumiLayout.libraryColumns(PlaylumiLayout.libraryContentWidth(width));
-        addLibraryTools();
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
             Button daily=tile("☀ Daguitdagingen",dailyChallenges().completed()+"/3 vandaag",0xffffe4bd,72);
             addTile(daily,3);daily.setOnClickListener(v->move(DAILY));
-            Button all=tile("Alle spellen",""+PlaylumiGameCatalog.entries(age).size()+" avonturen",COLORS[2],58);
-            all.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
-            addTile(all,3);
-            addLearningSuggestions();
             librarySection("Onze speelwerelden","6 avonturen");
             int worldColumns=PlaylumiLayout.libraryContentWidth(width)>=600?3:2;
             for(int start=0;start<6;start+=worldColumns){
@@ -2442,13 +2356,12 @@ public class MainActivity extends Activity {
             lp.setMargins(dp(4),dp(2),dp(4),dp(6));root.addView(art,lp);
             addText(PlaylumiWorldStyle.SUBTITLES[libraryFilter],15,PlaylumiMagicArt.CREAM,2,4);
             libraryWorldStrip();
-        }else if(libraryFilter==PlaylumiGameCatalog.ALL)libraryWorldStrip();
-        java.util.List<PlaylumiGameCatalog.Entry> entries=libraryFilter==LIBRARY_COMPLETED?
-                PlaylumiCompletion.completed(age,completedRoutes()):PlaylumiGameCatalog.filter(age,libraryFilter,java.util.Collections.emptySet());
-        librarySection(libraryFilter==LIBRARY_COMPLETED?"Jouw speelavonturen":"Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
+        }
+        java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,java.util.Collections.emptySet());
+        librarySection("Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
         if(entries.isEmpty()){
-            addText(libraryFilter==LIBRARY_COMPLETED?"Hier komen de spellen die je vanaf deze update afrondt. Je oude sterren en trofeeën blijven bewaard.":"Kies een nieuw avontuur.",17,PlaylumiMagicArt.CREAM,12,8);
-            Button discover=tile("Ontdek alle spellen","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.ALL));
+            addText("Kies een nieuw avontuur.",17,PlaylumiMagicArt.CREAM,12,8);
+            Button discover=tile("Ontdek de werelden","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.OVERVIEW));
             return;
         }
         for(int w=0;w<6;w++){
@@ -2489,8 +2402,6 @@ public class MainActivity extends Activity {
         if(playedRounds>0){
             TextView marker=homeLabel(PlaylumiCompletion.mastery(playedRounds)+" · "+playedRounds+(playedRounds==1?" ronde":" rondes"),12,0xffc9ffdc,true);
             labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
-        }else if(completed){
-            labels.addView(homeLabel("Eerder gespeeld · speel nog eens!",12,0xffc9ffdc,true),new LinearLayout.LayoutParams(-1,-2));
         }
         if(!wide){
             TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);labels.addView(description);
@@ -2690,7 +2601,7 @@ public class MainActivity extends Activity {
         }
     }
     private void showHomeOptions() {
-        header("⚙️ Instellingen",PlaylumiProfiles.label(activeProfile)+" · Kies wat bij jou past.");
+        header("⚙️ Instellingen","Kies wat bij jou past.");
         Button ageButton=tile("🎂 Leeftijd: "+PlaylumiProfiles.ageLabel(age),"Kies je leeftijd",0xfff1e9ff,91);
         addTile(ageButton,6);
         ageButton.setOnClickListener(v->move(AGE));
@@ -3502,9 +3413,7 @@ public class MainActivity extends Activity {
         Button achievements=tile("🏆 Mijn prestaties","Bekijk je voortgang en cadeaus",0xffd5f5df,80);
         achievements.setOnClickListener(v->openAchievements(CITY));
         Button lumi=tile("★ Naar Lumi","Kamer, dansen en vriendjes",0xffd9ecff,80);lumi.setOnClickListener(v->move(AVATAR));
-        Button ideas=tile("✦ Speelideeën","Verder spelen, herhalen of ontdekken",0xffffe4b5,80);
-        ideas.setContentDescription("Open speelideeën");ideas.setOnClickListener(v->move(IDEAS));
-        personalActionGrid(closet,daily,achievements,lumi,ideas);
+        personalActionGrid(closet,daily,achievements,lumi);
     }
     private void showCityLandmark(int index){
         if(page!=CITY||index<0||index>=PlaylumiCityRewards.ALL.length)return;
@@ -4393,11 +4302,8 @@ public class MainActivity extends Activity {
         }
     }
     private void showParentHome() {
-        header("👨‍👩‍👧 Voor ouders",PlaylumiProfiles.label(activeProfile)+" · "+PlaylumiProfiles.ageLabel(age)+". Alles blijft op dit toestel.");
+        header("👨‍👩‍👧 Voor ouders",PlaylumiProfiles.ageLabel(age)+". Alles blijft op dit toestel.");
         saveUsage();
-        Button players=tile("Spelers op dit toestel",PlaylumiProfiles.label(activeProfile)+" is actief · kies uit 3 eigen speelplekken",0xffe8dcff,88);
-        players.setContentDescription("Spelers op dit toestel");addTile(players,6);
-        players.setOnClickListener(v->move(PROFILES));
         int correct=0,attempts=0,badges=0;
         for(int i=0;i<PlaylumiScores.CATEGORIES;i++) {
             correct+=scores.get(i).correct;
@@ -4419,7 +4325,7 @@ public class MainActivity extends Activity {
         Button privacy=tile("🔒 Privacy en gegevens","Bekijk wat op dit toestel wordt bewaard",0xfff0e5ff,90);
         addTile(privacy,7);privacy.setOnClickListener(v->new android.app.AlertDialog.Builder(this)
                 .setTitle("Privacy en gegevens")
-                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Er zijn drie lokale spelers, elk met een eigen leeftijdskeuze, voortgang, favorieten, speelgegevens, Lumi's uiterlijk, daguitdagingen, instellingen en tekening. Wisselen kan via de ouderzone. Er is geen Playlumi-server. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen de gegevens en beloningen van alle spelers.").setPositiveButton("Sluiten",null).show());
+                .setMessage("Playlumi heeft geen account, advertenties of in-app aankopen. Leeftijdskeuze, voortgang, speelgegevens, Lumi's uiterlijk, daguitdagingen, instellingen en tekeningen blijven op dit toestel. Ook gegevens uit oudere versies worden bewaard. Er is geen Playlumi-server. Je kunt alle lokale Playlumi-gegevens wissen via Android Instellingen > Apps > Playlumi > Opslag > Gegevens wissen. Daarmee verdwijnen alle opgeslagen gegevens en beloningen.").setPositiveButton("Sluiten",null).show());
         Button back=tile("🌈 Terug naar spelen","",0xffd4f3e0,85);
         addTile(back,11);
         back.setOnClickListener(v->{parentAllowed=false;move(HOME);});
@@ -4459,7 +4365,7 @@ public class MainActivity extends Activity {
         });
     }
     private void showParentSettings() {
-        header("⚙️ Instellingen",PlaylumiProfiles.label(activeProfile)+" · Deze instellingen gelden voor deze speler.");
+        header("⚙️ Instellingen","Deze instellingen blijven op dit toestel.");
         Button soundButton=tile(sound.isEnabled()?"🔊 Geluid: aan":"🔇 Geluid: uit",
                 "Tik om te veranderen",0xffd6efff,90);
         addTile(soundButton,7);
@@ -4521,53 +4427,6 @@ public class MainActivity extends Activity {
         continueButton.setOnClickListener(v->move(breakReturn));
     }
 
-
-    private void showProfiles() {
-        header("Spelers op dit toestel","Elke speler heeft een eigen leeftijd, voortgang, kleding, instellingen en tekening.");
-        TextView status=text("Nu speelt "+PlaylumiProfiles.label(activeProfile)+". Kies een andere speler om te wisselen.",16,SUB);
-        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        addWidget(status,4,9);
-        for(int i=0;i<PlaylumiProfiles.COUNT;i++){
-            final int selected=i;
-            SharedPreferences stored=profilePrefs(i);
-            Integer stars=stored.contains("wardrobe_stars")?Integer.valueOf(stored.getInt("wardrobe_stars",0)):null;
-            String summary=PlaylumiProfiles.summary(stored.getInt("chosen_age",-1),stars);
-            boolean active=i==activeProfile;
-            Button player=tile((active?"✓ ":PlaylumiProfiles.ICONS[i]+" ")+PlaylumiProfiles.label(i),
-                    (active?"Nu actief · ":"")+summary,active?0xffd5f5df:COLORS[i],98);
-            player.setMaxLines(6);player.setSelected(active);player.setEnabled(!active);
-            player.setContentDescription(PlaylumiProfiles.label(i)+(active?", actief":", kies deze speler")+". "+summary);
-            addTile(player,7);
-            player.setOnClickListener(v->switchProfile(selected,status));
-        }
-        addText("Je huidige speler blijft bewaard. Je kunt hier altijd terugwisselen; er wordt niets gewist.",14,SUB,9,5);
-        Button back=tile("Terug naar de ouderzone","",0xffe9dcff,72);addTile(back,7);
-        back.setOnClickListener(v->move(PARENT_HOME));
-    }
-    private void switchProfile(int selected,TextView status){
-        PlaylumiProfiles.validate(selected);
-        if(profileSwitchPending||selected==activeProfile)return;
-        if(!parentAllowed||page!=PROFILES){requestParents();return;}
-        // All games save on the way into the parent zone. Flush this player's final
-        // usage and pending preference writes before publishing the next identity.
-        if(!saveUsage(true)){
-            status.setText("Bewaren lukte nog niet. Je huidige speler staat nog open. Probeer het opnieuw.");
-            return;
-        }
-        SharedPreferences global=getSharedPreferences("playlumi-global",MODE_PRIVATE);
-        if(!global.edit().putInt("active_profile",selected).commit()){
-            global.edit().putInt("active_profile",activeProfile).apply();
-            status.setText("Wisselen lukte nog niet. Je huidige speler blijft actief. Probeer het opnieuw.");
-            return;
-        }
-        profileSwitchPending=true;parentAllowed=false;
-        autoAdvanceToken++;melodyPreviewToken++;
-        calendarHandler.removeCallbacks(calendarRefresh);
-        activeSince=0;
-        // Never change activeProfile here: old lifecycle saves must keep their old
-        // destination. onCreate reads the new identity and rejects the old Bundle.
-        recreate();
-    }
 
     /** A toy stage: children choose a single funny movement at a time. */
     private void showStarStage() {

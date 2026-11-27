@@ -285,14 +285,16 @@ def emulator_day():
 
 
 def assert_simple_library(label):
-    nodes = screenshot(label, expected_descriptions=("Bekijk ", "Open speelideeën"))
-    values = [value.strip().lower() for node in nodes for value in labels(node)]
-    assert not any("favoriet" in value or value.startswith("zoeken in alle spellen")
+    nodes = screenshot(label, expected_descriptions=("Dorp", "Werelden"))
+    values = [" ".join(value.lower().split()) for node in nodes for value in labels(node)]
+    assert not any("favoriet" in value or "speelidee" in value
+                   or "eerder gespeeld" in value or "eerder gespeelde spellen" in value
+                   or value.startswith("zoeken in alle spellen")
                    or value.startswith("bekijk alle ") and "onafgemaakte spellen" in value
                    or value.startswith("⌕ zoeken") or value.startswith("▶ verder (")
-                   for value in values), "Removed library navigation or favorite controls are still visible"
-    assert any("eerder gespeeld" in value for value in values), "Earlier played navigation disappeared"
-    assert any(value == "open speelideeën" for value in values), "Play ideas navigation disappeared"
+                   or value in ("▶ spellen", "alle spellen") for value in values), "Retired library control is visible"
+    assert any(value.startswith("werelden") for value in values), "Worlds navigation disappeared"
+    assert any(value == "dorp" for value in values), "Village navigation disappeared"
 
 
 def start_upgrade_quiz(label, resume):
@@ -320,7 +322,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.111" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.112" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -372,7 +374,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.112" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.113" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -406,7 +408,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.111", "candidateVersion": "0.112",
+        "baselineVersion": "0.112", "candidateVersion": "0.113",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -416,7 +418,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.111 → 0.112 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.112 → 0.113 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -917,79 +919,6 @@ def save_drawing(label, profile=0):
     return drawing_file(label + "-file", profile)
 
 
-def player_buttons(label, active):
-    nodes = ui(label)
-    buttons, scrolled = [], False
-    for profile in range(3):
-        prefix = "Speler " + str(profile+1) + (", actief" if profile == active else ", kies deze speler")
-        matches = [node for node in nodes if description_prefix(prefix)(node)
-                   and node.get("class") == "android.widget.Button" and visible(node)]
-        assert len(matches) <= 1, "Duplicate anonymous player button: " + prefix
-        if matches:
-            node = matches[0]
-        else:
-            node = find_control(description_prefix(prefix), label + "-player-" + str(profile+1),
-                                enabled=profile != active)
-            scrolled = True
-        assert node.get("class") == "android.widget.Button", "Player choice is not a native Button"
-        assert node.get("selected") == str(profile == active).lower(), "Wrong native selected player"
-        assert node.get("enabled") == str(profile != active).lower(), "Active player must not switch to itself"
-        buttons.append(node)
-    if scrolled:
-        scroll_top()
-    return buttons
-
-
-def open_players(label, active):
-    click(find_control(lambda node: exact("Ouderzone")(node)
-                       or description_prefix("Ouderzone")(node), label + "-parent-entry", False))
-    page(26)
-    unlock_parent_gate(label + "-gate")
-    click_named("Spelers op dit toestel", label + "-entry", False)
-    page(32)
-    return player_buttons(label + "-players", active)
-
-
-def select_player(profile, label, new_age=None):
-    """Switch only through the real parent-authorized native button."""
-    click(find_control(description_prefix("Speler " + str(profile+1) + ", kies deze speler"),
-                       label + "-choose"))
-    page(0 if new_age is not None else 1)
-    global_xml = ET.fromstring(adb("exec-out", "run-as", APP, "cat", "shared_prefs/playlumi-global.xml"))
-    active = next((node for node in global_xml if node.get("name") == "active_profile"), None)
-    assert active is not None and active.tag == "int" and int(active.get("value")) == profile, "Native player choice did not persist"
-    if new_age is not None:
-        nodes = ui(label + "-age")
-        assert any("Speler " + str(profile+1) in value for node in nodes if visible(node)
-                   for value in labels(node)), "New age page identifies the wrong player"
-        assert prefs(profile).get("chosen_age", -1) not in (0, 1, 2), "New player inherited another age"
-        find_control(exact("Andere speler (voor ouders)"), label + "-age-recovery")
-        scroll_top()
-        age_label = ("3–4 jaar", "5–6 jaar", "7+ jaar")[new_age]
-        click(find_control(lambda node: any(age_label in value for value in labels(node)), label + "-age-choice"))
-        page(1)
-        wait_prefs(lambda p: p.get("chosen_age") == new_age and p.get("wardrobe_stars") == 18,
-                   "independently chosen age and starter balance", profile)
-
-
-def profile_quiz(profile, age, world, title, route, label, resume=False):
-    click(find_control(description_prefix(world), label + "-world", False))
-    page(44)
-    click(find_control(description_prefix(("Verder spelen " if resume else "Speel ") + title), label + "-entry"))
-    page(6)
-    key = "library_resume_v2_" + str(age) + "_" + route
-    state = wait_prefs(lambda p: key in p, "actual separate player quiz", profile)
-    saved = json.loads(state[key])
-    assert saved["age"] == age, "Player quiz used another player's age"
-    nodes = ui(label + "-question")
-    no_speech(nodes)
-    normal = lambda value: " ".join(value.split())
-    for value in (saved["prompt"], saved["display"], *saved["answers"]):
-        assert any(visible(node) and any(normal(text) == normal(value) for text in labels(node))
-                   for node in nodes), "Separate player question/answers are not visible"
-    return saved
-
-
 def test_drawing_tools(viewport):
     label = viewport + "-drawing-tools"
     undo, redo = "↩  Laatste lijn weg", "↪  Laatste lijn terug"
@@ -1099,111 +1028,6 @@ def test_drawing_tools(viewport):
         assert drawing_file(label + "-font-restored-file") == combined, "Font/viewport change rewrote unchanged artwork"
         pass_check("phone: drawing tools remain reachable with 130% text and unchanged saved artwork; top and controls captured")
 
-    # Reuse the real drawing history above. Every player change and new age
-    # choice below goes through the native parent gate; no profile file is seeded.
-    choose_drawing("Gum", label + "-primary-tool")
-    primary = prefs()
-    assert (primary.get("drawing_color_v1"), primary.get("drawing_brush_size_v1"),
-            primary.get("drawing_eraser_v1")) == (2, 2, True), "Primary tool choices were not saved"
-    drawing_home(label + "-primary-quiz-home")
-    primary_route, primary_key = "2:0:3:0", "library_resume_v2_0_2:0:3:0"
-    first_quiz = profile_quiz(0, 0, "Vormkasteel", "Vormen zoeken", primary_route, label + "-primary-quiz")
-    assert first_quiz["count"] == 0 and not first_quiz["solved"], "Primary profile quiz must be an actual unanswered round"
-    click_named("Terug naar het magische dorp", label + "-primary-quiz-back", False)
-    page(1)
-    buttons = open_players(label + "-primary-picker", active=0)
-    assert "3–4 jaar · 27 speelsterren" in buttons[0].get("content-desc", ""), "Player summary does not use actual age/wallet"
-    assert all("Leeftijd nog kiezen" in button.get("content-desc", "") for button in buttons[1:]), "Unused players invented an age"
-    screenshot(label + "-players-first", expected_texts=("Spelers op dit toestel",))
-    shell("input keyevent KEYCODE_BACK")
-    page(27)
-    click_named("Spelers op dit toestel", label + "-picker-back", False)
-    page(32)
-    background_app()
-    native_foreground(None)
-    require_parent_gate(label + "-players-background")
-    unlock_parent_gate(label + "-players-relocked")
-    click_named("Spelers op dit toestel", label + "-players-reopen", False)
-    page(32)
-    player_buttons(label + "-players-relocked-state", active=0)
-    select_player(1, label + "-second-player", new_age=1)
-    # Read the old player only after the real Activity recreation has flushed
-    # its final usage time. Later work in another player must change nothing.
-    primary = prefs()
-    same_quiz(first_quiz, json.loads(primary[primary_key]), "Leaving primary player")
-    assert primary["chosen_age"] == 0 and primary["wardrobe_stars"] == 27, "Switch changed the original player"
-    assert not any(key.startswith("library_resume_v2_") for key in prefs(1)), "New player inherited an open quiz"
-    open_drawing(label + "-second-player-drawing")
-    drawing_state("Tekenkleur Roze", label + "-profile-default-color", selected=True)
-    drawing_state("Potlood", label + "-profile-default-tool", selected=True)
-    drawing_state("Lijndikte Normaal", label + "-profile-default-width", selected=True)
-    drawing_home(label + "-second-blank-home")
-    assert drawing_file(label + "-second-blank-file", profile=1) == blank, "Second profile inherited the first artwork"
-    open_drawing(label + "-second-paint")
-    choose_drawing("Tekenkleur Groen", label + "-second-green")
-    choose_drawing("Lijndikte Dun", label + "-second-thin")
-    drawing_stroke(label + "-second-stroke", (.35, .5), (.65, .5), profile=1)
-    second = save_drawing(label + "-second-artwork", profile=1)
-    assert second not in (blank, thin, combined), "Second profile did not save its independent green artwork"
-    wait_prefs(lambda p: p.get("wardrobe_stars") == 27 and p.get("collection_world_5") == 1
-               and p.get("drawing_saved_once") is True, "independent profile-1 creative reward", profile=1)
-    assert prefs() == primary, "Painting in the second player changed the primary preferences"
-    assert drawing_file(label + "-primary-untouched-file") == combined, "Painting in profile 1 overwrote profile 0 artwork"
-    drawing_home(label + "-second-quiz-home")
-    second_route, second_key = "4:0:15:5", "library_resume_v2_1_4:0:15:5"
-    second_quiz = profile_quiz(1, 1, "Speelplein", "Wat hoort er niet bij?", second_route, label + "-second-quiz")
-    assert second_quiz["count"] == 0 and not second_quiz["solved"] and len(second_quiz["answers"]) == 4, "Second player lost its own age-appropriate unanswered question"
-    screenshot(label + "-second-player-quiz")
-    click_named("Terug naar het magische dorp", label + "-second-quiz-back", False)
-    page(1)
-    buttons = open_players(label + "-second-picker", active=1)
-    assert "5–6 jaar · 27 speelsterren" in buttons[1].get("content-desc", ""), "Second player's summary lost its independent age/wallet"
-    select_player(2, label + "-third-player", new_age=2)
-    second_state = prefs(1)
-    same_quiz(second_quiz, json.loads(second_state[second_key]), "Leaving second player")
-    third = prefs(2)
-    assert third["chosen_age"] == 2 and third["wardrobe_stars"] == 18, "Third player inherited another age or wallet"
-    assert not any(key.startswith("library_resume_v2_") for key in third), "Third player inherited another quiz"
-    assert not third.get("drawing_saved_once", False) and third.get("collection_world_5", 0) == 0, "Third player inherited creative progress"
-    assert shell(f"run-as {APP} sh -c 'if [ -e {drawing_path(2)} ]; then echo present; else echo absent; fi'") == "absent", "Third player inherited another drawing file"
-    launch_native_home()
-    third_nodes = screenshot(label + "-third-player-restart")
-    assert any("Speler 3" in value for node in third_nodes if visible(node) for value in labels(node)), "Restart lost the active player on HOME"
-    buttons = open_players(label + "-third-picker", active=2)
-    assert "7+ jaar · 18 speelsterren" in buttons[2].get("content-desc", ""), "Third player's chosen age/wallet did not survive restart"
-    assert prefs() == primary and prefs(1) == second_state, "Working in player 3 changed another player's preferences"
-    screenshot(label + "-players-three-ages", expected_texts=("Spelers op dit toestel",))
-    select_player(0, label + "-return-primary")
-    restored_quiz = profile_quiz(0, 0, "Vormkasteel", "Vormen zoeken", primary_route,
-                                label + "-primary-quiz-restored", resume=True)
-    same_quiz(first_quiz, restored_quiz, "Native cross-player quiz resume")
-    assert prefs()["chosen_age"] == 0 and prefs()["wardrobe_stars"] == 27, "Restoring primary player changed age or wallet"
-    assert prefs(1) == second_state, "Resuming primary quiz changed the inactive player"
-    screenshot(label + "-primary-player-quiz-restored")
-    click_named("Terug naar het magische dorp", label + "-primary-quiz-restored-home", False)
-    page(1)
-    open_drawing(label + "-primary-drawing-restored")
-    drawing_state("Tekenkleur Blauw", label + "-restored-primary-color", selected=True)
-    drawing_state("Gum", label + "-restored-primary-tool", selected=True)
-    drawing_state("Lijndikte Dik", label + "-restored-primary-width", selected=True)
-    drawing_state(undo, label + "-restored-primary-undo", enabled=False)
-    drawing_state(redo, label + "-restored-primary-redo", enabled=False)
-    assert drawing_file(label + "-primary-restored-file") == combined, "Restoring primary profile changed its drawing"
-    assert drawing_file(label + "-second-retained-file", profile=1) == second, "Restoring primary profile changed the second drawing"
-    assert prefs()["wardrobe_stars"] == prefs(1)["wardrobe_stars"] == 27, "Profile restore repeated a creative reward"
-    drawing_top()
-    screenshot(label + "-players-drawing-restored")
-    (OUT / (label + "-players.json")).write_text(json.dumps({
-        "selection": "Real parent gate and native player buttons; no player-preference fixture writes",
-        "ages": [prefs(i)["chosen_age"] for i in range(3)],
-        "wallets": [prefs(i)["wardrobe_stars"] for i in range(3)],
-        "primaryArtworkSha256": hashlib.sha256(combined).hexdigest(),
-        "secondArtworkSha256": hashlib.sha256(second).hexdigest(),
-        "primaryQuizBefore": first_quiz, "primaryQuizResumed": restored_quiz,
-        "secondQuizPreserved": json.loads(prefs(1)[second_key]),
-        "profilePageRelockedAfterBackground": True
-    }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": three real parent-gated player choices preserve separate ages, artwork, tools, wallets and exact quiz resume; player selection survives restart and relocks after background")
 
 
 def png_raster(raw):
@@ -1450,30 +1274,6 @@ def same_quiz(before, after, label):
         assert after[field] == before[field], label + " changed saved question field: " + field
 
 
-def open_ideas(label):
-    scroll_top()
-    click_named("Open speelideeën", label + "-entry")
-    page(50)
-
-
-def idea_cards(label):
-    titles, seen_texts = [], set()
-    scroll_top()
-    for index in range(1, 4):
-        button = find_control(description_prefix("Speelidee " + str(index) + ": "), label + "-card-" + str(index))
-        titles.append(button.get("content-desc").split(": ", 1)[1])
-        nodes = ui(label + "-visible-" + str(index))
-        no_speech(nodes)
-        seen_texts.update(" ".join(value.split()) for node in nodes if visible(node) for value in labels(node))
-    assert len(set(titles)) == 3, "Play ideas duplicate a visible exercise"
-    return titles, seen_texts
-
-
-def idea_click(index, title, label):
-    scroll_top()
-    click_named("Speelidee " + str(index) + ": " + title, label)
-
-
 def real_history_fingerprint():
     prefixes = ("wardrobe_", "score_", "library_resume_", "library_rounds_", "library_completed_",
                 "daily_", "collection_world_", "learn_", "play_day_")
@@ -1502,8 +1302,8 @@ def parent_world_summary(world, rounds, completed, unfinished, label):
     raise AssertionError("Parent world summary does not match actually played history: " + world)
 
 
-def test_play_ideas(viewport):
-    label = viewport + "-ideas"
+def test_simplified_navigation(viewport):
+    label = viewport + "-navigation"
     # Start with an empty profile. Every completion and unfinished game below is
     # created through native play; only the later playtime threshold is a fixture.
     seed({})
@@ -1533,54 +1333,26 @@ def test_play_ideas(viewport):
     correct_marker(ui(label + "-first-correct"), saved_quiz["answers"][saved_quiz["correct"]])
     shell("input keyevent KEYCODE_BACK")
     page(44)
-    open_ideas(label + "-library")
-    titles, texts = idea_cards(label + "-real-history")
-    assert titles[0] == "Vormen zoeken" and titles[1] == "Getallenrace", "Ideas did not prioritize the actual unfinished quiz and completed board"
-    assert {"Verder spelen", "Nog eens spelen", "Ontdekken"} <= texts, "Idea labels do not distinguish resume, replay and discovery"
-    assert "1 ronde gespeeld · Tijd voor een nieuwe ronde?" in texts, "Ideas invented or lost the actual replay count"
-    scroll_top()
-    screenshot(label + "-three-kinds", expected_texts=("Speelideeën",))
-
-    before = real_history_fingerprint()
-    variation = prefs().get("play_ideas_variation_v1", 0)
-    click_named("Andere speelideeën", label + "-other")
-    page(50)
-    assert prefs().get("play_ideas_variation_v1") == variation + 1, "Other ideas did not remember the chosen variation"
-    changed, _ = idea_cards(label + "-varied")
-    assert changed[0] == "Vormen zoeken" and changed[1] == "Getallenrace", "Variation replaced the available saved/replay actions"
-    assert real_history_fingerprint() == before, "Choosing other ideas changed earned history or saved rounds"
-
-    if viewport == "phone":
-        shell("settings put system font_scale 1.3")
-        time.sleep(1)
-        page(50)
-        scroll_top()
-        screenshot(label + "-large-font-top", expected_texts=("Speelideeën",))
-        find_control(description_prefix("Speelidee 3: "), label + "-large-font-third")
-        screenshot(label + "-large-font-bottom")
-        shell("settings put system font_scale 1.0")
-        time.sleep(1)
-        page(50)
-
-    idea_click(1, "Vormen zoeken", label + "-resume-quiz")
+    assert_simple_library(label + "-shapes-library")
+    click(find_control(description_prefix("Verder spelen Vormen zoeken"), label + "-resume-quiz"))
     page(6)
-    same_quiz(saved_quiz, snapshot(quiz_route), "Ideas resume")
+    same_quiz(saved_quiz, snapshot(quiz_route), "Direct world resume")
     correct_marker(ui(label + "-resumed-correct"), saved_quiz["answers"][saved_quiz["correct"]])
     assert prefs()["wardrobe_stars"] == 48, "Resuming the selected correct answer paid twice"
-    shell("input keyevent KEYCODE_BACK")
-    page(50)
-
-    idea_click(2, "Getallenrace", label + "-replay-board")
+    click_named("Terug naar het magische dorp", label + "-resume-home", False)
+    page(1)
+    click(find_control(description_prefix("Rekenraket"), label + "-replay-world", False))
+    page(44)
+    assert_simple_library(label + "-replay-library")
+    click(find_control(description_prefix("Speel Getallenrace"), label + "-replay-board"))
     page(45)
     click_named("Kies 1", label + "-replay-first-step")
     first_step = wait_prefs(lambda p: board_key in p and json.loads(p[board_key])["count"] == 1,
                             "actual unfinished replay for newest-save priority")
     saved_board = json.loads(first_step[board_key])
     shell("input keyevent KEYCODE_BACK")
-    page(50)
-    titles, _ = idea_cards(label + "-newest-save")
-    assert titles[0] == "Getallenrace", "Latest actual unfinished game is not first"
-    idea_click(1, "Getallenrace", label + "-resume-board")
+    page(44)
+    click(find_control(description_prefix("Verder spelen Getallenrace"), label + "-resume-board"))
     page(45)
     restored_board = json.loads(prefs()[board_key])
     for field in ("id", "age", "seed", "engine", "count", "total"):
@@ -1590,11 +1362,11 @@ def test_play_ideas(viewport):
     wait_prefs(lambda p: p.get(rounds_key) == 2 and p.get("wardrobe_stars") == 51 and board_key not in p,
                "second actually completed board pays exactly +3 and clears its save")
     screenshot(label + "-interactive-completion")
-    click_named("Terug naar speelideeën", label + "-completion-return", False)
-    page(50)
-    pass_check(viewport + ": three honest ideas come from real played history; variation is free, newest quiz/board saves resume exactly and interactive Back/completion return to ideas")
-
-    idea_click(1, "Vormen zoeken", label + "-before-pause")
+    click_named("Terug naar het magische dorp", label + "-completion-home", False)
+    page(1)
+    click(find_control(description_prefix("Vormkasteel"), label + "-before-pause-world", False))
+    page(44)
+    click(find_control(description_prefix("Verder spelen Vormen zoeken"), label + "-before-pause"))
     page(6)
     before_recreate = snapshot(quiz_route)
     date = datetime.date.fromisoformat(shell("date +%Y-%m-%d"))
@@ -1617,9 +1389,9 @@ def test_play_ideas(viewport):
     same_quiz(paused, snapshot(quiz_route), "Continue after pause")
     answer_saved(quiz_route, 2, 54, label + "-after-pause-answer")
     shell("input keyevent KEYCODE_BACK")
-    page(50)
+    page(44)
     assert prefs()[rounds_key] == 2, "Pause/restart changed completed replay history"
-    pass_check(viewport + ": real quiz task and break reminder survive background process recreation; exact question, one-time wallet and return to ideas remain intact")
+    pass_check(viewport + ": real quiz task and break reminder survive background process recreation; exact question, one-time wallet and return to the world remain intact")
 
     click_named("Terug naar het magische dorp", label + "-parent-home", False)
     page(1)
@@ -1627,6 +1399,8 @@ def test_play_ideas(viewport):
                        or description_prefix("Ouderzone")(node), label + "-parent-entry", False))
     page(26)
     unlock_parent_gate(label + "-parent")
+    parent_nodes = ui(label + "-parent-no-players")
+    assert not any("spelers op dit toestel" in value.lower() for node in parent_nodes for value in labels(node)), "Player selector is still visible"
     parent_world_summary("Rekenraket", 2, 1, 0, label + "-parent-rounds")
     parent_world_summary("Vormkasteel", 0, 0, 1, label + "-parent-unfinished")
     assert prefs()["wardrobe_stars"] == 54, "Reading parent history changed the wallet"
@@ -1636,11 +1410,10 @@ def test_play_ideas(viewport):
     click_named("Terug naar het magische dorp", label + "-city-home", False)
     page(1)
     open_city(label + "-city")
-    open_ideas(label + "-city-ideas")
-    shell("input keyevent KEYCODE_BACK")
-    page(49)
-    assert prefs()["wardrobe_stars"] == 54, "City/ideas navigation awarded currency"
-    pass_check(viewport + ": native city ideas entry returns to its originating city without changing progress")
+    nodes = ui(label + "-city-no-ideas")
+    assert not any("speelidee" in value.lower() for node in nodes for value in labels(node)), "Play ideas still visible in city"
+    assert prefs()["wardrobe_stars"] == 54, "City navigation awarded currency"
+    pass_check(viewport + ": simplified worlds and city navigation, no separate ideas or player controls; native replay and exact saved progress retained")
 
 
 if __name__ == "__main__":
@@ -1648,7 +1421,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.111 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.112 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1668,7 +1441,7 @@ if __name__ == "__main__":
             test_debug_upgrade(args.baseline_apk, args.viewport)
         test(args.viewport)
         test_new_quiz_routes(args.viewport)
-        test_play_ideas(args.viewport)
+        test_simplified_navigation(args.viewport)
         test_cosmetic_fixture(args.viewport)
         test_drawing_lifecycle(args.viewport)
         test_drawing_tools(args.viewport)

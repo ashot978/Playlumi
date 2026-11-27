@@ -100,7 +100,7 @@ public final class PlaylumiVillageView extends View {
                 PlaylumiVillageProgress.visitedCount(discovered)+
                 " gebouwen bezocht. Daguitdagingen "+dailyCompleted+" van 3. Tik bovenaan op de zon of Lumi, of op een speelgebouw.");
     }
-    public String profileLabel(){return PlaylumiProfiles.label(profileNumber);}
+    public String profileLabel(){return "Lumi";}
     private void paintColor(int c) {
         pen.reset();
         pen.setAntiAlias(true);
