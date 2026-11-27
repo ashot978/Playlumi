@@ -882,21 +882,24 @@ public class MainActivity extends Activity {
     private void showBuilderHome(){
         libraryReturn=false;
         final int done=builderProgress();
-        header("Lumi’s bouwatelier","Bouw een eigen wijk");
+        header("Lumi’s bouwatelier","");pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
+        final View[] galleryStart=new View[1],planStart=new View[1];
         LinearLayout summary=personalPanel();
         homeAdd(summary,homeLabel(done==12?"🏅 Meesterbouwer!":"🏡 Welkom, bouwer!",23,TEXT,true),0,4);
         homeAdd(summary,homeLabel(done+" van 12 bouwtekeningen · ★ "+PlaylumiBuilder.rewardTotal(done)+"/"+PlaylumiBuilder.totalReward()+" extra sterren",16,0xff715021,true),0,4);
         parentProgressBar(summary,12,done,0xff79b48d,done+" van 12 bouwtekeningen voltooid");
-        homeAdd(summary,homeLabel("Leg wegen aan, draai bochten en bruggen, en verbind huizen met het station. Er is geen tijdslimiet.",15,SUB,false),0,4);
+
         if(done<12){
             PlaylumiBuilder.State draft=builderState(done);
             Button play=tile(draft.placed()>0?"Verder bouwen":"Start bouwopdracht "+(done+1),PlaylumiBuilder.title(done),0xffd5f5df,75);
             play.setContentDescription("Bouwopdracht "+(done+1)+" openen");
             summary.addView(play,new LinearLayout.LayoutParams(-1,-2));play.setOnClickListener(v->startBuilder(done));
         }else homeAdd(summary,homeLabel("Alle bouwtekeningen voltooid. Je kunt ze opnieuw maken of vrij bouwen.",15,0xff27684d,false),0,2);
-        addWidget(summary,2,5);
-        addText("Mijn eigen ontwerpen",21,TEXT,4,3);
-        addText("Drie vrije bouwterreinen. Elk ontwerp en de laatste wijzigingen blijven lokaal bewaard.",14,SUB,0,3);
+        Button galleryButton=tile("Vrij bouwen","3 eigen ontwerpen",0xffe8dcff,76);
+        galleryButton.setContentDescription("Bekijk eigen ontwerpen");galleryButton.setOnClickListener(v->pageDeck.reveal(galleryStart[0]));homeAdd(summary,galleryButton,4,2);
+        Button plansButton=tile("Alle bouwtekeningen","",0xffffedc5,62);
+        plansButton.setContentDescription("Bekijk alle bouwtekeningen");plansButton.setOnClickListener(v->pageDeck.reveal(planStart[0]));homeAdd(summary,plansButton,3,1);
+        fixedSheet(summary,"Bouwatelier");
         int width=getResources().getConfiguration().screenWidthDp;
         int columns=width>=690&&getResources().getConfiguration().fontScale<1.2f?3:1;
         int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-24);
@@ -918,9 +921,9 @@ public class MainActivity extends Activity {
                 edit.setContentDescription("Open eigen ontwerp "+(i+1));card.addView(edit,new LinearLayout.LayoutParams(-1,-2));edit.setOnClickListener(v->startBuilder(slot));
                 LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1f);cp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(card,cp);
             }
-            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            if(start==0)galleryStart[0]=row;
+            fixedSheet(row,"Eigen ontwerpen");
         }
-        addText("Alle bouwtekeningen",21,TEXT,6,3);
         for(int group=0;group<3;group++){
             LinearLayout chapter=personalPanel();
             int progress=Math.max(0,Math.min(4,done-group*4));
@@ -934,7 +937,8 @@ public class MainActivity extends Activity {
                 plan.setEnabled(open);plan.setOnClickListener(v->startBuilder(slot));
                 homeAdd(chapter,plan,3,1);
             }
-            addWidget(chapter,3,4);
+            if(group==0)planStart[0]=chapter;
+            fixedSheet(chapter,PlaylumiBuilder.CHAPTERS[group]);
         }
     }
     private void saveBuilderEdit(PlaylumiBuilder.State state){
@@ -946,7 +950,7 @@ public class MainActivity extends Activity {
         libraryReturn=false;final PlaylumiBuilder.State state=builderState(builderSlot);
         final boolean free=PlaylumiBuilder.free(state.slot);
         header(PlaylumiBuilder.title(state.slot),"");
-        addText(free?"Kies een onderdeel en tik op een bouwvak.":"Maak de bouwtekening na.",14,SUB,1,2);
+        pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
         int width=getResources().getConfiguration().screenWidthDp;
         int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-30);
         int height=getResources().getConfiguration().screenHeightDp;
@@ -992,7 +996,8 @@ public class MainActivity extends Activity {
             // The example stays available as a separate content page, while the
             // actual building grid is pinned and remains editable on every page.
         }
-        homeAdd(boardPanel,current,0,3);
+        final LinearLayout toolsPage=personalPanel();
+        homeAdd(toolsPage,current,0,2);
         int perRow=wide?4:5;
         for(int start=0;start<palette.length;start+=perRow){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
@@ -1003,10 +1008,10 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(52),1f);lp.setMargins(dp(3),dp(2),dp(3),dp(2));row.addView(part,lp);parts[j]=part;
                 part.setOnClickListener(v->{builderPiece=palette[index];sound.tap();refresh.run();});
             }
-            boardPanel.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            toolsPage.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
         rotate.setContentDescription("Draai gekozen onderdeel");
-        homeAdd(boardPanel,rotate,3,4);
+        homeAdd(toolsPage,rotate,3,2);
         rotate.setOnClickListener(v->{if(PlaylumiBuilder.rotatable(builderPiece)){builderPiece=PlaylumiBuilder.rotate(builderPiece);sound.tap();refresh.run();}});
         int gridExtent=Math.min(wide?usable/2-18:usable,Math.max(124,Math.min(272,height-280)));
         grid[0]=new PlaylumiBuilderGrid(this,state.size,gridExtent,state.cells(),true,index->{
@@ -1030,10 +1035,10 @@ public class MainActivity extends Activity {
             if(free){
                 message.setText(network.houses==0||network.stations==0?"Plaats minstens één huis en één station.":network.complete()?"Alle "+network.houses+" huizen zijn verbonden!":"Nog "+(network.houses-network.connected)+" huizen hebben geen route naar een station.");
                 if(network.complete())sound.good();
-                return;
+                pageDeck.reveal(message);return;
             }
             if(!state.matches()){
-                message.setText("Nog "+state.different()+" vakjes verschillen. Kijk naar het voorbeeld en draai de onderdelen indien nodig.");sound.mistake();return;
+                message.setText("Nog "+state.different()+" vakjes verschillen. Kijk naar het voorbeeld en draai de onderdelen indien nodig.");sound.mistake();pageDeck.reveal(message);return;
             }
             int old=builderProgress();PlaylumiBuilder.Completion completed=PlaylumiBuilder.complete(old,state);
             if(completed.after>old){
@@ -1054,10 +1059,15 @@ public class MainActivity extends Activity {
                     if(page==BUILDER_PLAY&&builderSlot==state.slot&&state.clear()){saveBuilderEdit(state);message.setText("Terrein leeggemaakt.");refresh.run();}
                 }).show());
         homeAdd(boardPanel,clear,3,1);
-        if(!free)addWidget(target,2,3);
-        addWidget(boardPanel,2,3);
+        fixedSheet(toolsPage,"Bouwonderdelen");
+        if(!free){
+            Button showPlan=tile("Bekijk bouwtekening","",0xffe8dcff,54);showPlan.setOnClickListener(v->pageDeck.reveal(target));
+            homeAdd(toolsPage,showPlan,3,1);
+            fixedSheet(target,"Bouwtekening");
+        }
+        fixedSheet(boardPanel,"Bewerken en controleren");
         Button back=tile("Naar het bouwatelier","Alles wordt automatisch bewaard",0xffe8dcff,65);
-        back.setOnClickListener(v->move(BUILDER_HOME));addTile(back,4);
+        back.setOnClickListener(v->move(BUILDER_HOME));fixedSheet(back,"Klaar");
         refresh.run();
     }
     private void showDailyChallenges(){
@@ -3961,25 +3971,31 @@ public class MainActivity extends Activity {
         }
     }
     private void showCloset(){
-        header("Mijn kledingkast","Maak Lumi helemaal uniek.");
-        int width=getResources().getConfiguration().screenWidthDp;
-        boolean wide=PlaylumiLayout.interactiveWide(width);
-        LinearLayout outfit=new LinearLayout(this);outfit.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);outfit.setGravity(Gravity.TOP);
-        LinearLayout preview=personalPanel(),controls=personalPanel();
-        if(wide){
-            LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-2,1f);pp.setMargins(dp(3),0,dp(5),0);outfit.addView(preview,pp);
-            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1.65f);cp.setMargins(dp(5),0,dp(3),0);outfit.addView(controls,cp);
-        }else{
-            outfit.addView(preview,new LinearLayout.LayoutParams(-1,-2));
-            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.topMargin=dp(7);outfit.addView(controls,cp);
-        }
-        addWidget(outfit,3,5);
-        LinearLayout savedRoot=root;root=preview;
-        try{characterHero(180);}finally{root=savedRoot;}
-        final TextView balance=text("★ "+wardrobe.stars()+" speelsterren",22,0xff715021);preview.addView(balance);
-        final TextView owned=text((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld",14,SUB);preview.addView(owned);
-        final TextView feedback=text("Kies een accessoire. Gratis wisselen als je het al hebt!",15,SUB);
-        feedback.setMinHeight(dp(44));feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);controls.addView(feedback);
+        header("Mijn kledingkast","");
+        int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
+        boolean side=width>=540&&landscapeScreen();
+        pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);
+        // Lumi and the wallet never disappear when moving between clothing pages.
+        LinearLayout preview=personalPanel();preview.setOrientation(side?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);preview.setGravity(Gravity.CENTER);
+        preview.setPadding(dp(6),dp(5),dp(6),dp(5));
+        character=new PlaylumiAvatar(this,chosenAvatar(),wardrobe);
+        character.setContentDescription("Lumi, voorbeeld van je outfit");character.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        LinearLayout.LayoutParams ap=side?new LinearLayout.LayoutParams(-1,0,1f):new LinearLayout.LayoutParams(dp(width<340?80:104),-1);
+        preview.addView(character,ap);character.setOnClickListener(v->{character.wave();sound.hello();});
+        LinearLayout stats=new LinearLayout(this);stats.setOrientation(LinearLayout.VERTICAL);stats.setGravity(Gravity.CENTER_VERTICAL);
+        final TextView balance=text("★ "+wardrobe.stars()+" speelsterren",18,0xff715021);
+        final TextView owned=text((wardrobe.unlockedItems()-PlaylumiWardrobe.SLOTS)+" van 36 accessoires vrijgespeeld",12,SUB);
+        final TextView feedback=text("Kies een accessoire.",13,SUB);
+        feedback.setMaxLines(2);feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        final Button chooseCategory=tile("Andere accessoires","",0xffe8dcff,44);
+        chooseCategory.setMinHeight(dp(44));chooseCategory.setContentDescription("Kies een andere accessoirecategorie");
+        for(View child:new View[]{balance,owned,feedback,chooseCategory})stats.addView(child,new LinearLayout.LayoutParams(-1,-2));
+        preview.addView(stats,side?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-1,1f));
+        int previewExtent=side?Math.min(230,width/3):height<570?118:140;
+        pageDeck.setPinnedView(preview,dp(previewExtent),side);
+
+        LinearLayout categories=personalPanel();
+        homeAdd(categories,homeLabel("Kies wat je wilt veranderen",18,TEXT,true),0,3);
         final LinearLayout items=new LinearLayout(this);items.setOrientation(LinearLayout.VERTICAL);
         final Button[] tabs=new Button[PlaylumiWardrobe.SLOTS];
         final Runnable render=()->{
@@ -3991,26 +4007,29 @@ public class MainActivity extends Activity {
             }
             renderClosetItems(items,balance,owned,feedback);
         };
-        final int tabColumns=wide&&width<900?2:3;
+        final int tabColumns=width<300?1:side?3:2;
         for(int first=0;first<PlaylumiWardrobe.SLOTS;first+=tabColumns){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
             for(int i=first;i<Math.min(first+tabColumns,PlaylumiWardrobe.SLOTS);i++){
-                final int slot=i;
-                Button tab=tile(PlaylumiWardrobe.SLOT_ICONS[i]+" "+PlaylumiWardrobe.SLOT_NAMES[i],"",COLORS[i],60);
-                tabs[i]=tab;tab.setTextSize(14);tab.setMinHeight(dp(54));
+                final int slot=i;Button tab=tile(PlaylumiWardrobe.SLOT_ICONS[i]+" "+PlaylumiWardrobe.SLOT_NAMES[i],"",COLORS[i],60);
+                tabs[i]=tab;tab.setTextSize(15);tab.setMinHeight(dp(60));
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(tab,lp);
-                tab.setOnClickListener(v->{selectedSlot=slot;sound.tap();feedback.setText("Kies jouw favoriet.");render.run();});
+                tab.setOnClickListener(v->{selectedSlot=slot;sound.tap();feedback.setText("Kies "+PlaylumiWardrobe.SLOT_NAMES[slot]+".");render.run();if(items.getChildCount()>0)pageDeck.reveal(items.getChildAt(0));});
             }
-            controls.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            categories.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
-        addWidgetIn(controls,items,dp(5),dp(6));
+        fixedSheet(categories,"Accessoires");
+        chooseCategory.setOnClickListener(v->pageDeck.reveal(categories));
+        root.addView(items,new LinearLayout.LayoutParams(-1,-2));pageDeck.splitChildren(items);
         selectedSlot=Math.max(0,Math.min(PlaylumiWardrobe.SLOTS-1,selectedSlot));render.run();
-        Button done=tile("Klaar!",closetReturn==SHOP?"Terug naar je beloningen":"Terug naar Lumi",0xffd5f5df,70);
-        addWidgetIn(controls,done,dp(4),dp(4));done.setOnClickListener(v->onBackPressed());
+        Button done=tile("Klaar!","",0xffd5f5df,70);done.setOnClickListener(v->onBackPressed());fixedSheet(done,"Klaar");
     }
     private void renderClosetItems(LinearLayout items,TextView balance,TextView owned,TextView feedback){
         items.removeAllViews();
-        final int slot=selectedSlot,columns=PlaylumiLayout.closetItemColumns(getResources().getConfiguration().screenWidthDp);
+        int width=getResources().getConfiguration().screenWidthDp,height=getResources().getConfiguration().screenHeightDp;
+        boolean side=width>=540&&landscapeScreen();
+        final int slot=selectedSlot,columns=width<300?1:2;
+        final int rows=side&&height>=400?2:PlaylumiPagePlan.shelfRows(height,getResources().getConfiguration().fontScale);
         final Button[] choices=new Button[PlaylumiWardrobe.OPTIONS];
         final Runnable refresh=()->{
             balance.setText("★ "+wardrobe.stars()+" speelsterren");
@@ -4025,16 +4044,22 @@ public class MainActivity extends Activity {
                 button.setContentDescription(label+" "+detail);
                 button.setSelected(equipped);button.setAlpha(equipped?1f:unlocked?.95f:.84f);
             }
-            invalidateAvatars(root);
+            if(character!=null)character.invalidate();
         };
+        LinearLayout sheet=null;
         for(int first=0;first<PlaylumiWardrobe.OPTIONS;first+=columns){
+            if(first%(columns*rows)==0){
+                sheet=personalPanel();
+                homeAdd(sheet,homeLabel(PlaylumiWardrobe.SLOT_ICONS[slot]+" "+PlaylumiWardrobe.SLOT_NAMES[slot],18,TEXT,true),0,3);
+                items.addView(sheet,new LinearLayout.LayoutParams(-1,-2));pageDeck.keepTogether(sheet);pageDeck.namePage(sheet,PlaylumiWardrobe.SLOT_NAMES[slot]);
+            }
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
             for(int j=0;j<columns;j++){
                 int i=first+j;
                 if(i>=PlaylumiWardrobe.OPTIONS){row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));continue;}
                 final int item=i;
                 Button b=tile(PlaylumiWardrobe.ITEM_NAMES[slot][item],"",COLORS[slot],86);
-                b.setMinHeight(dp(88));b.setTextSize(16);choices[item]=b;
+                b.setMinHeight(dp(rows==2?76:94));b.setTextSize(15);choices[item]=b;
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(4),dp(3),dp(4));row.addView(b,lp);
                 final Runnable equip=()->{
                     if(page!=CLOSET||selectedSlot!=slot)return;
@@ -4057,7 +4082,7 @@ public class MainActivity extends Activity {
                             .setPositiveButton("Vrijspelen",(d,which)->equip.run()).show();
                 });
             }
-            items.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            sheet.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
         refresh.run();
     }
