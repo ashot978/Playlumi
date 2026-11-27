@@ -2,7 +2,7 @@
 
 Android version code: **601012**. Package: `nl.playlumi.app`.
 Baseline: de geverifieerde [0.110 op 50230b814b6ac9af35fbb1d6464aa831e37e5123](https://github.com/ashot978/Playlumi/commit/50230b814b6ac9af35fbb1d6464aa831e37e5123).
-Status: **in ontwikkeling**; de definitieve bouw en acceptatie moeten nog worden uitgevoerd.
+Status: **Android-bouw geverifieerd; native acceptatie in uitvoering**. De definitieve bron en acceptatieresultaten worden in [PR #95](https://github.com/ashot978/Playlumi/pull/95) bijgehouden.
 
 ## Wijzigingen
 
@@ -12,7 +12,9 @@ Status: **in ontwikkeling**; de definitieve bouw en acceptatie moeten nog worden
 
 ## Gerichte controle
 
-De bestaande Java-, unit-, lint-, artwork- en native UI-controles blijven staan. De profielproef gebruikt nu de echte ouderpoort en spelerknoppen, gevolgd door afzonderlijke leeftijden, tekenbestanden, keuzes, sterren en exact herstel van een begonnen quiz. De nieuwe oefening krijgt inhoudscontroles in de bestaande `FoundationsCheck` en een echte native antwoord-/herstelproef.
+De [Android-run 46045790737](https://github.com/ashot978/Playlumi/actions/runs/46045790737) op appbron `5c2066fefbbbce55ae307487950edfebddbfcd4b` bouwde debug en productie, verifieerde de oorspronkelijke illustraties en doorliep **283 unit-tests in 57 suites**, zonder failures, errors of overgeslagen tests. Alle 56 vorige testsuites bleven behouden. Lint rapporteerde **0 fouten en 178 waarschuwingen**; alle vijf onafhankelijke Java-controles slaagden.
+
+De native profielproef gebruikt nu de echte ouderpoort en spelerknoppen, gevolgd door afzonderlijke leeftijden, tekenbestanden, keuzes, sterren en exact herstel van een begonnen quiz. De nieuwe oefening heeft inhoudscontroles in de bestaande `FoundationsCheck` en een echte native antwoord-/herstelproef. De eerste Fold-job stopte vóór emulatorbediening door HTTP 429 bij het ophalen van bestaande buildafhankelijkheden. De baselinebuild herhaalt zulke tijdelijke serverfouten nu maximaal tweemaal; broncodefouten blijven blokkerend.
 
 De upgradebaseline is exact 0.110. De emulatorproef vergelijkt opgeslagen voortgang, vraaginhoud en een echte oude teken-PNG vóór en na `install -r`, met dezelfde tijdelijke debughandtekening. De productie-APK wordt zonder privésleutel in CI gebouwd en pas na controle privé ondertekend. De definitieve resultaten worden bij de oplevering vastgelegd; de eerdere 0.110-resultaten gelden niet automatisch voor deze bouw.
 

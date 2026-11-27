@@ -9,7 +9,7 @@ De app werkt lokaal en zonder accounts, advertenties, trackers of extra toestemm
 | Bouw | Status |
 | --- | --- |
 | **0.110 · 601011** | Laatst geverifieerde testbouw, vanaf [50230b8](https://github.com/ashot978/Playlumi/commit/50230b814b6ac9af35fbb1d6464aa831e37e5123): uitgebreid tekenen, drie nieuwe leerroutes en interface-afwerking. |
-| **0.111 · 601012** | In ontwikkeling: drie lokale spelers via de ouderzone, een eigen leeftijd en voortgang per speler, en ‘Wat hoort er niet bij?’. |
+| **0.111 · 601012** | Android-bouw geverifieerd: drie lokale spelers via de ouderzone, een eigen leeftijd en voortgang per speler, en ‘Wat hoort er niet bij?’. Native acceptatie loopt; de definitieve resultaten staan in [PR #95](https://github.com/ashot978/Playlumi/pull/95). |
 
 Voor 0.110 zijn de [Android-build en volledige tests](https://github.com/ashot978/Playlumi/actions/runs/46038701981) en de [telefoon- en Fold-emulatorproeven](https://github.com/ashot978/Playlumi/actions/runs/46038701925) geslaagd: **264 unit-tests in 56 suites**, **0 lintfouten en 176 waarschuwingen**, en **56 native acceptatiegroepen**. Daarbij zijn echt gumwerk, Undo/Redo, aparte profielbestanden en behoud van oude tekeningen gecontroleerd. Fysieke Samsung Fold-acceptatie staat nog open. Dit project bevindt zich in testontwikkeling; een test-APK geeft geen opdracht tot een merge of Play Store-publicatie.
 

@@ -47,7 +47,18 @@ jobs:
           PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0110-baseline"
           git worktree add --detach "$PLAYLUMI_BASELINE_DIR" "$PLAYLUMI_BASELINE_SHA"
           trap 'git worktree remove --force "$PLAYLUMI_BASELINE_DIR"' EXIT
-          PLAYLUMI_BUILD_CODE=601011 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug
+          PLAYLUMI_BASELINE_LOG="$RUNNER_TEMP/playlumi-0110-baseline-gradle.log"
+          # Dependency hosts can briefly rate-limit concurrent clean runners.
+          # Retry only transient HTTP failures; compilation failures still stop the job.
+          for PLAYLUMI_BASELINE_ATTEMPT in 1 2 3; do
+            if PLAYLUMI_BUILD_CODE=601011 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug 2>&1 | tee "$PLAYLUMI_BASELINE_LOG"; then
+              break
+            fi
+            if [[ "$PLAYLUMI_BASELINE_ATTEMPT" -eq 3 ]] || ! grep -Eq 'Received status code (429|500|502|503|504)' "$PLAYLUMI_BASELINE_LOG"; then
+              exit 1
+            fi
+            sleep "$((15 * PLAYLUMI_BASELINE_ATTEMPT))"
+          done
           mkdir -p build/upgrade-baseline
           cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0110-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0110-debug.apk | grep -F "versionCode='601011'"
