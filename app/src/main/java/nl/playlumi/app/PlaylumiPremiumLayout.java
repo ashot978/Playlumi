@@ -11,6 +11,8 @@ public final class PlaylumiPremiumLayout {
         return filter==0||(filter==1&&earned)||(filter==2&&!earned);
     }
     public static String emblem(int mode,int variant){
+        if(mode==PlaylumiFocusedCounting.MODE&&variant==PlaylumiFocusedCounting.VARIANT)return "●▲";
+        if(mode==PlaylumiWeekdays.MODE&&variant==PlaylumiWeekdays.VARIANT)return "7";
         if(mode==ExtraGames.MATH&&variant==PlaylumiThinkingPractice.PLACE_VALUE)return "123";
         if(mode==ExtraGames.MATH)return variant==PlaylumiAdvancedMath.TABLES?"×":variant==PlaylumiAdvancedMath.SHARING?"÷":variant==PlaylumiAdvancedMath.TO_HUNDRED?"100":variant==1?"−":variant==2?"?":variant==3?"2×":variant==4?"✦":"＋";
         if(mode==16)return variant==3?"☀":"◷";

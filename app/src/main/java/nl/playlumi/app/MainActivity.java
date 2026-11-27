@@ -146,6 +146,10 @@ public class MainActivity extends Activity {
     private PlaylumiDrawingView drawing;
     private int storyLibraryPage;
     private TextView drawingInfo;
+    private final Button[] drawingColors=new Button[PlaylumiDrawingView.PALETTE.length];
+    private final Button[] drawingWidths=new Button[3];
+    private Button drawingPencil,drawingEraser,drawingUndo,drawingRedo,drawingClear;
+    private int drawingColor,drawingWidth;
     private boolean eraseAsked;
     private boolean storyJustCompleted;
     private boolean smartDifficulty,roundHadMistake;
@@ -957,12 +961,14 @@ public class MainActivity extends Activity {
     }
     private void addQuizBanner(int theme,int mode,int variant,int height,boolean wide){
         FrameLayout banner=new FrameLayout(this);banner.setBackground(rounded(0xff4b2b75,18));banner.setClipToOutline(true);
+        int h=PlaylumiPremiumLayout.quizBannerHeight(height,wide);
         View art=PlaylumiMagicArt.hero(this,theme);art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        banner.addView(art,new FrameLayout.LayoutParams(-1,-1));
+        FrameLayout.LayoutParams artSpace=new FrameLayout.LayoutParams(-1,-1);
+        // Keep the medal in its own space, away from the illustrated world's title.
+        artSpace.rightMargin=dp(h+10);banner.addView(art,artSpace);
         View shade=new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{0x00332050,0x00332050,0xb5332050}));
         banner.addView(shade,new FrameLayout.LayoutParams(-1,-1));
-        int h=PlaylumiPremiumLayout.quizBannerHeight(height,wide);
         PlaylumiMedal emblem=new PlaylumiMedal(this,PlaylumiPremiumLayout.emblem(mode,variant),true,theme%3);
         FrameLayout.LayoutParams icon=new FrameLayout.LayoutParams(dp(h-6),dp(h-6),Gravity.END|Gravity.CENTER_VERTICAL);
         icon.rightMargin=dp(8);banner.addView(emblem,icon);
@@ -1061,6 +1067,8 @@ public class MainActivity extends Activity {
     }
     private void addTwo(Button one,Button two,int height) {
         LinearLayout row=new LinearLayout(this);
+        row.setBaselineAligned(false);
+        row.setClipChildren(false);row.setClipToPadding(false);
         row.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams p1=new LinearLayout.LayoutParams(0,-2,1);
         LinearLayout.LayoutParams p2=new LinearLayout.LayoutParams(0,-2,1);
@@ -1257,6 +1265,8 @@ public class MainActivity extends Activity {
         }
         if(!parentAllowed && protectedParentPage())page=PARENT_GATE;
         playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;drawing=null;drawingInfo=null;
+        java.util.Arrays.fill(drawingColors,null);java.util.Arrays.fill(drawingWidths,null);
+        drawingPencil=null;drawingEraser=null;drawingUndo=null;drawingRedo=null;drawingClear=null;eraseAsked=false;
         final boolean villageScreen=page==HOME;
         final boolean magicScreen=worldTheme()>=0;
         final boolean darkBars=villageScreen || magicScreen;
@@ -1633,6 +1643,7 @@ public class MainActivity extends Activity {
         int artHeight=PlaylumiHomeLayout.artHeight(width,height);
         for(int first=0;first<6;first+=columns){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+            row.setBaselineAligned(false);row.setClipChildren(false);row.setClipToPadding(false);
             for(int j=0;j<columns;j++){
                 int world=first+j;
                 if(world>=6)break;
@@ -3069,7 +3080,11 @@ public class MainActivity extends Activity {
             swatch.setMinimumHeight(dp(questionH));
             addWidgetIn(questions,swatch,0,dp(3));
         } else {
-            int glyphSize=mode==PlaylumiThinkingPractice.DAILY_THINGS&&game.variant()==PlaylumiThinkingPractice.AFTER?22:shortDisplay?(wide?70:58):
+            boolean reading=mode==PlaylumiReadingPractice.MODE&&game.variant()==PlaylumiReadingPractice.VARIANT;
+            boolean countingShapes=mode==PlaylumiFocusedCounting.MODE&&game.variant()==PlaylumiFocusedCounting.VARIANT;
+            boolean weekdays=mode==PlaylumiWeekdays.MODE&&game.variant()==PlaylumiWeekdays.VARIANT;
+            boolean shortStory=reading||mode==PlaylumiThinkingPractice.DAILY_THINGS&&game.variant()==PlaylumiThinkingPractice.AFTER;
+            int glyphSize=shortStory?22:countingShapes?(game.level()==0?38:30):weekdays?28:shortDisplay?(wide?70:58):
                     mode==ExtraGames.MATH&&game.variant()!=4?(game.variant()>=PlaylumiAdvancedMath.TABLES?(wide?42:32):(wide?48:36)):
                     round.display.length()>22?25:round.display.length()>12?31:40;
             TextView picture=text(round.visibleDisplay(),glyphSize,PlaylumiMagicArt.INK);
@@ -3078,7 +3093,8 @@ public class MainActivity extends Activity {
             picture.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,!wide && shortDisplay));
             picture.setMinHeight(dp(questionH));
             picture.setPadding(dp(12),dp(5),dp(12),dp(5));
-            picture.setMaxLines(mode==PlaylumiThinkingPractice.DAILY_THINGS&&game.variant()==PlaylumiThinkingPractice.AFTER?6:4);
+            picture.setMaxLines(shortStory||countingShapes?6:4);
+            if(reading){picture.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);picture.setPadding(dp(18),dp(10),dp(18),dp(10));}
             updateQuestionPicture(round);
             addWidgetIn(questions,picture,0,dp(3));
         }
@@ -4286,47 +4302,97 @@ public class MainActivity extends Activity {
         current.post(()->{if(stage==current)PlaylumiMotion.celebrate(current,10);});
     }
     private void showDrawing() {
-        header("🖍️ Mijn Tekenstudio","Teken met je vinger. Alles mag!");
+        header("Tekenstudio","");
+        addText("Teken met je vinger. Probeer, gum en probeer opnieuw.",14,PlaylumiMagicArt.CREAM,1,5);
         drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),PlaylumiProfiles.artworkFile(activeProfile)));
+        drawingColor=Math.max(0,Math.min(PlaylumiDrawingView.PALETTE.length-1,prefs().getInt("drawing_color_v1",0)));
+        drawingWidth=Math.max(0,Math.min(2,prefs().getInt("drawing_brush_size_v1",1)));
+        drawing.color(PlaylumiDrawingView.PALETTE[drawingColor]);
+        drawing.setBrushSize(drawingWidth);
+        drawing.setEraser(prefs().getBoolean("drawing_eraser_v1",false));
         drawing.setElevation(dp(5));
-        LinearLayout.LayoutParams drawParams=new LinearLayout.LayoutParams(-1,
-                dp(PlaylumiLayout.drawingHeight(landscapeScreen(),
-                        getResources().getConfiguration().screenHeightDp)));
-        drawParams.setMargins(dp(4),dp(8),dp(4),dp(12));
-        root.addView(drawing,drawParams);
-        drawingInfo=text("🎨 Kies jouw lievelingskleur",17,0xff7157a7);
-        addWidget(drawingInfo,0,9);
-        String[] symbols={"🌺","💜","💙","💚","🌟","🖤"};
-        for(int r=0;r<2;r++) {
-            LinearLayout row=new LinearLayout(this);
-            for(int c=0;c<3;c++) {
-                int idx=r*3+c;
-                Button button=tile(symbols[idx],"",COLORS[idx],56);
-                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(57),1f);
-                p.setMargins(dp(4),dp(4),dp(4),dp(4));
-                row.addView(button,p);
-                final int ink=PlaylumiDrawingView.PALETTE[idx];
-                button.setOnClickListener(v->{
-                    eraseAsked=false;
-                    drawing.color(ink);
-                    drawingInfo.setText("✨ Mooie kleur! Teken maar.");
-                    sound.tap();
-                });
-            }
-            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        int width=getResources().getConfiguration().screenWidthDp;
+        float fontScale=getResources().getConfiguration().fontScale;
+        int available=width-2*PlaylumiLayout.magicSidePadding(width);
+        boolean alongside=width>=840&&fontScale<=1.25f;
+        LinearLayout workspace=new LinearLayout(this);
+        workspace.setOrientation(alongside?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
+        workspace.setGravity(Gravity.TOP);workspace.setBaselineAligned(false);
+        workspace.setClipChildren(false);workspace.setClipToPadding(false);
+        int canvasHeight=alongside?Math.max(225,Math.min(360,(available-312)*3/4)):
+                PlaylumiLayout.drawingHeight(landscapeScreen(),getResources().getConfiguration().screenHeightDp);
+        LinearLayout.LayoutParams drawParams=alongside?new LinearLayout.LayoutParams(0,dp(canvasHeight),1f):
+                new LinearLayout.LayoutParams(-1,dp(canvasHeight));
+        drawParams.setMargins(dp(4),dp(8),dp(alongside?12:4),dp(12));
+        workspace.addView(drawing,drawParams);
+        LinearLayout controls=personalPanel();
+        controls.setClipChildren(false);controls.setClipToPadding(false);
+        LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(alongside?dp(300):-1,-2);
+        controlsParams.topMargin=dp(8);workspace.addView(controls,controlsParams);
+        root.addView(workspace,new LinearLayout.LayoutParams(-1,-2));
+        drawingInfo=homeLabel("Kies een kleur en teken op het witte papier.",16,TEXT,false);
+        drawingInfo.setGravity(Gravity.CENTER);
+        drawingInfo.setMinHeight(dp(48));
+        drawingInfo.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        homeAdd(controls,drawingInfo,0,7);
+        int panelWidth=alongside?280:available-20;
+        String[] names={"Roze","Paars","Blauw","Groen","Geel","Donkerblauw"};
+        for(int i=0;i<drawingColors.length;i++){
+            final int selected=i;
+            Button button=drawingChoice(names[i],mix(PlaylumiDrawingView.PALETTE[i],Color.WHITE,.84f));
+            GradientDrawable swatch=rounded(PlaylumiDrawingView.PALETTE[i],20);
+            swatch.setStroke(dp(1),0xff685078);swatch.setBounds(0,0,dp(18),dp(18));
+            button.setCompoundDrawables(null,swatch,null,null);button.setCompoundDrawablePadding(dp(3));
+            drawingColors[i]=button;
+            button.setOnClickListener(v->{
+                cancelDrawingClear();drawingColor=selected;
+                drawing.color(PlaylumiDrawingView.PALETTE[selected]);
+                rememberDrawingTools();updateDrawingTools();
+                drawingInfo.setText(names[selected]+" gekozen. Teken maar!");sound.tap();
+            });
         }
-        Button undo=tile("↩  Laatste lijn weg","",0xffe6dfff,68);
-        undo.setOnClickListener(v->{
-            eraseAsked=false;
-            drawing.undo();
-            drawingInfo.setText("Laatste lijn weggehaald");
+        drawingRows(controls,panelWidth>=270&&fontScale<=1.25f?3:2,drawingColors);
+        drawingPencil=drawingChoice("✎ Potlood",0xffe6dfff);
+        drawingEraser=drawingChoice("▱ Gum",0xffffe8d3);
+        drawingPencil.setOnClickListener(v->{
+            cancelDrawingClear();drawing.setEraser(false);rememberDrawingTools();updateDrawingTools();
+            drawingInfo.setText("Potlood gekozen. Je kleur staat klaar.");
         });
-        Button save=tile("💾 Bewaar tekening","",0xffd0f3dd,77);
-        addTwo(undo,save,73);
+        drawingEraser.setOnClickListener(v->{
+            cancelDrawingClear();drawing.setEraser(true);rememberDrawingTools();updateDrawingTools();
+            drawingInfo.setText("Gum gekozen. Veeg over wat je wilt weghalen.");
+        });
+        drawingRows(controls,2,drawingPencil,drawingEraser);
+        String[] sizes={"Dun","Normaal","Dik"};
+        for(int i=0;i<drawingWidths.length;i++){
+            final int chosen=i;
+            drawingWidths[i]=drawingChoice(sizes[i],0xffe1edf9);
+            drawingWidths[i].setOnClickListener(v->{
+                cancelDrawingClear();drawingWidth=chosen;drawing.setBrushSize(chosen);
+                rememberDrawingTools();updateDrawingTools();
+                drawingInfo.setText(sizes[chosen]+" gekozen voor je "+(drawing.isEraser()?"gum.":"potlood."));
+            });
+        }
+        drawingRows(controls,panelWidth>=270&&fontScale<=1.3f?3:1,drawingWidths);
+        drawingUndo=drawingChoice("↩  Laatste lijn weg",0xffe6dfff);
+        drawingRedo=drawingChoice("↪  Laatste lijn terug",0xffe6dfff);
+        drawingUndo.setOnClickListener(v->{
+            cancelDrawingClear();
+            if(drawing.undo())drawingInfo.setText("Laatste stap teruggedraaid. Met ‘Laatste lijn terug’ herstel je die.");
+            updateDrawingTools();
+        });
+        drawingRedo.setOnClickListener(v->{
+            cancelDrawingClear();
+            if(drawing.redo())drawingInfo.setText("Je laatste stap staat weer op het papier.");
+            updateDrawingTools();
+        });
+        drawingRows(controls,panelWidth>=270&&fontScale<=1.3f?2:1,drawingUndo,drawingRedo);
+        Button save=drawingChoice("💾 Bewaar tekening",0xffd0f3dd);
+        drawingRows(controls,1,save);
         save.setOnClickListener(v->{
-            eraseAsked=false;
+            cancelDrawingClear();
             if(!drawing.save()) {
-                drawingInfo.setText("Oeps! Probeer nog eens te bewaren.");
+                drawingInfo.setText("Bewaren lukte nog niet. Je tekening staat nog hier; probeer het opnieuw.");
                 return;
             }
             SharedPreferences.Editor drawingEdit=prefs().edit();
@@ -4342,17 +4408,72 @@ public class MainActivity extends Activity {
             drawingEdit.apply();
             sound.good();
         });
-        Button clear=tile("🧽 Begin met leeg papier","",0xffffe9df,65);
-        addTile(clear,9);
-        clear.setOnClickListener(v->{
+        drawingClear=drawingChoice("🧽 Begin met leeg papier",0xffffe9df);
+        drawingRows(controls,1,drawingClear);
+        drawingClear.setOnClickListener(v->{
             if(!eraseAsked) {
                 eraseAsked=true;
-                drawingInfo.setText("Tik nog eens op wissen als je zeker bent.");
+                drawingClear.setText("🧽 Begin met leeg papier\nTik nog eens om te wissen");
+                drawingInfo.setText("Tik nog eens op ‘Begin met leeg papier’. Je kunt deze stap daarna terugdraaien.");
             } else {
-                drawing.clear();eraseAsked=false;
-                drawingInfo.setText("🎨 Een nieuw wit papier! Veel plezier.");
+                drawing.clear();cancelDrawingClear();updateDrawingTools();
+                drawingInfo.setText(drawing.canUndo()?"Een nieuw wit papier. ‘Laatste lijn weg’ haalt je tekening terug.":
+                        "Het papier is leeg. Teken maar!");
             }
         });
+        TextView history=homeLabel("Je laatste "+PlaylumiDrawingHistory.MAX_ACTIONS+" stappen kun je terugdraaien zolang dit tekenblad open is. Opnieuw openen laadt je bewaarde kunstwerk.",12,SUB,false);
+        homeAdd(controls,history,7,2);
+        final PlaylumiDrawingView activeDrawing=drawing;
+        drawing.setOnStateChangedListener(()->{
+            if(drawing!=activeDrawing)return;
+            cancelDrawingClear();updateDrawingTools();
+            if(drawing.wasLastStrokeSimplified())drawingInfo.setText("Je lange lijn is iets vereenvoudigd. Je kunt de hele lijn nog terugdraaien.");
+        });
+        updateDrawingTools();
+    }
+    private Button drawingChoice(String label,int color){
+        Button button=tile(label,"",color,56);
+        button.setTextColor(TEXT);button.setTextSize(16);button.setMinHeight(dp(48));
+        button.setMaxLines(4);button.setPadding(dp(6),dp(8),dp(6),dp(8));button.setElevation(dp(2));
+        GradientDrawable background=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{mix(color,Color.WHITE,.3f),color});
+        background.setCornerRadius(dp(16));background.setStroke(dp(1),0xffbca5d0);
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x44ffffff),background,null));
+        return button;
+    }
+    private void drawingRows(LinearLayout parent,int columns,Button... buttons){
+        for(int first=0;first<buttons.length;first+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
+            row.setClipChildren(false);row.setClipToPadding(false);
+            for(int j=0;j<columns;j++){
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1f);p.setMargins(dp(3),dp(4),dp(3),dp(4));
+                int at=first+j;row.addView(at<buttons.length?buttons[at]:new View(this),p);
+            }
+            parent.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
+    private void cancelDrawingClear(){
+        eraseAsked=false;
+        if(drawingClear!=null)drawingClear.setText("🧽 Begin met leeg papier");
+    }
+    private void rememberDrawingTools(){
+        prefs().edit().putInt("drawing_color_v1",drawingColor).putInt("drawing_brush_size_v1",drawingWidth)
+                .putBoolean("drawing_eraser_v1",drawing.isEraser()).apply();
+    }
+    private void drawingSelected(Button button,String label,String description,boolean selected){
+        if(button==null)return;
+        button.setSelected(selected);button.setText((selected?"✓ ":"")+label);
+        button.setContentDescription(description+(selected?", geselecteerd":""));
+    }
+    private void updateDrawingTools(){
+        if(drawing==null)return;
+        String[] names={"Roze","Paars","Blauw","Groen","Geel","Donkerblauw"};
+        for(int i=0;i<drawingColors.length;i++)drawingSelected(drawingColors[i],names[i],"Tekenkleur "+names[i],i==drawingColor);
+        drawingSelected(drawingPencil,"✎ Potlood","Potlood",!drawing.isEraser());
+        drawingSelected(drawingEraser,"▱ Gum","Gum",drawing.isEraser());
+        String[] sizes={"Dun","Normaal","Dik"};
+        for(int i=0;i<drawingWidths.length;i++)drawingSelected(drawingWidths[i],sizes[i],"Lijndikte "+sizes[i],i==drawingWidth);
+        if(drawingUndo!=null){drawingUndo.setEnabled(drawing.canUndo());drawingUndo.setAlpha(drawing.canUndo()?1f:.45f);}
+        if(drawingRedo!=null){drawingRedo.setEnabled(drawing.canRedo());drawingRedo.setAlpha(drawing.canRedo()?1f:.45f);}
     }
 
 
@@ -4401,7 +4522,9 @@ public class MainActivity extends Activity {
             LinearLayout card=personalPanel();
             homeAdd(card,homeLabel(PlaylumiWorldStyle.NAMES[world],17,TEXT,true),0,3);
             PlaylumiPlayOverview.WorldSummary summary=overview.get(world);
-            homeAdd(card,homeLabel(summary.countedRounds+" getelde rondes · "+summary.completedRoutes+" oefeningen met een afgeronde ronde",14,SUB,false),0,4);
+            String counted=summary.countedRounds+(summary.countedRounds==1?" getelde ronde":" getelde rondes");
+            String completed=summary.completedRoutes+(summary.completedRoutes==1?" oefening met een afgeronde ronde":" oefeningen met een afgeronde ronde");
+            homeAdd(card,homeLabel(counted+" · "+completed,14,SUB,false),0,4);
             homeAdd(card,homeLabel(summary.unfinishedRoutes+(summary.unfinishedRoutes==1?" begonnen ronde om verder te spelen":" begonnen rondes om verder te spelen"),14,0xff27684d,false),0,5);
             if(samples<4){
                 homeAdd(card,homeLabel(samples==0?"Nog geen nieuwe oefengegevens":"Nog te weinig gegevens voor een percentage",13,SUB,false),0,0);

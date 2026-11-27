@@ -109,6 +109,7 @@ public final class LearningGame {
     public void setHistory(QuestionHistory history) { this.history = history; }
     public static int maxVariant(int mode){
         if(mode==ExtraGames.MATH)return PlaylumiThinkingPractice.PLACE_VALUE;
+        if(mode==PlaylumiFocusedCounting.MODE||mode==PlaylumiWeekdays.MODE||mode==PlaylumiReadingPractice.MODE)return 5;
         if(mode==ExtraGames.COMPARE||mode==PlaylumiThinkingPractice.DAILY_THINGS)return 5;
         return 4;
     }
@@ -135,6 +136,15 @@ public final class LearningGame {
         history.remember(current);
     }
     private void generateRound() {
+        if(mode==PlaylumiFocusedCounting.MODE&&variant==PlaylumiFocusedCounting.VARIANT){
+            current=PlaylumiFocusedCounting.next(level,random);return;
+        }
+        if(mode==PlaylumiWeekdays.MODE&&variant==PlaylumiWeekdays.VARIANT){
+            current=PlaylumiWeekdays.next(level,random);return;
+        }
+        if(mode==PlaylumiReadingPractice.MODE&&variant==PlaylumiReadingPractice.VARIANT){
+            current=PlaylumiReadingPractice.next(level,random);return;
+        }
         if(PlaylumiThinkingPractice.supports(mode,variant)){
             current=PlaylumiThinkingPractice.next(mode,variant,level,random);return;
         }

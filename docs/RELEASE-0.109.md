@@ -2,6 +2,8 @@
 
 Android version code: **601010**. Package: `nl.playlumi.app`.
 Baseline: `06bf09abae45cea79143bee00924cecabb474bea` (0.108).
+Geverifieerde bron: [c31400887005acd24c1d418eb6084f8156dbe9b5](https://github.com/ashot978/Playlumi/commit/c31400887005acd24c1d418eb6084f8156dbe9b5).
+Status: **afgeronde testbouw**, met [concept-PR 93](https://github.com/ashot978/Playlumi/pull/93).
 
 ## Speelideeën die aansluiten op de opgeslagen voortgang
 
@@ -39,6 +41,16 @@ Avatarpaden en gradients worden hergebruikt. De stad gebruikt een begrensde cach
 
 De Java-controle omvat onder meer 3.422 speelgeschiedenissen en variaties, 10.266 leeftijdspassende speelideeën en 20.538 wereldsamenvattingen. Grensgevallen omvatten corrupte of onbekende routecodes, oudere voltooiing zonder rondetelling, een begonnen herhaling, alle routes afgerond, lege geschiedenis en zeer grote tellers. De bestaande leerstof- en herstelcontroles blijven verplicht.
 
-De buildworkflow bouwt debug en release, controleert de oorspronkelijke illustraties, draait alle unit-tests en Android Lint en stelt alleen de ongetekende productie-APK beschikbaar voor privé ondertekenen. De emulatorworkflow controleert telefoon- en Fold-indeling, een update van exact 0.108 naar 0.109, herstel van echte spelgegevens, speelideeën, antwoordmarkering, tekenen en de ouderpoort.
+De [Android-run 46014835510](https://github.com/ashot978/Playlumi/actions/runs/46014835510) is geslaagd: debug en release gebouwd, oorspronkelijke illustraties gecontroleerd, **230 unit-tests in 53 suites geslaagd** en Android Lint met **0 fouten en 168 waarschuwingen**. De bestaande waarschuwingen zijn niet onderdrukt en worden niet als afgerond kwaliteitswerk voorgesteld.
 
-De uiteindelijke APK gebruikt de oorspronkelijke Playlumi-releasehandtekening. Pakket, versienummer, certificaat, ZIP-uitlijning en de relatie met de gebouwde broncode worden gecontroleerd. Emulatorresultaten gelden voor de geteste Android-configuraties; bediening op een fysiek Samsung Fold blijft een afzonderlijke controle. Er is geen merge, tag, GitHub Release of Play Store-publicatie onderdeel van deze bouw.
+De [UI-run 46014835542](https://github.com/ashot978/Playlumi/actions/runs/46014835542) is op telefoon en Fold geslaagd: **43 checks**, opgebouwd uit 19 telefoon- en 18 Fold-checks voor stad, update en lifecycle, plus drie bestaande quizchecks per formaat. De update van exact 0.108 naar 0.109 gebruikt de tijdelijke debughandtekening van dezelfde runner en vergelijkt 28 voorkeuren/voortgangswaarden en 17 vraagvelden. Speelideeën en het ouderoverzicht gebruiken in de proef werkelijk gespeelde rondes. Procesherstel wordt met een daadwerkelijk beëindigd achtergrondproces en een nieuwe PID gecontroleerd. Teken-PNG's na heropenen en Undo zijn bytegelijk aan de eerder bewaarde lijn; de negensterrenbonus blijft eenmalig.
+
+De echte screenshots omvatten de drie soorten speelideeën, grote tekst, antwoordmarkering, pauze, ouderpoort, tekenen, stadskaart en vijf kledingstukken. Bekende afwerkingspunten zijn het lage contrast van de Tekenstudio-feedback, een onhandige titelafbreking op de telefoon en enkelvoudstekst in het ouderoverzicht. Zij blokkeerden de functionele acceptatie niet en vormen gericht vervolgwerk voor 0.110.
+
+De opgeleverde APK is privé ondertekend met de oorspronkelijke Playlumi-releasehandtekening. Pakket, versienummer, certificaat, ZIP-uitlijning en de relatie met de gebouwde broncode zijn gecontroleerd. SHA-256 van deze test-APK:
+
+```text
+85e6ebcbea21f4a00d5a3ab7efab3ad365f354d0737ceccb3f97aaa8dd83fcc9
+```
+
+Emulatorresultaten gelden voor de geteste Android-configuraties; bediening en een oorspronkelijk ondertekende update op een fysiek Samsung Fold blijven afzonderlijke, nog niet uitgevoerde controles. Er is geen merge, tag, GitHub Release of Play Store-publicatie onderdeel van deze bouw.
