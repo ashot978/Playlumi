@@ -7,7 +7,7 @@ public final class PlaylumiCityLayout {
     public static final float MIN_TARGET=48f;
     public final float width,height;
     public final int columns,rows;
-    private final Plot[] plots=new Plot[SITES];
+    private final Plot[] plots;
 
     public static final class Plot {
         public final float left,top,width,artHeight,labelHeight,height;
@@ -20,7 +20,9 @@ public final class PlaylumiCityLayout {
         public float bottom(){return top+height;}
     }
 
-    private PlaylumiCityLayout(float availableWidth,float fontScale){
+    private PlaylumiCityLayout(float availableWidth,float fontScale,int count){
+        if(count<1||count>SITES)throw new IllegalArgumentException("site count");
+        plots=new Plot[count];
         width=Math.max(96f,finite(availableWidth)?availableWidth:360f);
         float textScale=finite(fontScale)?Math.max(1f,fontScale):1f;
         // Keep the longest native status label readable as system text grows.
@@ -28,16 +30,16 @@ public final class PlaylumiCityLayout {
         int desired=width>=620f?3:width>=300f?2:1;
         float minimumCell=Math.max(136f,112f*textScale);
         while(desired>1&&(width-24f-10f*(desired-1))/desired<minimumCell)desired--;
-        columns=desired;
-        rows=(SITES+columns-1)/columns;
+        columns=Math.min(count,desired);
+        rows=(count+columns-1)/columns;
         float edge=12f,gap=10f;
         float cell=(width-edge*2f-gap*(columns-1))/columns;
         float art=Math.max(92f,Math.min(176f,cell*.90f));
         float label=Math.max(58f,(textScale<=1.2f?36f:50f)*textScale+16f);
         float row=art+label+16f;
-        for(int i=0;i<SITES;i++){
+        for(int i=0;i<count;i++){
             int r=i/columns,c=i%columns;
-            int inRow=Math.min(columns,SITES-r*columns);
+            int inRow=Math.min(columns,count-r*columns);
             float used=inRow*cell+(inRow-1)*gap;
             float x=(width-used)/2f+c*(cell+gap);
             plots[i]=new Plot(x,28f+r*row,cell,art,label);
@@ -45,11 +47,14 @@ public final class PlaylumiCityLayout {
         height=28f+rows*row+14f;
     }
     public static PlaylumiCityLayout forWidth(float widthDp,float fontScale){
-        return new PlaylumiCityLayout(widthDp,fontScale);
+        return new PlaylumiCityLayout(widthDp,fontScale,SITES);
+    }
+    public static PlaylumiCityLayout forCount(float widthDp,float fontScale,int count){
+        return new PlaylumiCityLayout(widthDp,fontScale,count);
     }
     private static boolean finite(float value){return !Float.isNaN(value)&&!Float.isInfinite(value);}
     public Plot plot(int index){
-        if(index<0||index>=SITES)throw new IllegalArgumentException("Unknown city site");
+        if(index<0||index>=plots.length)throw new IllegalArgumentException("Unknown city site");
         return plots[index];
     }
 }

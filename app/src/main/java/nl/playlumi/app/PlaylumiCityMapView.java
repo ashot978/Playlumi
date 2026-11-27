@@ -26,7 +26,7 @@ import android.widget.Button;
  * plots become buildings only from the supplied, persisted achievement mask.
  * This view does not change the wallet, gifts or achievement data.
  *
- * Add at MATCH_PARENT width and WRAP_CONTENT height inside a scrolling page.
+ * Each map contains one discrete set of sites, sized to fit a fixed page.
  * The existing approved illustrated home is deliberately a separate view.
  */
 public final class PlaylumiCityMapView extends ViewGroup {
@@ -41,7 +41,8 @@ public final class PlaylumiCityMapView extends ViewGroup {
     private final Path path=new Path();
     private final RectF rect=new RectF();
     private final Gradients gradients=new Gradients();
-    private final Button[] sites=new Button[PlaylumiCityLayout.SITES];
+    private final Button[] sites;
+    private final int firstSite;
     private final float density;
     private final boolean reducedMotion;
     private long achievements;
@@ -52,7 +53,12 @@ public final class PlaylumiCityMapView extends ViewGroup {
 
     public PlaylumiCityMapView(Context context,long achievementMask,
                                boolean reducedMotion,Listener listener){
+        this(context,achievementMask,reducedMotion,listener,0,PlaylumiCityLayout.SITES);
+    }
+    public PlaylumiCityMapView(Context context,long achievementMask,boolean reducedMotion,Listener listener,int first,int count){
         super(context);
+        if(first<0||count<1||first+count>PlaylumiCityLayout.SITES)throw new IllegalArgumentException("sites");
+        firstSite=first;sites=new Button[count];
         density=context.getResources().getDisplayMetrics().density;
         this.reducedMotion=reducedMotion;
         achievements=achievementMask;
@@ -62,7 +68,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
         // The real child controls supply the spoken information and focus order.
         setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         for(int i=0;i<sites.length;i++){
-            final int index=i;
+            final int index=firstSite+i;
             Button b=new Button(context);
             b.setId(View.generateViewId());
             b.setAllCaps(false);
@@ -107,7 +113,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
 
     private void updateSites(){
         for(int i=0;i<sites.length;i++){
-            PlaylumiCityRewards.Landmark landmark=PlaylumiCityRewards.ALL[i];
+            PlaylumiCityRewards.Landmark landmark=PlaylumiCityRewards.ALL[firstSite+i];
             boolean unlocked=PlaylumiCityRewards.earned(achievements,landmark);
             sites[i].setText(landmark.name+"\n"+(unlocked?"Vrijgespeeld":"Nog te ontdekken"));
             sites[i].setContentDescription(landmark.name+(unlocked?
@@ -123,7 +129,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
             width=MeasureSpec.getSize(widthMeasureSpec);
         float fontScale=getResources().getConfiguration().fontScale;
         if(geometry==null||geometryWidth!=width||geometryFontScale!=fontScale){
-            geometry=PlaylumiCityLayout.forWidth(width/density,fontScale);
+            geometry=PlaylumiCityLayout.forCount(width/density,fontScale,sites.length);
             geometryWidth=width;geometryFontScale=fontScale;
         }
         int desiredHeight=Math.round(geometry.height*density);
@@ -166,13 +172,14 @@ public final class PlaylumiCityMapView extends ViewGroup {
         roads(canvas);
         for(int i=0;i<sites.length;i++){
             PlaylumiCityLayout.Plot q=geometry.plot(i);
-            boolean unlocked=PlaylumiCityRewards.earned(achievements,PlaylumiCityRewards.ALL[i]);
+            int site=firstSite+i;
+            boolean unlocked=PlaylumiCityRewards.earned(achievements,PlaylumiCityRewards.ALL[site]);
             float scale=Math.min(q.width/220f,q.artHeight/190f);
             canvas.save();canvas.translate(q.centerX()-110*scale,q.top+q.artHeight-190*scale);
             canvas.scale(scale,scale);
-            island(canvas,i,unlocked);
+            island(canvas,site,unlocked);
             if(unlocked){
-                switch(i){
+                switch(site){
                     case 0:friendPark(canvas);break;
                     case 1:observatory(canvas);break;
                     case 2:library(canvas);break;
@@ -183,7 +190,7 @@ public final class PlaylumiCityMapView extends ViewGroup {
                 }
                 badge(canvas,177,140);
             }else{
-                emptyPlot(canvas,i);
+                emptyPlot(canvas,site);
             }
             canvas.restore();
             nameplate(canvas,q,unlocked);

@@ -950,7 +950,7 @@ public class MainActivity extends Activity {
         int width=getResources().getConfiguration().screenWidthDp;
         int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-30);
         int height=getResources().getConfiguration().screenHeightDp;
-        boolean wide=!free&&width>=650&&height>=610;
+        boolean wide=width>=650&&landscapeScreen();
         LinearLayout workspace=new LinearLayout(this);workspace.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);workspace.setGravity(Gravity.TOP);
         final LinearLayout target=personalPanel(),boardPanel=personalPanel();
         final TextView message=homeLabel("Kies een onderdeel om te beginnen.",15,TEXT,true);
@@ -990,8 +990,8 @@ public class MainActivity extends Activity {
             homeAdd(target,homeLabel("Bouwtekening",18,TEXT,true),0,3);
             homeAdd(target,new PlaylumiBuilderGrid(this,state.size,wide?usable/2-16:Math.min(235,usable),PlaylumiBuilder.blueprint(state.age,state.slot),false,null),0,2);
             homeAdd(target,homeLabel(state.slot<builderProgress()?"Deze opdracht is al voltooid.":"Maak ieder vak precies gelijk aan dit voorbeeld.",13,SUB,false),0,2);
-            if(wide){LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,-2,1f);tp.setMargins(0,0,dp(5),0);workspace.addView(target,tp);}
-            else{workspace.addView(target,new LinearLayout.LayoutParams(-1,-2));}
+            // The example stays available as a separate content page, while the
+            // actual building grid is pinned and remains editable on every page.
         }
         homeAdd(boardPanel,current,0,3);
         int perRow=5;
@@ -1009,12 +1009,12 @@ public class MainActivity extends Activity {
         rotate.setContentDescription("Draai gekozen onderdeel");
         homeAdd(boardPanel,rotate,3,4);
         rotate.setOnClickListener(v->{if(PlaylumiBuilder.rotatable(builderPiece)){builderPiece=PlaylumiBuilder.rotate(builderPiece);sound.tap();refresh.run();}});
-        homeAdd(boardPanel,homeLabel("Jouw bouwterrein",18,TEXT,true),0,2);
-        grid[0]=new PlaylumiBuilderGrid(this,state.size,Math.min(wide?usable/2-18:usable,Math.max(156,height-325)),state.cells(),true,index->{
+        int gridExtent=Math.min(wide?usable/2-18:usable,Math.max(124,Math.min(272,height-280)));
+        grid[0]=new PlaylumiBuilderGrid(this,state.size,gridExtent,state.cells(),true,index->{
             if(page!=BUILDER_PLAY||builderSlot!=state.slot||moving)return;
             if(state.place(index,builderPiece)){saveBuilderEdit(state);sound.tap();message.setText("Opgeslagen. Bouw rustig verder.");refresh.run();}
         });
-        homeAdd(boardPanel,grid[0],0,3);
+        pageDeck.setPinnedView(grid[0],dp(wide?Math.max(180,gridExtent+8):gridExtent+8),wide);
         homeAdd(boardPanel,status,2,3);
         LinearLayout edits=new LinearLayout(this);edits.setGravity(Gravity.CENTER);
         undo.setContentDescription("Laatste bouwbewerking ongedaan maken");redo.setContentDescription("Bouwbewerking opnieuw uitvoeren");
@@ -1055,9 +1055,8 @@ public class MainActivity extends Activity {
                     if(page==BUILDER_PLAY&&builderSlot==state.slot&&state.clear()){saveBuilderEdit(state);message.setText("Terrein leeggemaakt.");refresh.run();}
                 }).show());
         homeAdd(boardPanel,clear,3,1);
-        if(wide){LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,-2,1.3f);bp.setMargins(dp(5),0,0,0);workspace.addView(boardPanel,bp);}
-        else{LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.topMargin=dp(6);workspace.addView(boardPanel,bp);}
-        addWidget(workspace,3,5);
+        if(!free)addWidget(target,2,3);
+        addWidget(boardPanel,2,3);
         Button back=tile("Naar het bouwatelier","Alles wordt automatisch bewaard",0xffe8dcff,65);
         back.setOnClickListener(v->move(BUILDER_HOME));addTile(back,4);
         refresh.run();
@@ -1683,7 +1682,7 @@ public class MainActivity extends Activity {
         }
         // All content screens use a fixed viewport with measured, discrete pages.
         // Drawing and drag games reserve gestures for the actual game; arrows still work.
-        pageDeck=new PlaylumiPageDeck(this,page!=DRAW&&!(page==MINI_PLAY&&miniKind==PlaylumiMiniChallenge.DRAG),gameScreen()||page==BUILDER_PLAY);
+        pageDeck=new PlaylumiPageDeck(this,!(page==MINI_PLAY&&miniKind==PlaylumiMiniChallenge.DRAG),gameScreen()||page==BUILDER_PLAY);
         root=pageDeck.content();
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
@@ -2633,6 +2632,8 @@ public class MainActivity extends Activity {
             }
         }
         int width=Math.min(620,PlaylumiLayout.libraryContentWidth(getResources().getConfiguration().screenWidthDp)-24);
+        int height=getResources().getConfiguration().screenHeightDp;
+        if(height<740)width=Math.min(width,Math.max(160,(height-220)*(puzzle.cols)/(puzzle.rows+(puzzle.kind==PlaylumiPuzzle.PIXEL?puzzle.rows:0))));
         board[0]=new PlaylumiPuzzleBoard(this,puzzle,width,(index,button)->{
             if(page!=INTERACTIVE||interactive!=round||moving||round.solved()||melodyPreviewActive)return;
             preview.setVisibility(View.GONE);
@@ -3902,9 +3903,14 @@ public class MainActivity extends Activity {
             prefs().edit().putInt("city_seen_v1",prefs().getInt("city_seen_v1",0)|PlaylumiCityProgress.builtMask(mask)).apply();
         }
         addWidget(summary,2,5);
+        int cityWidth=getResources().getConfiguration().screenWidthDp-2*PlaylumiLayout.sidePadding(getResources().getConfiguration().screenWidthDp);
+        int plots=PlaylumiCityLayout.forWidth(cityWidth,getResources().getConfiguration().fontScale).columns;
+        for(int first=0;first<PlaylumiCityLayout.SITES;first+=plots){
+            PlaylumiCityMapView map=new PlaylumiCityMapView(this,mask,PlaylumiMotion.isReduced(),this::showCityLandmark,
+                    first,Math.min(plots,PlaylumiCityLayout.SITES-first));
+            addWidget(map,1,3);
+        }
         addExpeditionShortcut(false);
-        PlaylumiCityMapView map=new PlaylumiCityMapView(this,mask,PlaylumiMotion.isReduced(),this::showCityLandmark);
-        addWidget(map,0,5);
         addBuilderShortcut(false);
         int next=PlaylumiCityProgress.next(mask,stats);
         if(next>=0){
@@ -4568,7 +4574,6 @@ public class MainActivity extends Activity {
     }
     private void showDrawing() {
         header("Tekenstudio","");
-        addText("Teken met je vinger. Probeer, gum en probeer opnieuw.",14,PlaylumiMagicArt.CREAM,1,5);
         drawing=new PlaylumiDrawingView(this,new File(getFilesDir(),PlaylumiProfiles.artworkFile(activeProfile)));
         drawingColor=Math.max(0,Math.min(PlaylumiDrawingView.PALETTE.length-1,prefs().getInt("drawing_color_v1",0)));
         drawingWidth=Math.max(0,Math.min(2,prefs().getInt("drawing_brush_size_v1",1)));
@@ -4579,28 +4584,17 @@ public class MainActivity extends Activity {
         int width=getResources().getConfiguration().screenWidthDp;
         float fontScale=getResources().getConfiguration().fontScale;
         int available=width-2*PlaylumiLayout.magicSidePadding(width);
-        boolean alongside=width>=840&&fontScale<=1.25f;
-        LinearLayout workspace=new LinearLayout(this);
-        workspace.setOrientation(alongside?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
-        workspace.setGravity(Gravity.TOP);workspace.setBaselineAligned(false);
-        workspace.setClipChildren(false);workspace.setClipToPadding(false);
-        int canvasHeight=alongside?Math.max(225,Math.min(360,(available-312)*3/4)):
-                PlaylumiLayout.drawingHeight(landscapeScreen(),getResources().getConfiguration().screenHeightDp);
-        LinearLayout.LayoutParams drawParams=alongside?new LinearLayout.LayoutParams(0,dp(canvasHeight),1f):
-                new LinearLayout.LayoutParams(-1,dp(canvasHeight));
-        drawParams.setMargins(dp(4),dp(8),dp(alongside?12:4),dp(12));
-        workspace.addView(drawing,drawParams);
-        LinearLayout controls=personalPanel();
-        controls.setClipChildren(false);controls.setClipToPadding(false);
-        LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(alongside?dp(300):-1,-2);
-        controlsParams.topMargin=dp(8);workspace.addView(controls,controlsParams);
-        root.addView(workspace,new LinearLayout.LayoutParams(-1,-2));
+        boolean alongside=width>=760||landscapeScreen()&&width>=540;
+        int height=getResources().getConfiguration().screenHeightDp;
+        int canvasExtent=alongside?Math.max(160,available/2):Math.max(120,Math.min(280,(height-150)/2));
+        pageDeck.setPinnedView(drawing,dp(canvasExtent),alongside);
+        LinearLayout controls=root;
         drawingInfo=homeLabel("Kies een kleur en teken op het witte papier.",16,TEXT,false);
         drawingInfo.setGravity(Gravity.CENTER);
         drawingInfo.setMinHeight(dp(48));
         drawingInfo.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         homeAdd(controls,drawingInfo,0,7);
-        int panelWidth=alongside?280:available-20;
+        int panelWidth=alongside?Math.max(140,available/2-20):available-20;
         String[] names={"Roze","Paars","Blauw","Groen","Geel","Donkerblauw"};
         for(int i=0;i<drawingColors.length;i++){
             final int selected=i;
