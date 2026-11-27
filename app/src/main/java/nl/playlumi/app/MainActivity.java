@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private int dailyReturn=HOME,catalogReturn=LIBRARY,friendReturn=AVATAR,ideasReturn=LIBRARY;
     private int expeditionReturn=LIBRARY,expeditionChapter=-1;
+    private boolean expeditionScrollToChapter;
     private long renderedCalendarDay=Long.MIN_VALUE;
     private final android.os.Handler calendarHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable calendarRefresh=new Runnable(){
@@ -811,7 +812,7 @@ public class MainActivity extends Activity {
                 parentProgressBar(card,5,count,PlaylumiWorldStyle.accent(chapter),count+" van 5 opdrachten");
                 if(chapter==selected)homeAdd(card,homeLabel("Geselecteerd",12,0xff27684d,true),0,1);
                 if(available)libraryClick(card,"Bekijk hoofdstuk "+(chapter+1)+": "+PlaylumiExpedition.TITLES[chapter],()->{
-                    expeditionChapter=chapter;showPage();
+                    expeditionChapter=chapter;expeditionScrollToChapter=true;showPage();
                 });
                 else card.setContentDescription("Hoofdstuk "+(chapter+1)+": "+PlaylumiExpedition.TITLES[chapter]+", nog op slot");
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(card,lp);
@@ -831,6 +832,11 @@ public class MainActivity extends Activity {
         int chapterDone=PlaylumiExpedition.chapterProgress(done,selected);
         homeAdd(chapterCard,homeLabel(chapterDone==5?"✓ "+PlaylumiExpedition.STAMPS[selected]+" verdiend":PlaylumiExpedition.STAMPS[selected]+" · voltooi alle vijf opdrachten",15,0xff715021,true),3,3);
         addWidget(chapterCard,2,5);
+        if(expeditionScrollToChapter){
+            expeditionScrollToChapter=false;
+            final ScrollView current=scroller;
+            current.post(()->{if(page==EXPEDITION&&scroller==current)current.scrollTo(0,Math.max(0,chapterCard.getTop()-dp(8)));});
+        }
         Button free=tile("Vrij spelen in de werelden","Je expeditie blijft bewaard",0xffe8dcff,65);
         addTile(free,4);free.setOnClickListener(v->openLibrary(PlaylumiGameCatalog.OVERVIEW));
         Button classic=tile("Klassieke missies","Je oude avonturen blijven bestaan",0xffeaf0fb,60);
@@ -1600,7 +1606,7 @@ public class MainActivity extends Activity {
         if(next==HOME&&!PlaylumiProfiles.hasChosenAge(age))next=AGE;
         if(next==DAILY&&(page==HOME||page==CITY||page==AVATAR||page==LIBRARY))dailyReturn=page;
         autoAdvanceToken++;melodyPreviewToken++;
-        if(next==EXPEDITION&&page!=EXPEDITION)expeditionChapter=-1;
+        if(next==EXPEDITION&&page!=EXPEDITION){expeditionChapter=-1;expeditionScrollToChapter=false;}
         if(page==LIBRARY&&next!=LIBRARY&&scroller!=null){libraryScrollY=scroller.getScrollY();}
         if(page==PLAY&&next!=PLAY)saveLibraryQuiz();
         if(page==INTERACTIVE&&next!=INTERACTIVE)saveLibraryInteractive();

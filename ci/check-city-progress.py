@@ -1405,6 +1405,7 @@ def test_puzzle_board(viewport):
     for number in range(2, 6):
         click(find_control(lambda n: re.fullmatch(r"Vak \d+: " + str(number), n.get("content-desc", "")) is not None, label + "-tile-" + str(number), False))
     wait_prefs(lambda p: key not in p and p["wardrobe_stars"] >= 21, "Completed puzzle")
+    assert prefs().get("expedition_v1_progress_0", 0) == 0, "Free play incorrectly advanced expedition"
     screenshot(label + "-finished")
     pass_check(viewport + ": genuine number grid plays and restores its exact selected cells")
 
@@ -1465,6 +1466,15 @@ def test_expedition(viewport):
     launch_native_home()
     open_expedition(label + "-seal-restored")
     assert prefs()[progress_key] == 5 and prefs()["wardrobe_stars"] == 36, "Reopening claimed a seal twice"
+    # Separate visual fixture of an already finished expedition. This does not
+    # claim to play all 30 missions; the full reward sequence is covered in Java.
+    seed({progress_key: 30, "wardrobe_stars": 138, "wardrobe_total_earned": 138})
+    launch_native_home()
+    open_expedition(label + "-completed-fixture")
+    screenshot(label + "-complete-passport", expected_texts=("30 van 30 opdrachten · 6 van 6 zegels",))
+    nodes = ui(label + "-completed-controls")
+    assert not any(n.get("content-desc", "").startswith("Expeditie opdracht ") for n in nodes), "Finished expedition has another playable stage"
+    assert prefs()["wardrobe_stars"] == 138, "Viewing diploma recredited reward"
     pass_check(viewport + ": expedition saves a real unfinished puzzle, advances exactly one mission, awards a chapter seal atomically, and restores without duplicate bonus")
 
 

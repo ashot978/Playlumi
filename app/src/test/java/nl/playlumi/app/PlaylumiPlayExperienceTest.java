@@ -7,7 +7,12 @@ public final class PlaylumiPlayExperienceTest {
     @Test public void searchIsLocalAgeFilteredAndAccentInsensitive(){
         assertTrue(PlaylumiLibrarySearch.find(0,"klok").isEmpty());
         assertEquals("Klokkijken",PlaylumiLibrarySearch.find(2,"klokkijken").get(0).title);
-        assertEquals("Dierenmemory",PlaylumiLibrarySearch.find(0,"géheugen").get(0).title);
+        java.util.List<String> accented=new java.util.ArrayList<>(),plain=new java.util.ArrayList<>();
+        for(PlaylumiGameCatalog.Entry e:PlaylumiLibrarySearch.find(0,"géheugen"))accented.add(e.title);
+        for(PlaylumiGameCatalog.Entry e:PlaylumiLibrarySearch.find(0,"geheugen"))plain.add(e.title);
+        assertEquals(plain,accented);
+        assertEquals("Ritmegeheugen",accented.get(0)); // direct title match precedes memory tags
+        assertTrue(accented.contains("Dierenmemory"));
         assertTrue(PlaylumiLibrarySearch.find(2,"xxxx").isEmpty());
     }
     @Test public void answerLayoutsKeepDirectionAndLongWordsReadable(){
