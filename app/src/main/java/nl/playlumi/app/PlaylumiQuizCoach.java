@@ -22,6 +22,7 @@ public final class PlaylumiQuizCoach {
     }
     public static String explain(int mode,int variant,LearningGame.Round round){
         if(!round.isSolved())return "";
+        if(PlaylumiThinkingPractice.supports(mode,variant))return PlaylumiThinkingPractice.explain(mode,variant,round);
         String right=round.answers.get(round.correctIndex);
         if(mode==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display))
             return PlaylumiSpellingPractice.explanation(round.display,right);

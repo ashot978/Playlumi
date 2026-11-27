@@ -16,7 +16,8 @@ public final class PlaylumiAdvancedMathTest {
                     assertEquals(e.id,PlaylumiGameCatalog.find(age,e.id).id);
                     assertEquals(2,PlaylumiLearningProfile.minimum(age,e.mode,e.variant));
                 }
-            assertEquals(age==2?3:0,count);
+            // Tables, sharing, arithmetic to 100 and the new place-value route.
+            assertEquals(age==2?4:0,count);
         }
     }
     @Test public void arithmeticIsUniqueAndRestorable(){

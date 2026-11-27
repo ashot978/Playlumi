@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.107 / build 601008. Test build, not a production launch. Future builds use 0.108, 0.109, etc., and strictly increasing Android version codes.
+Status: 0.108 / build 601009. Test build, not a production launch. Future builds use 0.109, 0.110, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -132,8 +132,21 @@ Status: 0.107 / build 601008. Test build, not a production launch. Future builds
 - [x] Persist actual replay counts per age and route; label games as playable again and show five mastery tiers. Legacy completion marks remain intact; no invented historical round counts.
 - [x] City hub with seven permanent landmark/achievement rewards that unlock existing outfits and friends. Keep previously owned items. Reconnect the friend park and room with Lumi's outfit.
 - [x] Daily and city entry points on phone and wide home, plus daily shortcut in the library.
-- [ ] Full build, new engine checks, emulator checks and offline signature.
-- [ ] Next: dedicated illustrated city expansion, original new costume art, content packs, further mastery rewards and optional weekly challenges. No notifications, lost rewards, paid streak recovery, or Play Store publication without approval.
+- [x] Full build, new engine checks, unit tests and lint (45986125945), phone/Fold quiz acceptance (45986125973), and offline signature with the original certificate.
+
+## 0.108: visible city growth, new exercises and reliable rewards
+- [x] Dedicated growing city map with seven distinct shaded buildings/parks/bridge/monument. Locked land remains a landscaped plot; actual earned achievements determine the buildings. Native controls expose each place, requirement, progress and gift. The approved home artwork stays intact.
+- [x] Native clothing for Lumi: cape, star suit, rainbow sweater, astronaut, bow and scarf; keep original outfit IDs and old purchases.
+- [x] Three new stable routes: Evenveel (all ages), Eerst en daarna (5–6 and 7+), Tientallen en eenheden (7+). Catalog totals are 25 / 43 / 68. New independent seeded and semantic content checks.
+- [x] Every daily play button launches a compatible quiz for the chosen age, preferring a real unfinished round. Back returns to daily goals. Refresh calendar-dependent hubs after resume and while open across midnight.
+- [x] Replay mastery shown on every catalog round-completion panel; actual next milestone, stored wallet and new-city notice. No additional mastery currency or invented historic counts.
+- [x] Atomic preferences transactions for interactive, memory/shape/balloon, bubbles, star-catching, music, friend-care and gardening reward events. Preserve original save keys and earned amounts.
+- [x] Native focusable controls over the original phone-home buildings and navigation; wider readable layouts in narrow landscape; city columns adapt to text size; quiz answers can grow vertically.
+- [x] Required CI now builds and verifies both APK variants and runs full unit tests/lint before making release artifacts available.
+- [x] Added acceptance tests for city/daily/replay/gifts, interactive restoration, new question UI, large text, outfit previews and a same-runner debug upgrade from pinned 0.107. Tests use explicitly synthetic, disposable emulator profiles.
+- [ ] Complete 0.108 GitHub build and emulator checks, inspect screenshots, then verify offline signature/package/payload/alignment.
+- [ ] Physical Samsung Fold interaction and original-signed device upgrade remain separate acceptance work. No Play Store publication is implied.
+- [ ] Further content review and illustrated world detail can follow feedback on this build; optional weekly goals are not implemented.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.

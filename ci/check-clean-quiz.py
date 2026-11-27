@@ -213,6 +213,7 @@ def test(viewport, manual):
 if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--viewport",choices=["phone","fold"],required=True)
+    parser.add_argument("--keep-viewport",action="store_true",help="Keep emulator dimensions for a following test script")
     args=parser.parse_args()
     adb("wait-for-device",timeout=60)
     shell("pm disable-user --user 0 com.android.launcher3")
@@ -225,10 +226,16 @@ if __name__=="__main__":
             time.sleep(4)
         test(args.viewport+"-quiz",args.viewport=="fold")
     finally:
-        try:
-            (OUT/"logcat.txt").write_bytes(adb("logcat","-d","-v","brief"))
-            (OUT/"window.txt").write_text(shell("dumpsys window"))
-            (OUT/"last-screen.png").write_bytes(adb("exec-out","screencap","-p"))
-        finally:
-            shell("wm size reset")
-            shell("wm density reset")
+        for filename,command in (("logcat.txt",("logcat","-d","-v","brief")),
+                                 ("window.txt",("shell","dumpsys window")),
+                                 ("last-screen.png",("exec-out","screencap","-p"))):
+            try:
+                (OUT/filename).write_bytes(adb(*command,timeout=5))
+            except (subprocess.SubprocessError,OSError) as error:
+                print("Diagnostic unavailable:",filename,type(error).__name__,flush=True)
+        if not args.keep_viewport:
+            for command in ("wm size reset","wm density reset"):
+                try:
+                    adb("shell",command,timeout=5)
+                except (subprocess.SubprocessError,OSError) as error:
+                    print("Cleanup unavailable:",command,type(error).__name__,flush=True)
