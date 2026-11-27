@@ -1683,7 +1683,10 @@ public class MainActivity extends Activity {
         // Drawing and drag games reserve gestures for the actual game; arrows still work.
         pageDeck=new PlaylumiPageDeck(this,!(page==MINI_PLAY&&miniKind==PlaylumiMiniChallenge.DRAG),gameScreen()||page==BUILDER_PLAY);
         root=pageDeck.content();
-        if(page==LIBRARY)pageDeck.setMaxBlocks(3);
+        if(page==LIBRARY){pageDeck.setMaxBlocks(1);pageDeck.setCentered(true);}
+        // A question, its answer buttons and its feedback are one coherent game surface.
+        // On very short windows the whole surface fits together instead of hiding answers on another page.
+        if(gameScreen()&&page!=DRAW){pageDeck.setSinglePage(true);pageDeck.setCentered(true);}
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
         if(magicScreen)side=page==LIBRARY||page==INTERACTIVE?PlaylumiLayout.librarySidePadding(getResources().getConfiguration().screenWidthDp):PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
@@ -2522,6 +2525,7 @@ public class MainActivity extends Activity {
         final Button back=tile("Andere spellen","",0xffe8d9ff,64);
         final LinearLayout victory=new LinearLayout(this);victory.setOrientation(LinearLayout.VERTICAL);
         addWidget(victory,3,6);
+        if(round.solved())hideInteractivePlay(victory);
         if(round.solved())victory.addView(completionPanel(PlaylumiInteractive.TITLES[round.kind],round.kind==PlaylumiInteractive.NUMBERS?"🚀":round.kind==PlaylumiInteractive.LETTERS?"🚂":round.kind==PlaylumiInteractive.HABITATS?"🐾":"🎨",round.total(),1),new LinearLayout.LayoutParams(-1,-2));
         final LinearLayout finish=finishActions(again,back,round.solved());
         again.setOnClickListener(v->startInteractive(round.kind));back.setOnClickListener(v->move(catalogReturnPage()));
@@ -2574,7 +2578,7 @@ public class MainActivity extends Activity {
                         for(Button b:buttons)b.setEnabled(false);
                         victory.removeAllViews();
                         victory.addView(completionPanel(PlaylumiInteractive.TITLES[round.kind],round.kind==PlaylumiInteractive.NUMBERS?"🚀":round.kind==PlaylumiInteractive.LETTERS?"🚂":round.kind==PlaylumiInteractive.HABITATS?"🐾":"🎨",round.total(),1),new LinearLayout.LayoutParams(-1,-2));
-                        showFinishActions(finish,true);PlaylumiDelight.sprinkle(stage,board);
+                        hideInteractivePlay(victory);showFinishActions(finish,true);PlaylumiDelight.sprinkle(stage,victory);
                     }else progressEdit.apply();
                 }else{
                     sound.mistake();interactiveMessage=round.kind==PlaylumiInteractive.NUMBERS&&round.version>=PlaylumiInteractive.PREVIOUS&&round.level>0?
@@ -2586,6 +2590,11 @@ public class MainActivity extends Activity {
             });
         }
         if(round.solved())for(Button b:buttons)b.setEnabled(false);
+    }
+
+    private void hideInteractivePlay(LinearLayout victory){
+        for(int i=0;i<root.getChildCount();i++){View child=root.getChildAt(i);if(child!=victory)child.setVisibility(View.GONE);}
+        pageDeck.requestPage(0);
     }
 
     private void showPuzzle(PlaylumiInteractive round){
@@ -2653,12 +2662,13 @@ public class MainActivity extends Activity {
                 edit.apply();
                 interactiveMessage="Knap gedaan! +"+(PlaylumiWardrobe.STARS_FOR_ANSWER+badges.size()*PlaylumiWardrobe.STARS_FOR_BADGE)+" speelsterren";
                 victory.addView(completionPanel(PlaylumiPuzzle.title(puzzle.kind),PlaylumiPuzzle.icon(puzzle.kind),round.total(),1),new LinearLayout.LayoutParams(-1,-2));
-                showFinishActions(finish[0],true);PlaylumiDelight.sprinkle(stage,board[0]);
+                hideInteractivePlay(victory);showFinishActions(finish[0],true);PlaylumiDelight.sprinkle(stage,victory);
             }else{edit.apply();interactiveMessage="Goed zo!";}
             message.setTextColor(0xffc7ffd8);message.setText(interactiveMessage);
         });
         panel.addView(board[0],new LinearLayout.LayoutParams(-1,-2));panel.addView(message,new LinearLayout.LayoutParams(-1,-2));
         addWidget(panel,3,4);addWidget(victory,3,6);
+        if(round.solved())hideInteractivePlay(victory);
         if(round.solved())victory.addView(completionPanel(PlaylumiPuzzle.title(puzzle.kind),PlaylumiPuzzle.icon(puzzle.kind),round.total(),1),new LinearLayout.LayoutParams(-1,-2));
         finish[0]=finishActions(again,back,round.solved());
         again.setOnClickListener(v->startInteractive(round.kind));back.setOnClickListener(v->move(catalogReturnPage()));
@@ -2807,7 +2817,9 @@ public class MainActivity extends Activity {
         java.util.Set<String> played=librarySet("library_played");
         final int width=getResources().getConfiguration().screenWidthDp;
         final float fontScale=getResources().getConfiguration().fontScale;
-        final int columns=PlaylumiLayout.libraryGameColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
+        final int height=getResources().getConfiguration().screenHeightDp;
+        final int columns=PlaylumiPagePlan.libraryColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
+        final int rows=PlaylumiPagePlan.libraryRows(height,fontScale);
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
             // The six illustrated world cards are the main content, not a long introductory panel.
             int worldColumns=PlaylumiLayout.libraryWorldColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
@@ -2827,67 +2839,57 @@ public class MainActivity extends Activity {
             // The original missions remain accessible from the expedition page.
             return;
         }
-        // The fixed title already names the world: no repeated decorative hero.
         java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,java.util.Collections.emptySet());
-        librarySection("Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
         if(entries.isEmpty()){
             addText("Kies een nieuw avontuur.",17,PlaylumiMagicArt.CREAM,12,8);
             Button discover=tile("Ontdek de werelden","",COLORS[2],64);
             addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.OVERVIEW));
             return;
         }
-        for(int first=0;first<entries.size();first+=columns){
-            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
-            int n=Math.min(columns,entries.size()-first);
-            for(int j=0;j<n;j++){
-                View card=libraryGameCard(entries.get(first+j),played,columns>1);
-                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
-                lp.setMargins(dp(4),dp(3),dp(4),dp(3));row.addView(card,lp);
+        // Each page owns a complete set of game cards, not an arbitrary section of a long list.
+        int capacity=rows*columns,tileHeight=PlaylumiPagePlan.libraryTileHeight(height,rows);
+        for(int first=0;first<entries.size();first+=capacity){
+            LinearLayout sheet=new LinearLayout(this);sheet.setOrientation(LinearLayout.VERTICAL);
+            for(int offset=0;offset<Math.min(capacity,entries.size()-first);offset+=columns){
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
+                int n=Math.min(columns,entries.size()-first-offset);
+                for(int j=0;j<n;j++){
+                    View card=libraryGameCard(entries.get(first+offset+j),played,columns>1);
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(tileHeight),1f);
+                    lp.setMargins(dp(5),dp(5),dp(5),dp(5));row.addView(card,lp);
+                }
+                for(int j=n;j<columns;j++)row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));
+                sheet.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
-            for(int j=n;j<columns;j++)row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));
-            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            root.addView(sheet,new LinearLayout.LayoutParams(-1,-2));pageDeck.keepTogether(sheet);
         }
     }
     private View libraryGameCard(PlaylumiGameCatalog.Entry entry,java.util.Set<String> played,boolean wide){
-        LinearLayout card=new LinearLayout(this);card.setOrientation(wide?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(9),dp(8),dp(9),dp(8));
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);card.setPadding(dp(9),dp(6),dp(9),dp(6));
         card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),libraryCardSurface(entry.world),null));
-        card.setMinimumHeight(dp(wide?106:66));
         org.json.JSONObject snapshot=libraryResume(entry);
         boolean resume=snapshot!=null;
         boolean completed=completedRoutes().contains(entry.id)&&PlaylumiCompletion.eligible(entry);
-        LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
-        TextView icon=text(entry.icon,entry.icon.length()>3?18:26,PlaylumiWorldStyle.deep(entry.world));
+        int height=getResources().getConfiguration().screenHeightDp;
+        boolean compact=height<490;
+        int glyph=compact?38:64;
+        TextView icon=text(entry.icon,entry.icon.length()>3?23:compact?26:36,PlaylumiWorldStyle.deep(entry.world));
         icon.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
-        icon.setBackground(rounded(PlaylumiWorldStyle.pale(entry.world),16));icon.setIncludeFontPadding(false);
+        icon.setBackground(rounded(PlaylumiWorldStyle.pale(entry.world),18));icon.setIncludeFontPadding(false);
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        heading.addView(icon,new LinearLayout.LayoutParams(dp(wide?50:46),dp(wide?50:46)));
-        LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);labels.setGravity(Gravity.CENTER_VERTICAL);
-        labels.setPadding(dp(10),0,dp(5),0);
-        TextView name=homeLabel(entry.title,17,PlaylumiMagicArt.CREAM,true);
-        name.setGravity(Gravity.START);labels.addView(name,new LinearLayout.LayoutParams(-1,-2));
-        int playedRounds=roundsPlayed(entry);
-        String progress=resume?"Ronde "+snapshot.optInt("count",0)+"/"+snapshot.optInt("total",SESSION_ROUNDS):
-                playedRounds>0?PlaylumiCompletion.mastery(playedRounds)+" · "+playedRounds+(playedRounds==1?" ronde":" rondes"):"";
-        // One title and only relevant saved progress; the game explains its own rules.
-        if(!progress.isEmpty()){
-            TextView marker=homeLabel(progress,12,0xffc9ffdc,true);
-            marker.setPadding(0,dp(2),0,0);labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
-        }
-        heading.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
-        if(wide){
-            card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
-            // No repeated description below the title.
-            TextView play=text("▶ Spelen",15,PlaylumiMagicArt.INK);
-            play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);play.setBackground(PlaylumiMagicArt.creamPlate(this));
-            play.setMinHeight(dp(36));play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(4),0,0);card.addView(play,lp);
-        }else{
-            card.addView(heading,new LinearLayout.LayoutParams(0,-2,1f));
-            TextView play=text("▶",20,PlaylumiMagicArt.GOLD);
-            play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            card.addView(play,new LinearLayout.LayoutParams(dp(28),dp(42)));
-        }
+        card.addView(icon,new LinearLayout.LayoutParams(dp(glyph),dp(glyph)));
+        TextView name=homeLabel(entry.title,compact?15:18,PlaylumiMagicArt.CREAM,true);
+        name.setGravity(Gravity.CENTER);name.setMaxLines(3);name.setIncludeFontPadding(false);
+        if(Build.VERSION.SDK_INT>=26)name.setAutoSizeTextTypeUniformWithConfiguration(11,compact?15:18,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+        LinearLayout.LayoutParams title=new LinearLayout.LayoutParams(-1,0,1f);
+        title.topMargin=dp(3);card.addView(name,title);
+        String action=resume?"Verder · "+snapshot.optInt("count",0)+"/"+snapshot.optInt("total",SESSION_ROUNDS):
+                completed?"✓ Opnieuw":"▶ Spelen";
+        TextView play=text(action,compact?12:14,PlaylumiMagicArt.INK);
+        play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);play.setBackground(PlaylumiMagicArt.creamPlate(this));
+        play.setMinHeight(dp(compact?26:34));play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        play.setMaxLines(1);card.addView(play,new LinearLayout.LayoutParams(-1,-2));
         libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title+(completed?", opnieuw spelen":""),()->launchCatalog(entry,resume));
         if(resume)card.setOnLongClickListener(v->{
             new android.app.AlertDialog.Builder(this).setTitle(entry.title).setMessage("Opnieuw beginnen met dit spel? Je verdiende sterren en schatten blijven bewaard.")
@@ -3530,7 +3532,7 @@ public class MainActivity extends Activity {
         bar.setVisibility(visible?View.VISIBLE:View.GONE);
         FrameLayout.LayoutParams sp=(FrameLayout.LayoutParams)pageDeck.getLayoutParams();
         sp.bottomMargin=visible?dp(78):0;pageDeck.setLayoutParams(sp);
-        if(visible&&root.getChildCount()>0)pageDeck.reveal(root.getChildAt(root.getChildCount()-1));
+        if(visible){pageDeck.setSinglePage(true);pageDeck.setCentered(true);pageDeck.requestPage(0);}
     }
 
     private void choose(int index,Button touched) {
@@ -3653,7 +3655,7 @@ public class MainActivity extends Activity {
         boolean side=PlaylumiCompletion.sideBySide(width,height);
         LinearLayout heading=new LinearLayout(this);heading.setOrientation(side?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);heading.setGravity(Gravity.CENTER);
         PlaylumiMedal medal=new PlaylumiMedal(this,icon,true,Math.max(0,worldTheme())%3);
-        int size=PlaylumiCompletion.medalSize(height);
+        int size=Math.min(84,PlaylumiCompletion.medalSize(height));
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(dp(size),dp(size));mp.gravity=Gravity.CENTER;
         heading.addView(medal,mp);
         LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);labels.setGravity(Gravity.CENTER);
@@ -3675,7 +3677,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);lp.setMargins(dp(3),0,dp(3),0);totals.addView(metric,lp);
         }
         homeAdd(card,totals,4,3);
-        homeAdd(card,text("Je sterren zijn al opgeslagen. Extra bonussen en badges zitten ook in je sterrenpot.",12,0xff60446f),2,1);
+
         PlaylumiGameCatalog.Entry entry=completedPanelEntry();
         if(entry!=null){
             int mission=expeditionProgress();
@@ -3687,7 +3689,7 @@ public class MainActivity extends Activity {
                     homeAdd(adventure,homeLabel("✓ "+PlaylumiExpedition.STAMPS[chapter]+" verdiend",17,TEXT,true),0,2);
                     homeAdd(adventure,homeLabel(mission==30?"🏆 Alle zes zegels! +45 extra sterren.":"Hoofdstuk klaar! +15 extra sterren.",15,0xff715021,true),0,2);
                 }else homeAdd(adventure,homeLabel("De volgende opdracht is vrijgespeeld.",14,SUB,false),0,2);
-                parentProgressBar(adventure,30,mission,0xff9670cf,mission+" van 30 expeditieopdrachten afgerond");
+                // The chapter reward and mission count are enough for the end screen.
                 homeAdd(card,adventure,5,3);
             }
             int rounds=roundsPlayed(entry);
@@ -3739,8 +3741,7 @@ public class MainActivity extends Activity {
         PlaylumiGameCatalog.Entry entry=currentLearningEntry();
         addWidget(completionPanel(entry==null?LearningGame.GAME_NAMES[game.mode()]:entry.title,
                 PlaylumiPremiumLayout.emblem(game.mode(),game.variant()),sessionGoal(),sessionGoal()),3,6);
-        characterHero(102);
-        addText(libraryReturn&&catalogReturn==EXPEDITION?"Keer terug naar je avonturenkaart. Je voortgang is bewaard.":"Elke nieuwe ronde heeft nieuwe vragen. Speel nog eens voor sterren en meesterschap, of kies een ander avontuur.",15,PlaylumiMagicArt.CREAM,0,8);
+        // No second character illustration or repeated explanation after a completed round.
         Button again=tile("🔄 Opnieuw spelen","Nieuwe ronde, nieuwe sterren",0xffcbf1d9,92);
         PlaylumiDelight.invite(again);
         again.setOnClickListener(v->{

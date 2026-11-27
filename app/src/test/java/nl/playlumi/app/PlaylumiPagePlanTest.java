@@ -28,6 +28,13 @@ public final class PlaylumiPagePlanTest {
         assertEquals(1,PlaylumiPagePlan.safePage(99,pages.size()));
         assertEquals(0,PlaylumiPagePlan.safePage(-2,pages.size()));
     }
+    @Test public void libraryShowsAtMostFourLargeTilesAndShortScreensUseOneRow(){
+        assertEquals(2,PlaylumiPagePlan.libraryColumns(360,1f));
+        assertEquals(1,PlaylumiPagePlan.libraryColumns(360,1.5f));
+        assertEquals(1,PlaylumiPagePlan.libraryRows(420,1f));
+        assertEquals(2,PlaylumiPagePlan.libraryRows(780,1f));
+        assertEquals(218,PlaylumiPagePlan.libraryTileHeight(850,2));
+    }
     @Test public void onlyDeliberateHorizontalSwipesChangePages(){
         assertEquals(0,PlaylumiPagePlan.swipe(0,500,48,true));
         assertEquals(0,PlaylumiPagePlan.swipe(20,500,48,true));

@@ -2,7 +2,6 @@ package nl.playlumi.app;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /** Pure layout policy. Pages are disjoint, whole measured blocks, never arbitrary scroll offsets. */
@@ -26,7 +25,8 @@ public final class PlaylumiPagePlan {
     public static List<Page> pack(List<Block> input,int viewport,int maxBlocks){
         int height=Math.max(1,viewport),limit=Math.max(1,maxBlocks);
         ArrayList<Block> sorted=new ArrayList<>(input);
-        Collections.sort(sorted,Comparator.comparingInt((Block b)->b.start).thenComparingInt(b->b.end));
+        // Android 23 supports Collections.sort, but not Comparator.comparingInt/thenComparingInt.
+        Collections.sort(sorted,(a,b)->a.start!=b.start?Integer.compare(a.start,b.start):Integer.compare(a.end,b.end));
         ArrayList<Block> merged=new ArrayList<>();
         for(Block b:sorted){
             if(merged.isEmpty()||b.start>=merged.get(merged.size()-1).end)merged.add(b);
@@ -50,6 +50,17 @@ public final class PlaylumiPagePlan {
         if(count>0)pages.add(new Page(start,end,count,height));
         if(pages.isEmpty())pages.add(new Page(0,0,0,height));
         return Collections.unmodifiableList(pages);
+    }
+    /** Calm menus: at most four game tiles, with bigger labels on narrow or large-text screens. */
+    public static int libraryColumns(int width,float fontScale){
+        return width<300||(fontScale>=1.35f&&width<480)?1:2;
+    }
+    public static int libraryRows(int height,float fontScale){
+        return height<490||height<600&&fontScale>=1.35f?1:2;
+    }
+    public static int libraryTileHeight(int height,int rows){
+        int available=Math.max(88,height-204);
+        return Math.max(88,Math.min(218,available/Math.max(1,rows)-14));
     }
     public static int safePage(int index,int count){return Math.max(0,Math.min(index,Math.max(0,count-1)));}
     public static int pageFor(List<Page> pages,int coordinate){

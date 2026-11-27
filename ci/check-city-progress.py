@@ -1522,7 +1522,8 @@ def test_expedition(viewport):
     for number in range(2, 6):
         click(find_control(lambda n: re.fullmatch(r"Vak \d+: " + str(number), n.get("content-desc", "")) is not None, label + "-tile-" + str(number), False))
     completed = wait_prefs(lambda p: p.get(progress_key) == 1 and key not in p, "First expedition mission completed")
-    assert completed["wardrobe_stars"] == 21, "Unexpected expedition reward before seal"
+    # First correct board earns +3 and the first category badge +12. No chapter reward yet.
+    assert completed["wardrobe_stars"] == 33, "Unexpected expedition reward before seal"
     click_named("Terug naar de expeditie", label + "-return", False)
     page(51)
     screenshot(label + "-next", expected_texts=("1 van 30 opdrachten · 0 van 6 zegels",))
@@ -1536,14 +1537,14 @@ def test_expedition(viewport):
     for number in range(1, 4):
         click_named("Kies " + str(number), label + "-rocket-" + str(number))
     seal = wait_prefs(lambda p: p.get(progress_key) == 5, "Chapter seal awarded")
-    assert seal["wardrobe_stars"] == 36, "Chapter bonus was not exactly 15 plus normal 3 stars"
-    assert seal["wardrobe_total_earned"] == 36, "Chapter reward missing from lifetime balance"
+    assert seal["wardrobe_stars"] == 48, "Chapter bonus was not exactly 15 plus first board/badge reward of 15"
+    assert seal["wardrobe_total_earned"] == 48, "Chapter reward missing from lifetime balance"
     click_named("Terug naar de expeditie", label + "-seal-return", False)
     page(51)
     screenshot(label + "-seal", expected_texts=("5 van 30 opdrachten · 1 van 6 zegels",))
     launch_native_home()
     open_expedition(label + "-seal-restored")
-    assert prefs()[progress_key] == 5 and prefs()["wardrobe_stars"] == 36, "Reopening claimed a seal twice"
+    assert prefs()[progress_key] == 5 and prefs()["wardrobe_stars"] == 48, "Reopening claimed a seal twice"
     # Separate visual fixture of an already finished expedition. This does not
     # claim to play all 30 missions; the full reward sequence is covered in Java.
     seed({progress_key: 30, "wardrobe_stars": 138, "wardrobe_total_earned": 138})
@@ -1643,7 +1644,7 @@ def test_fixed_pages(viewport):
     assert page_indicator(next_nodes).startswith("Inhoudspagina 2 van "), "Horizontal swipe did not advance"
     assert cards(next_nodes) and not cards(next_nodes).intersection(initial), "Page repeated or cut game cards"
     assert any(exact("Rekenraket")(n) for n in next_nodes), "Header not pinned"
-    assert any(exact("Dorp")(n) for n in next_nodes) and any(exact("Werelden")(n) for n in next_nodes), "Main navigation not pinned"
+    assert any(description_prefix("Dorp")(n) and visible(n) for n in next_nodes) and any(description_prefix("Werelden")(n) and visible(n) for n in next_nodes), "Main navigation not pinned"
     shell(f"input swipe {int(w*.20)} {int(h*.45)} {int(w*.82)} {int(h*.45)} 350")
     time.sleep(.6)
     assert page_indicator(ui(label + "-swipe-right")) == first, "Horizontal reverse swipe failed"
@@ -1655,12 +1656,13 @@ def test_fixed_pages(viewport):
         assert indicator not in seen, "Repeated content page"
         seen.add(indicator)
         current = cards(nodes)
+        assert 1 <= len(current) <= 4, "Library page is empty or has too many cards"
         assert not all_cards.intersection(current), "Card duplicated across pages"
         all_cards.update(current)
         assert not any(n.get("scrollable") == "true" or n.get("class", "").endswith("ScrollView") for n in nodes)
         if not turn_page(nodes, True):
             break
-    assert len(all_cards) >= 12, "Most games missing from world"
+    assert len(all_cards) == 27, "All 27 age-7+ rocket games must remain reachable"
     assert prefs()["wardrobe_stars"] == 18, "Paging changed wallet"
     pass_check(viewport + ": all fixed library pages have distinct cards, persistent navigation, zero vertical scrolling, both horizontal gestures and unchanged state")
 

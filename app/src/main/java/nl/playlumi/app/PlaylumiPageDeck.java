@@ -34,7 +34,9 @@ public final class PlaylumiPageDeck extends ViewGroup {
     private List<PlaylumiPagePlan.Page> pages=java.util.Collections.emptyList();
     private View header,pendingReveal,pinned;
     private int pinnedExtent,pinnedWidth,pinnedHeight,bodyLeft;
-    private boolean pinnedSide,blankGesture;
+    private boolean pinnedSide,blankGesture,centerContent,singlePage;
+    private int contentTop;
+    private final java.util.Set<View> atomic=java.util.Collections.newSetFromMap(new IdentityHashMap<View,Boolean>());
     private int maxBlocks;
     private int headerHeight,selected,requested=-1,bodyTop,bodyHeight,contentWidth,naturalHeight;
     private int contentBottom,contentLeft,contentRight;
@@ -66,6 +68,9 @@ public final class PlaylumiPageDeck extends ViewGroup {
         b.setBackground(new android.graphics.drawable.ColorDrawable(0x00000000));b.setContentDescription(description);
         return b;
     }
+    public void keepTogether(View view){if(view!=null)atomic.add(view);requestLayout();}
+    public void setCentered(boolean value){centerContent=value;requestLayout();}
+    public void setSinglePage(boolean value){singlePage=value;requestLayout();}
     public void setMaxBlocks(int limit){maxBlocks=Math.max(1,limit);requestLayout();}
     public LinearLayout content(){return content;}
     public int currentPage(){return selected;}
@@ -91,13 +96,13 @@ public final class PlaylumiPageDeck extends ViewGroup {
     @Override public boolean canScrollVertically(int direction){return false;}
     @Override public boolean canScrollHorizontally(int direction){return direction<0?selected>0:selected+1<pages.size();}
     @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
-    private int footerHeight(){return dp(46);}
+    private int footerHeight(){return singlePage?0:dp(46);}
     @Override protected void onMeasure(int ws,int hs){
         int width=MeasureSpec.getSize(ws),height=MeasureSpec.getSize(hs);
         int outerW=Math.max(1,width-getPaddingLeft()-getPaddingRight());
         int outerH=Math.max(1,height-getPaddingTop()-getPaddingBottom());
         int head=header==null?0:Math.min(headerHeight,Math.max(0,outerH-footerHeight()-1));
-        int footer=Math.min(footerHeight(),Math.max(1,outerH-head-1));
+        int footer=Math.min(footerHeight(),Math.max(0,outerH-head-1));
         bodyHeight=Math.max(1,outerH-head-footer-dp(4));
         contentWidth=outerW;pinnedWidth=0;pinnedHeight=0;
         if(pinned!=null){
@@ -126,7 +131,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
         int bottom=y+view.getHeight();
         // Keep cards, answer rows and custom canvases intact. Only oversized
         // structural containers may be divided between their real child views.
-        if(view instanceof LinearLayout&&!view.isClickable()&&view.getHeight()>bodyHeight){
+        if(view instanceof LinearLayout&&!view.isClickable()&&!atomic.contains(view)&&view.getHeight()>bodyHeight){
             LinearLayout container=(LinearLayout)view;int before=output.size();
             for(int i=0;i<container.getChildCount();i++){
                 View child=container.getChildAt(i);
@@ -164,6 +169,11 @@ public final class PlaylumiPageDeck extends ViewGroup {
             View child=content.getChildAt(i);
             blocks(child,child.getTop(),measured);
         }
+        if(singlePage&&!measured.isEmpty()){
+            int start=Integer.MAX_VALUE,end=0;
+            for(PlaylumiPagePlan.Block block:measured){start=Math.min(start,block.start);end=Math.max(end,block.end);}
+            measured.clear();measured.add(new PlaylumiPagePlan.Block(start,end));
+        }
         pages=PlaylumiPagePlan.pack(measured,bodyHeight,maxBlocks);
         int index=requested>=0?requested:selected;requested=-1;
         if(pendingReveal!=null){
@@ -193,12 +203,14 @@ public final class PlaylumiPageDeck extends ViewGroup {
         PlaylumiPagePlan.Page page=pages.get(selected);
         float scale=page.scale;
         int x=bodyLeft+Math.round((contentWidth-contentWidth*scale)/2f);
-        int y=bodyTop-Math.round(page.start*scale);
+        int displayedHeight=Math.round((page.end-page.start)*scale);
+        contentTop=bodyTop+(centerContent?Math.max(0,(bodyHeight-displayedHeight)/2):0);
+        int y=contentTop-Math.round(page.start*scale);
         content.setPivotX(0);content.setPivotY(0);content.setScaleX(scale);content.setScaleY(scale);
         content.offsetLeftAndRight(x-content.getLeft());content.offsetTopAndBottom(y-content.getTop());
         content.setClipBounds(new Rect(0,page.start,contentWidth,page.end));
         contentLeft=x;contentRight=x+Math.round(contentWidth*scale);
-        contentBottom=bodyTop+Math.round((page.end-page.start)*scale);
+        contentBottom=contentTop+displayedHeight;
         for(int i=0;i<content.getChildCount();i++){
             View child=content.getChildAt(i);hideOffPage(child,child.getTop(),page.start,page.end);
         }
@@ -242,7 +254,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
         if(event.getActionMasked()==MotionEvent.ACTION_DOWN){
             float x=event.getX(),y=event.getY();
             blankGesture=x>=bodyLeft&&y>=bodyTop&&y<controls.getTop()&&
-                    (y>=contentBottom||x<contentLeft||x>contentRight);
+                    (y<contentTop||y>=contentBottom||x<contentLeft||x>contentRight);
             if(blankGesture){downX=x;downY=y;swiping=false;return true;}
         }else if(blankGesture){
             if(event.getActionMasked()==MotionEvent.ACTION_UP||event.getActionMasked()==MotionEvent.ACTION_CANCEL){
@@ -255,7 +267,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
     @Override protected boolean drawChild(Canvas canvas,View child,long drawingTime){
         if(child!=content)return super.drawChild(canvas,child,drawingTime);
         int save=canvas.save();
-        canvas.clipRect(bodyLeft,bodyTop,getWidth()-getPaddingRight(),Math.min(contentBottom,controls.getTop()));
+        canvas.clipRect(bodyLeft,contentTop,getWidth()-getPaddingRight(),Math.min(contentBottom,controls.getTop()));
         boolean result=super.drawChild(canvas,child,drawingTime);canvas.restoreToCount(save);return result;
     }
 }

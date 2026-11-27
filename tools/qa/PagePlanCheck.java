@@ -50,6 +50,17 @@ public final class PagePlanCheck {
                 }
             }
         }
+        for(int w:new int[]{240,300,320,360,600,900,1200})for(int h:new int[]{320,450,490,540,600,720,900})for(float font:new float[]{1f,1.3f,1.5f}){
+            int columns=PlaylumiPagePlan.libraryColumns(w,font),rows=PlaylumiPagePlan.libraryRows(h,font);
+            int tile=PlaylumiPagePlan.libraryTileHeight(h,rows);
+            require(columns>=1&&rows>=1&&columns*rows<=4,"Too many library cards");
+            require(tile>=88&&tile<=218,"Invalid library tile height");
+            for(int n=1;n<=88;n++){
+                int seen=0,capacity=columns*rows;
+                for(int i=0;i<n;i+=capacity)seen+=Math.min(capacity,n-i);
+                require(seen==n,"Missing a library card");
+            }
+        }
         System.out.println("PASS: "+cases+" randomized page decks, "+blocks+" intact measured controls, "+swipes+" swipe-direction checks and compact city pages.");
     }
 }
