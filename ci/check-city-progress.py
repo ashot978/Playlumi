@@ -377,8 +377,13 @@ def test_debug_upgrade(baseline_apk, viewport):
     click_named("Terug naar het magische dorp", viewport + "-upgrade-current-drawing-home", False)
     page(1)
     open_drawing(viewport + "-upgrade-current-drawing")
-    screenshot(viewport + "-upgrade-current-drawing",
-               expected_descriptions=("Teken met je vinger op dit witte vel",))
+    drawing_nodes = screenshot(viewport + "-upgrade-current-drawing",
+                               expected_descriptions=("Teken met je vinger op dit witte vel",))
+    if viewport == "fold":
+        # These controls share the first visible viewport with the old artwork.
+        # Catch an elevated Canvas painting over them before the longer cases.
+        drawing_controls_pixels(viewport + "-upgrade-current-drawing", drawing_nodes,
+                                ("Gum", "Lijndikte Normaal", "💾 Bewaar tekening"))
     click_named("Terug naar het magische dorp", viewport + "-upgrade-drawing-noop-save", False)
     page(1)
     after_drawing = drawing_file(viewport + "-upgrade-current-drawing-file")
@@ -894,8 +899,15 @@ def fixture_profile(profile, initialize=False):
     # bookkeeping must not be attributed to the later secondary-profile work.
     stopped_primary = prefs()
     global_path = "shared_prefs/playlumi-global.xml"
-    raw = adb("exec-out", "run-as", APP, "cat", global_path, check=False)
-    root = ET.fromstring(raw) if raw.strip() else ET.Element("map")
+    presence = shell(f"run-as {APP} sh -c 'if [ -e {global_path} ]; then echo present; else echo absent; fi'")
+    assert presence in ("present", "absent"), "Could not inspect optional global profile preferences"
+    # Reading the default profile does not create this file. Do not parse the
+    # Android cat error as XML, or silently replace a present but corrupt file.
+    if presence == "present":
+        root = ET.fromstring(adb("exec-out", "run-as", APP, "cat", global_path))
+        assert root.tag == "map", "Global profile preferences have an invalid XML root"
+    else:
+        root = ET.Element("map")
     active = next((node for node in root if node.get("name") == "active_profile"), None)
     if active is None:
         active = ET.SubElement(root, "int", name="active_profile")
@@ -953,8 +965,10 @@ def test_drawing_tools(viewport):
     choose_drawing("Lijndikte Dik", label + "-thick-eraser")
     drawing_state("Potlood", label + "-pencil-off", selected=False)
     drawing_state(redo, label + "-before-erase-redo", enabled=False)
-    screenshot(label + "-selected-eraser",
-               expected_descriptions=("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
+    tool_nodes = screenshot(label + "-selected-eraser",
+                            expected_descriptions=("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
+    drawing_controls_pixels(label + "-selected-eraser", tool_nodes,
+                            ("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
     drawing_stroke(label + "-erase-old-png")
     erased = save_drawing(label + "-erased")
     assert erased == blank, "Eraser did not restore white paper underneath the loaded PNG stroke"
@@ -1015,8 +1029,10 @@ def test_drawing_tools(viewport):
         screenshot(label + "-large-font-top", expected_texts=("Tekenstudio",))
         drawing_state("Lijndikte Dik", label + "-large-font-width", selected=True)
         drawing_state("🧽 Begin met leeg papier", label + "-large-font-clear", enabled=True)
-        screenshot(label + "-large-font-controls",
-                   expected_descriptions=("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
+        large_nodes = screenshot(label + "-large-font-controls",
+                                 expected_descriptions=("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
+        drawing_controls_pixels(label + "-large-font-controls", large_nodes,
+                                ("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
         shell("settings put system font_scale 1.0")
         time.sleep(1)
         page(25)
@@ -1120,6 +1136,50 @@ def png_raster(raw):
         return rgba if channels == 4 else rgba+(255,)
 
     return width, height, sample
+
+
+def drawing_controls_pixels(label, nodes, descriptions):
+    """Require painted native buttons, not only their accessibility nodes.
+
+    The former unbounded Canvas drawColor covered real, enabled buttons with
+    uniform FRAME_COLOR. Inspect their inset interiors to exclude rounded
+    corners/shadows, while requiring both their lighter fill and dark labels.
+    This detects that occlusion; it is not an OCR or general contrast audit.
+    """
+    raw = (OUT / (label + ".png")).read_bytes()
+    width, height, pixel = png_raster(raw)
+    frame = (222, 217, 233)
+    results, failures = [], []
+    for description in descriptions:
+        matches = [node for node in nodes if description_prefix(description)(node)
+                   and node.get("class") == "android.widget.Button" and visible(node)
+                   and node.get("enabled") == "true"]
+        assert len(matches) == 1, "Raster check needs one visible enabled button: " + description
+        left, top, right, bottom = rect(matches[0])
+        assert 0 <= left < right <= width and 0 <= top < bottom <= height, "Button lies outside the screenshot: " + description
+        assert right-left >= 50 and bottom-top >= 40, "Button region is too clipped for pixel evidence: " + description
+        dx, dy = max(4, (right-left)//12), max(4, (bottom-top)//10)
+        box = (left+dx, top+dy, right-dx, bottom-dy)
+        colors = [pixel(x/(width-1), y/(height-1))[:3]
+                  for y in range(box[1], box[3]) for x in range(box[0], box[2])]
+        non_frame = sum(max(abs(value-ref) for value, ref in zip(color, frame)) > 8
+                        for color in colors) / len(colors)
+        dark_text = sum(max(color) < 160 for color in colors) / len(colors)
+        unique = len(set(colors))
+        results.append({"description": matches[0].get("content-desc"),
+                        "bounds": [left, top, right, bottom], "sampleBounds": box,
+                        "samples": len(colors), "uniqueColors": unique,
+                        "nonFrameFraction": round(non_frame, 6),
+                        "darkTextFraction": round(dark_text, 6)})
+        if non_frame < .8 or dark_text < .005 or unique < 8:
+            failures.append(description + ": " + repr(results[-1]))
+    (OUT / (label + "-control-pixels.json")).write_text(json.dumps({
+        "screenshotSha256": hashlib.sha256(raw).hexdigest(), "frameColor": frame,
+        "minimumNonFrameFraction": .8, "minimumDarkTextFraction": .005,
+        "minimumUniqueColors": 8, "buttons": results,
+        "scope": "Actual screenshot pixels inside native enabled button bounds; no image fixture."
+    }, indent=2, ensure_ascii=False))
+    assert not failures, "Drawing controls are occluded or have no visible label: " + "; ".join(failures)
 
 
 def test_drawing_compaction(viewport):

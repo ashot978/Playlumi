@@ -238,8 +238,12 @@ public final class PlaylumiDrawingView extends View {
     }
     @Override protected void onDraw(Canvas canvas){
         super.onDraw(canvas);
+        // The workspace allows shadows outside children. Keep this elevated View's
+        // fills and sparkles local so they cannot cover adjacent native controls.
+        int viewBounds=canvas.save();
+        canvas.clipRect(0,0,getWidth(),getHeight());
         canvas.drawColor(FRAME_COLOR);
-        if(!paper.valid())return;
+        if(!paper.valid()){canvas.restoreToCount(viewBounds);return;}
         int saved=canvas.save();
         canvas.clipRect(paper.left,paper.top,paper.right,paper.bottom);
         canvas.translate(paper.left,paper.top);canvas.scale(paper.scale,paper.scale);
@@ -260,6 +264,7 @@ public final class PlaylumiDrawingView extends View {
                 postInvalidateDelayed(45);
             }
         }
+        canvas.restoreToCount(viewBounds);
     }
     private void trackSparkle(float x,float y){
         if(eraser||PlaylumiMotion.isReduced())return;
