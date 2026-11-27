@@ -62,6 +62,15 @@ public final class PlaylumiPagePlan {
         int available=Math.max(88,height-204);
         return Math.max(88,Math.min(218,available/Math.max(1,rows)-14));
     }
+    public static String caption(String name,int index,int count){
+        int pages=Math.max(1,count),current=safePage(index,pages)+1;
+        String suffix="Pagina "+current+" van "+pages;
+        return name==null||name.trim().isEmpty()?suffix:name.trim()+" · "+current+"/"+pages;
+    }
+    /** One row on compact/landscape windows; two on sufficiently tall ones. */
+    public static int shelfRows(int height,float fontScale){
+        return height<620||fontScale>=1.35f&&height<760?1:2;
+    }
     public static int safePage(int index,int count){return Math.max(0,Math.min(index,Math.max(0,count-1)));}
     public static int pageFor(List<Page> pages,int coordinate){
         if(pages.isEmpty())return 0;

@@ -36,7 +36,9 @@ public final class PlaylumiPageDeck extends ViewGroup {
     private int pinnedExtent,pinnedWidth,pinnedHeight,bodyLeft;
     private boolean pinnedSide,blankGesture,centerContent,singlePage;
     private int contentTop;
-    private final java.util.Set<View> atomic=java.util.Collections.newSetFromMap(new IdentityHashMap<View,Boolean>());
+    private final java.util.Set<View> atomic=java.util.Collections.newSetFromMap(new java.util.WeakHashMap<View,Boolean>());
+    private final java.util.Set<View> split=java.util.Collections.newSetFromMap(new java.util.WeakHashMap<View,Boolean>());
+    private final java.util.WeakHashMap<View,String> pageNames=new java.util.WeakHashMap<>();
     private int maxBlocks;
     private int headerHeight,selected,requested=-1,bodyTop,bodyHeight,contentWidth,naturalHeight;
     private int contentBottom,contentLeft,contentRight;
@@ -52,12 +54,12 @@ public final class PlaylumiPageDeck extends ViewGroup {
         GradientDrawable bg=new GradientDrawable();bg.setColor(0xff563782);bg.setCornerRadius(dp(15));bg.setStroke(dp(1),0xffb49adc);controls.setBackground(bg);
         previous=arrow("‹","Vorige inhoudspagina");next=arrow("›","Volgende inhoudspagina");
         counter=new TextView(context);counter.setGravity(Gravity.CENTER);counter.setTextColor(0xfffff1cf);
-        counter.setTextSize(13);counter.setTypeface(Typeface.DEFAULT,Typeface.BOLD);counter.setIncludeFontPadding(false);
+        counter.setTextSize(13);counter.setMaxLines(2);counter.setTypeface(Typeface.DEFAULT,Typeface.BOLD);counter.setIncludeFontPadding(false);
         counter.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         controls.addView(previous,new LinearLayout.LayoutParams(dp(54),-1));
         controls.addView(counter,new LinearLayout.LayoutParams(0,-1,1f));
         controls.addView(next,new LinearLayout.LayoutParams(dp(54),-1));
-        addView(controls,new LayoutParams(-1,dp(46)));
+        addView(controls,new LayoutParams(-1,dp(48)));
         previous.setOnClickListener(v->turn(-1));next.setOnClickListener(v->turn(1));
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
@@ -69,6 +71,8 @@ public final class PlaylumiPageDeck extends ViewGroup {
         return b;
     }
     public void keepTogether(View view){if(view!=null)atomic.add(view);requestLayout();}
+    public void splitChildren(View view){if(view!=null)split.add(view);requestLayout();}
+    public void namePage(View view,String name){if(view!=null&&name!=null)pageNames.put(view,name);requestLayout();}
     public void setCentered(boolean value){centerContent=value;requestLayout();}
     public void setSinglePage(boolean value){singlePage=value;requestLayout();}
     public void setMaxBlocks(int limit){maxBlocks=Math.max(1,limit);requestLayout();}
@@ -96,7 +100,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
     @Override public boolean canScrollVertically(int direction){return false;}
     @Override public boolean canScrollHorizontally(int direction){return direction<0?selected>0:selected+1<pages.size();}
     @Override public boolean requestChildRectangleOnScreen(View child,Rect rectangle,boolean immediate){return false;}
-    private int footerHeight(){return singlePage?0:dp(46);}
+    private int footerHeight(){return singlePage?0:dp(48);}
     @Override protected void onMeasure(int ws,int hs){
         int width=MeasureSpec.getSize(ws),height=MeasureSpec.getSize(hs);
         int outerW=Math.max(1,width-getPaddingLeft()-getPaddingRight());
@@ -131,7 +135,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
         int bottom=y+view.getHeight();
         // Keep cards, answer rows and custom canvases intact. Only oversized
         // structural containers may be divided between their real child views.
-        if(view instanceof LinearLayout&&!view.isClickable()&&!atomic.contains(view)&&view.getHeight()>bodyHeight){
+        if(view instanceof LinearLayout&&!view.isClickable()&&!atomic.contains(view)&&(split.contains(view)||view.getHeight()>bodyHeight)){
             LinearLayout container=(LinearLayout)view;int before=output.size();
             for(int i=0;i<container.getChildCount();i++){
                 View child=container.getChildAt(i);
@@ -214,7 +218,12 @@ public final class PlaylumiPageDeck extends ViewGroup {
         for(int i=0;i<content.getChildCount();i++){
             View child=content.getChildAt(i);hideOffPage(child,child.getTop(),page.start,page.end);
         }
-        counter.setText("Pagina "+(selected+1)+" van "+pages.size());
+        String name="";int best=Integer.MAX_VALUE;
+        for(Map.Entry<View,String> entry:pageNames.entrySet()){
+            View anchor=entry.getKey();if(anchor==null||anchor.getVisibility()!=VISIBLE)continue;
+            int y=topOf(anchor);if(y>=page.start&&y<page.end&&y<best){best=y;name=entry.getValue();}
+        }
+        counter.setText(PlaylumiPagePlan.caption(name,selected,pages.size()));
         counter.setContentDescription("Inhoudspagina "+(selected+1)+" van "+pages.size());
         previous.setEnabled(selected>0);next.setEnabled(selected+1<pages.size());
         previous.setAlpha(previous.isEnabled()?1f:.28f);next.setAlpha(next.isEnabled()?1f:.28f);
