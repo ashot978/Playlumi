@@ -126,7 +126,7 @@ public final class PlaylumiDrawingView extends View {
         finishCurrentStroke();
         // Tool changes and a different View size must not re-encode an unchanged legacy PNG.
         if(!dirty&&persisted)return true;
-        if(getWidth()<1||getHeight()<1)return false;
+        // Fixed document dimensions keep saving independent of a transient zero-size View.
         Bitmap composed=null;FileOutputStream out=null;
         try{
             composed=Bitmap.createBitmap(documentWidth,documentHeight,Bitmap.Config.ARGB_8888);

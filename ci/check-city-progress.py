@@ -322,7 +322,10 @@ def test_debug_upgrade(baseline_apk, viewport):
         "library_rounds_v1_2_4:6:2:0": 6,
         "library_completed_v1_0": {"0:6:0:0"},
         "library_rounds_v1_0_0:6:0:0": 2,
-        "achievements_v1": (1 << 17) | (1 << 23),
+        # HOME synchronizes already-earned milestones in the old app too:
+        # 599-18 = 581 earned stars => bits 10/11; 12 owned items minus
+        # six defaults = six accessories => bit 20. Keep legacy bits 17/23.
+        "achievements_v1": (1 << 10) | (1 << 11) | (1 << 17) | (1 << 20) | (1 << 23),
         "daily_day_v1": emulator_day(), "daily_a_v1": 2, "daily_b_v1": 1,
         "daily_round_v1": 0, "daily_claimed_v1": 0, "daily_sets_v1": 4,
     }
@@ -343,8 +346,15 @@ def test_debug_upgrade(baseline_apk, viewport):
     before_question = start_upgrade_quiz(viewport + "-upgrade-baseline", False)
     assert before_question["count"] == 0 and not before_question["solved"], "Baseline quiz must be unanswered"
     before = prefs()
+    (OUT / (viewport + "-upgrade-baseline-state.json")).write_text(json.dumps({
+        "expectedPreferences": fixture,
+        "actualPreferences": {key: before.get(key) for key in fixture},
+        "drawingSavedOnce": before.get("drawing_saved_once", False),
+        "drawingSha256": hashlib.sha256(before_drawing).hexdigest(),
+        "scope": "Synthetic baseline preferences after actual native artwork creation, before package upgrade."
+    }, indent=2, ensure_ascii=False, default=list))
     for key, expected in fixture.items():
-        assert before.get(key) == expected, "Baseline did not retain its fixture: " + key
+        assert before.get(key) == expected, "Baseline did not retain its fixture: " + key + ": " + repr(before.get(key)) + " != " + repr(expected)
     screenshot(viewport + "-upgrade-baseline-question",
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
