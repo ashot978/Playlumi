@@ -7,6 +7,9 @@ def releasePassword = System.getenv('PLAYLUMI_SIGNING_PASSWORD')
 def releaseReady = releaseStorePath != null && !releaseStorePath.isEmpty() &&
         releasePassword != null && !releasePassword.isEmpty()
 def buildCode = System.getenv('PLAYLUMI_BUILD_CODE')
+// Only the explicitly opted-in packaging run skips AGP's implicit release lint.
+// Ordinary builds and the retained verification workflows keep the default check.
+def playlumiPackagingOnly = project.findProperty('playlumiPackagingOnly') == 'true'
 
 android {
     namespace 'nl.playlumi.app'
@@ -17,8 +20,8 @@ android {
         minSdk 23
         targetSdk 35
         // Reserved monotonically increasing code, pinned to the same value in CI.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601027
-        versionName '0.126'
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601028
+        versionName '0.127'
     }
 
     signingConfigs {
@@ -39,6 +42,9 @@ android {
         }
     }
     buildFeatures { buildConfig true }
+    lint {
+        checkReleaseBuilds = !playlumiPackagingOnly
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

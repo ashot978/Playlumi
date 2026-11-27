@@ -17,15 +17,14 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
     public PlaylumiPuzzleBoard(Context c,PlaylumiPuzzle p,int width,Listener listener){
         super(c);this.p=p;setOrientation(VERTICAL);setGravity(Gravity.CENTER_HORIZONTAL);setPadding(dp(6),dp(6),dp(6),dp(6));
         animalChoices=new Button[p.kind==PlaylumiPuzzle.SUDOKU?p.optionCount():0];
-        task=label("",p.kind==PlaylumiPuzzle.SUDOKU?18:22,PlaylumiMagicArt.CREAM);task.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);addView(task,new LayoutParams(-1,-2));
+        task=label("",p.kind==PlaylumiPuzzle.SUMS?26:18,PlaylumiMagicArt.CREAM);task.setMinLines(p.kind==PlaylumiPuzzle.SUMS?1:2);task.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);addView(task,new LayoutParams(-1,-2));
         if(p.kind==PlaylumiPuzzle.PIXEL){
             addView(label("Voorbeeld",15,PlaylumiMagicArt.GOLD));int size=Math.min(43,Math.max(28,(width-24)/p.cols-6));
             for(int y=0;y<p.rows;y++){LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.CENTER);
                 for(int x=0;x<p.cols;x++){String s=p.reference(y*p.cols+x);TextView cell=label(s,19,PlaylumiMagicArt.INK);cell.setBackground(face(PlaylumiPuzzle.paint(s),0xffffe0a1,8));cell.setContentDescription("Voorbeeld rij "+(y+1)+", vak "+(x+1)+": "+s);LayoutParams lp=new LayoutParams(dp(size),dp(size));lp.setMargins(dp(2),dp(2),dp(2),dp(2));row.addView(cell,lp);}addView(row,new LayoutParams(-1,-2));}
-            addView(label("Jouw pixelplaat",15,PlaylumiMagicArt.GOLD));
+            addView(label("Jij",14,PlaylumiMagicArt.GOLD));
         }
         trail=label("",21,PlaylumiMagicArt.GOLD);if(p.kind==PlaylumiPuzzle.RHYTHM)addView(trail,new LayoutParams(-1,-2));
-        if(p.kind==PlaylumiPuzzle.SYMMETRY)addView(label("Voorbeeld links  │  Spiegel rechts",15,PlaylumiMagicArt.GOLD));
         int size=Math.min(p.kind==PlaylumiPuzzle.RHYTHM?112:76,Math.max(36,(width-24-(p.kind==PlaylumiPuzzle.MAP?28:0))/p.cols-6));
         if(p.kind==PlaylumiPuzzle.MAZE&&p.cols==5)size=Math.min(size,64);
         cells=new TextView[p.cells()];
@@ -40,7 +39,7 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
         refresh();
     }
     private void buildSudoku(Context context,int width,Listener listener){
-        int cellSize=Math.min(p.cols==2?72:54,Math.max(32,(width-40)/p.cols));
+        int cellSize=Math.min(p.cols==2?96:72,Math.max(32,(width-40)/p.cols));
         LinearLayout grid=new LinearLayout(context);grid.setOrientation(VERTICAL);
         grid.setGravity(Gravity.CENTER);grid.setPadding(dp(4),dp(4),dp(4),dp(4));
         grid.setBackground(face(0xff49346b,0xffba98df,12));
@@ -48,7 +47,11 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
             LinearLayout line=new LinearLayout(context);line.setGravity(Gravity.CENTER);
             for(int column=0;column<p.cols;column++){
                 int index=row*p.cols+column;
-                TextView cell=label("",p.cols==2?32:26,PlaylumiMagicArt.INK);
+                TextView cell=label("",p.cols==2?40:30,PlaylumiMagicArt.INK);
+                // These are board pieces, sized to their fixed squares. System
+                // font scaling still applies to instructions and answer labels.
+                int iconSize=Math.min(p.cols==2?40:30,Math.round(cellSize*.55f));
+                cell.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,dp(iconSize));
                 cell.setPadding(0,0,0,0);cell.setMaxLines(1);cell.setGravity(Gravity.CENTER);
                 cell.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
                 LayoutParams params=new LayoutParams(dp(cellSize),dp(cellSize));
@@ -58,9 +61,8 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
             grid.addView(line,new LayoutParams(-2,-2));
         }
         addView(grid,new LayoutParams(-2,-2));
-        TextView instruction=label("Kies het ontbrekende dier",14,PlaylumiMagicArt.GOLD);
-        addView(instruction,new LayoutParams(-1,-2));
         LinearLayout choices=new LinearLayout(context);choices.setGravity(Gravity.CENTER);
+        choices.setPadding(0,dp(6),0,0);
         for(int option=0;option<p.optionCount();option++){
             final int choice=option;Button button=new Button(context);
             button.setAllCaps(false);button.setMinWidth(0);button.setMinimumWidth(0);
@@ -81,9 +83,21 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
         addView(choices,new LayoutParams(-1,-2));
     }
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
-    private TextView label(String s,int size,int color){TextView t=new TextView(getContext());t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER);t.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));t.setPadding(dp(2),dp(4),dp(2),dp(4));return t;}
+    private TextView label(String s,int size,int color){TextView t=new TextView(getContext());t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER);t.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));t.setIncludeFontPadding(false);t.setPadding(dp(2),dp(4),dp(2),dp(4));return t;}
     private GradientDrawable face(int fill,int outline,int radius){GradientDrawable d=new GradientDrawable();d.setColor(fill);d.setCornerRadius(dp(radius));d.setStroke(dp(2),outline);return d;}
-    public void refresh(){task.setText(p.prompt());trail.setText(p.rhythmTrail());
+    private String instruction(){
+        if(p.solved())return p.prompt();
+        switch(p.kind){
+            case PlaylumiPuzzle.WORD_PATH:return "Zoek "+p.prompt();
+            case PlaylumiPuzzle.MAZE:return "Tik een vak naast de raket, richting de ster.";
+            case PlaylumiPuzzle.RHYTHM:return "Speel de dieren in dezelfde volgorde.";
+            case PlaylumiPuzzle.PIXEL:return "Tik de vakjes die afwijken van het voorbeeld.";
+            case PlaylumiPuzzle.SYMMETRY:return "Maak rechts het spiegelbeeld van links.";
+            case PlaylumiPuzzle.SUDOKU:return p.level==0?"Elk dier één keer per rij en kolom.":"Elk dier één keer per rij, kolom en blok.";
+            default:return p.prompt();
+        }
+    }
+    public void refresh(){task.setText(instruction());trail.setText(p.rhythmTrail());
         for(int i=0;i<cells.length;i++){TextView b=cells[i];boolean done=p.selected(i),blocked=p.blocked(i);String s=p.display(i);int fill=done?0xffc6f0cf:0xfffff1d8,stroke=done?0xff56ad78:0xffe6bb72;
             if(p.kind==PlaylumiPuzzle.PIXEL||p.kind==PlaylumiPuzzle.SYMMETRY){fill=PlaylumiPuzzle.paint(s);stroke=done?0xff328855:0xffffe0a1;}
             if(p.kind==PlaylumiPuzzle.MAZE){fill=blocked?0xff4a326c:0xfff2dcb2;if(done||i==p.startCell())fill=0xffbae6c4;if(i==p.currentCell())stroke=0xff47a470;}
@@ -92,7 +106,7 @@ public final class PlaylumiPuzzleBoard extends LinearLayout {
                 boolean current=i==p.currentCell();
                 fill=current?0xffffd479:done?0xffbceacb:blocked?0xfff3ecff:0xffd5c4e8;
                 stroke=current?0xffc18312:done?0xff399f62:0xff9d7cba;
-                if(current)s="?";
+                if(current)s="?";else if(!blocked&&!done)s="";
             }
             b.setText(s);b.setTextColor(PlaylumiWorldStyle.contrastingInk(fill));b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),face(fill,stroke,12),null));
             String desc=p.kind==PlaylumiPuzzle.MAP?"Vak "+p.coordinate(i):"Vak "+(i+1)+": "+s;
