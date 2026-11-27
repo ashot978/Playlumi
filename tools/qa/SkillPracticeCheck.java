@@ -23,6 +23,10 @@ public final class SkillPracticeCheck {
                     LearningGame.Round q=game.round();String answer=q.answers.get(q.correctIndex),expected;
                     require(q.answers.size()>=3&&new HashSet<>(q.answers).size()==q.answers.size(),"Unique choices");
                     require(PlaylumiQuizCoach.explain(mode,6,q).isEmpty(),"Premature answer");
+                    if(PlaylumiSkillVisual.supported(mode,6,q)){
+                        require(PlaylumiSkillVisual.description(mode,q).equals(q.display),"Visual answer disclosed");
+                        require(PlaylumiSkillVisual.dotDelta(q)==0&&PlaylumiSkillVisual.filledIndex(q)<0,"Unsolved board marked");
+                    }
                     switch(mode){
                         case LearningGame.COUNT:
                             int n=age==0?q.display.split("●",-1).length-1:Integer.parseInt(q.display);
@@ -52,6 +56,10 @@ public final class SkillPracticeCheck {
                     require(restored.round().isRejected(wrong)&&restored.round().answers.equals(q.answers),"Lost rejected answer on restore");
                     require(restored.round().choose(restored.round().correctIndex),"Could not solve restored exercise");
                     require(q.choose(q.correctIndex)&&!q.choose(q.correctIndex),"Duplicate accepted answer");
+                    if(PlaylumiSkillVisual.supported(mode,6,q)){
+                        require(PlaylumiSkillVisual.description(mode,q).equals(PlaylumiSkillVisual.description(mode,restored.round())),"Visual restore differs");
+                        if(PlaylumiSkillPractice.revealsBlank(mode,6))require(PlaylumiSkillVisual.filledIndex(q)>=0&&!Arrays.asList(PlaylumiSkillVisual.tokens(q)).contains("?"),"Unfilled solved visual");
+                    }
                     String explanation=PlaylumiQuizCoach.explain(mode,6,q);
                     require(!explanation.isEmpty()&&explanation.equals(PlaylumiQuizCoach.explain(mode,6,restored.round())),"Missing or inconsistent explanation");
                     checked++;game.nextRound();

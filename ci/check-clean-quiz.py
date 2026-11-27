@@ -179,12 +179,15 @@ def test(viewport, manual):
     no_help(nodes)
     assert not exact(nodes,"Volgende vraag"), "Continue shown after incorrect answer"
     assert wrong not in choices(nodes), "Incorrect choice not disabled"
+    assert exact(nodes,"Probeer het nog eens."), "Gentle retry feedback missing"
+    assert exact(nodes,"× "+wrong), "Rejected answer has no visible cross"
     screenshot(viewport+"-wrong")
     wrong_snapshot = persisted_quiz(0,1,18)
     open_quiz(viewport+"-resume-wrong", True)
     nodes = ui(viewport+"-resumed-wrong")
     no_help(nodes)
     assert wrong not in choices(nodes), "Wrong answer was re-enabled by restart"
+    assert exact(nodes,"Probeer het nog eens.") and exact(nodes,"× "+wrong), "Retry feedback lost on restore"
     assert answer in choices(nodes), "Correct answer missing after restart"
     assert question_identity(nodes)[0]==image, "Question changed after wrong answer"
     restored_snapshot = persisted_quiz(0,1,18)

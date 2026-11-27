@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 
 /** Keep short answers together on small screens and show a concrete explanation after solving. */
 public final class PlaylumiQuizCoach {
+    public static final String RETRY_MESSAGE="Probeer het nog eens.";
     private PlaylumiQuizCoach(){}
     public static int columns(List<String> choices,int width,boolean split,boolean centered,boolean pattern){
         if(PlaylumiAnswerOrder.verticalPair(choices))return 1;
@@ -17,8 +18,20 @@ public final class PlaylumiQuizCoach {
         if(centered&&longest<=10&&available>=570)return 3;
         return 2;
     }
+    public static int columns(List<String> choices,int width,boolean split,boolean centered,boolean pattern,float fontScale){
+        int cols=columns(choices,width,split,centered,pattern);
+        if(PlaylumiAnswerOrder.verticalPair(choices)||PlaylumiAnswerOrder.horizontalPair(choices))return cols;
+        int available=split?width/2:Math.min(width,760),longest=0;
+        for(String value:choices)longest=Math.max(longest,value.codePointCount(0,value.length()));
+        if(fontScale>=1.2f){
+            if(longest>=18&&available<520)return 1;
+            return Math.min(2,cols);
+        }
+        return !pattern&&longest>=24&&available<340?1:cols;
+    }
     public static int delay(boolean retried,String feedback){
-        return retried?1500:feedback!=null&&feedback.length()>30?1150:650;
+        int length=feedback==null?0:feedback.codePointCount(0,feedback.length());
+        return Math.min(2300,Math.max(retried?1550:900,750+length*24));
     }
     public static String explain(int mode,int variant,LearningGame.Round round){
         if(!round.isSolved())return "";
@@ -48,6 +61,11 @@ public final class PlaylumiQuizCoach {
         if(mode==16&&variant==3)return "Bij dit dagdeel hoort "+right+".";
         if(mode==22&&variant==0)return right.equals("Gelijk")?"De twee lengtes zijn gelijk.":right+" is langer.";
         if(round.letterBlank()>=0)return "De ontbrekende letter is "+round.blankReplacement()+".";
+        if(mode==LearningGame.COUNT||mode==LearningGame.SHAPES&&variant==3)return "Het juiste aantal is "+right+".";
+        if(mode==LearningGame.NUMBERS&&variant==0)return "Je ziet "+right+" vingers.";
+        if(mode==LearningGame.COLORS)return "De juiste kleur is "+right+".";
+        if(mode==LearningGame.SHAPES&&(variant==1||variant==2))return "Dit is een "+right+".";
+        if(mode==LearningGame.PATTERNS)return "Het patroon klopt met "+right+".";
         if(mode==ExtraGames.RHYMES)return variant==1?"De eindklank van "+right+" is anders.":right+" heeft dezelfde eindklank.";
         return "";
     }

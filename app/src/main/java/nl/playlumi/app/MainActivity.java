@@ -123,6 +123,7 @@ public class MainActivity extends Activity {
     private LinearLayout quizFeedbackRow;
     private boolean finalFeedbackPending;
     private PlaylumiPatternView questionPattern;
+    private PlaylumiSkillBoard skillBoard;
     private int libraryScrollY;
     private int personalReturn=HOME,collectionReturn=HOME,closetReturn=AVATAR,achievementReturn=HOME;
     private int dailyReturn=HOME,catalogReturn=LIBRARY,friendReturn=AVATAR,ideasReturn=LIBRARY;
@@ -1279,7 +1280,7 @@ public class MainActivity extends Activity {
             if(PlaylumiCityRewards.grant(wardrobe,achievedMask(achievementStats())))saveWardrobe();
         }
         if(!parentAllowed && protectedParentPage())page=PARENT_GATE;
-        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;drawing=null;drawingInfo=null;
+        playPal=null;progressCounter=null;questionPicture=null;questionPattern=null;skillBoard=null;quizNext=null;quizFeedbackRow=null;magicHeaderProgress=null;roundStars=null;melodyPreviewActive=false;libraryTabs=null;drawing=null;drawingInfo=null;
         java.util.Arrays.fill(drawingColors,null);java.util.Arrays.fill(drawingWidths,null);
         drawingPencil=null;drawingEraser=null;drawingUndo=null;drawingRedo=null;drawingClear=null;eraseAsked=false;
         final boolean villageScreen=page==HOME;
@@ -2835,6 +2836,11 @@ public class MainActivity extends Activity {
             PlaylumiClockFace clock=new PlaylumiClockFace(this,Integer.parseInt(time[0]),Integer.parseInt(time[1]));
             clock.setBackground(PlaylumiMagicArt.parchment(this));clock.setMinimumHeight(dp(Math.max(148,questionH)));
             addWidgetIn(questions,clock,0,dp(3));
+        } else if(PlaylumiSkillVisual.supported(mode,game.variant(),round)) {
+            skillBoard=new PlaylumiSkillBoard(this,mode,game.variant(),round);
+            skillBoard.setBackground(PlaylumiMagicArt.parchment(this));
+            skillBoard.setMinimumHeight(dp(questionH));
+            addWidgetIn(questions,skillBoard,0,dp(3));
         } else if(PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3)) {
             PlaylumiPatternView pattern=new PlaylumiPatternView(this,round.display);
             questionPattern=pattern;if(round.isSolved())pattern.complete(round.answers.get(round.correctIndex));
@@ -2860,7 +2866,7 @@ public class MainActivity extends Activity {
             picture.setBackground(wide?PlaylumiMagicArt.parchment(this):PlaylumiMagicArt.question(this,!wide && shortDisplay));
             picture.setMinHeight(dp(questionH));
             picture.setPadding(dp(12),dp(5),dp(12),dp(5));
-            picture.setMaxLines(shortStory||countingShapes?6:4);
+            picture.setMaxLines(getResources().getConfiguration().fontScale>=1.2f?12:shortStory||countingShapes?6:4);
             if(reading){picture.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);picture.setPadding(dp(18),dp(10),dp(18),dp(10));}
             updateQuestionPicture(round);
             addWidgetIn(questions,picture,0,dp(3));
@@ -2886,7 +2892,7 @@ public class MainActivity extends Activity {
         answerButtons.clear();
         boolean visualPattern=PlaylumiPatterns.isVisualPattern(round.display)&&(mode==LearningGame.PATTERNS||mode==LearningGame.COLORS&&game.variant()==3);
         answerLocked=round.isSolved();
-        int columns=PlaylumiQuizCoach.columns(round.answers,width,split,centered,visualPattern);
+        int columns=PlaylumiQuizCoach.columns(round.answers,width,split,centered,visualPattern,getResources().getConfiguration().fontScale);
         int rowHeight=centered?PlaylumiLayout.centeredAnswerHeight(height,round.answers.size()):PlaylumiLayout.magicAnswerHeight(height,round.answers.size(),wide);
         if(split)rowHeight=Math.min(rowHeight,64);
         if(height<690)rowHeight=Math.max(48,Math.min(rowHeight,54));
@@ -2903,7 +2909,7 @@ public class MainActivity extends Activity {
                 button.setTextColor(PlaylumiMagicArt.INK);
                 button.setTextSize(value.length()>=13?15:value.length()>=9?17:value.length()>=6?21:29);
                 if(mode==ExtraGames.COMPARE&&game.variant()==PlaylumiThinkingPractice.EQUAL_GROUPS)button.setTextSize(23);
-                button.setPadding(dp(6),dp(4),dp(6),dp(4));button.setMaxLines(3);
+                button.setPadding(dp(6),dp(4),dp(6),dp(4));button.setMaxLines(getResources().getConfiguration().fontScale>=1.2f?6:4);
                 button.setMinHeight(dp(rowHeight));button.setEnabled(!answerLocked&&!round.isRejected(j));
                 if(visualPattern&&PlaylumiPatterns.colorIndex(value)>=0){
                     int paint=PlaylumiPatterns.color(PlaylumiPatterns.colorIndex(value));
@@ -2925,7 +2931,7 @@ public class MainActivity extends Activity {
                         button.setText("●");button.setContentDescription(value);
                     }
                 }
-                if(round.isRejected(j)){button.setAlpha(.52f);button.setContentDescription(value+", al geprobeerd");}
+                if(round.isRejected(j))markRejectedAnswer(button,value);
                 if(round.isSolved()&&j==round.correctIndex)markCorrectAnswer(button,value,wide);
                 else if(round.isSolved()&&!round.isRejected(j))button.setAlpha(.72f);
                 // Let long answers and enlarged system text grow instead of clipping inside a fixed row.
@@ -2960,9 +2966,20 @@ public class MainActivity extends Activity {
                 wide?PlaylumiMagicArt.gemButton(this,3):PlaylumiMagicArt.pastel(this,3),null));
         button.setTextColor(0xff174f36);
     }
+    private void markRejectedAnswer(Button button,String value){
+        button.setEnabled(false);button.setAlpha(.52f);
+        button.setText(PlaylumiSkillPractice.colorChoices(game.mode(),game.variant())?"×":"× "+value);
+        button.setContentDescription(value+", al geprobeerd");
+    }
     private void updateQuizFeedback(LearningGame.Round round){
         if(quizFeedbackRow==null)return;
-        quizFeedbackRow.setVisibility(round.isSolved()?View.VISIBLE:View.GONE);
+        boolean solved=round.isSolved(),retry=round.rejectedMask()!=0&&!solved;
+        quizFeedbackRow.setVisibility(solved||retry?View.VISIBLE:View.GONE);
+        quizNext.setVisibility(solved?View.VISIBLE:View.GONE);
+        if(retry){
+            feedbackText.setText(PlaylumiQuizCoach.RETRY_MESSAGE);
+            feedbackText.setTextColor(0xffffe5b3);
+        }else if(solved)feedbackText.setTextColor(0xffc6ffd6);
     }
     private int quizPace(){return PlaylumiQuizPace.safe(prefs().getInt("quiz_pace",0));}
 
@@ -3081,6 +3098,7 @@ public class MainActivity extends Activity {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             updateQuizFeedback(game.round());
             if(questionPattern!=null)questionPattern.complete(game.round().answers.get(game.round().correctIndex));
+            if(skillBoard!=null)skillBoard.refresh();
             if(game.round().letterBlank()>=0 || PlaylumiSkillPractice.revealsBlank(game.mode(),game.variant()) || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23||
                     game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(game.round().display)){
                 updateQuestionPicture(game.round());
@@ -3135,8 +3153,8 @@ public class MainActivity extends Activity {
         } else {
             feedback="";
             roundHadMistake=true;
-            touched.setEnabled(false);touched.setAlpha(.52f);
-            touched.setContentDescription(game.round().answers.get(index)+", al geprobeerd");
+            markRejectedAnswer(touched,game.round().answers.get(index));
+            updateQuizFeedback(game.round());
             sound.mistake();
             if(playPal!=null)playPal.react(2);
             PlaylumiDelight.wiggle(touched);

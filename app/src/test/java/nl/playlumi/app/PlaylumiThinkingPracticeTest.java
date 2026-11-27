@@ -84,7 +84,12 @@ public final class PlaylumiThinkingPracticeTest {
         assertFalse(PlaylumiThinkingPractice.supports(11,4));assertFalse(PlaylumiThinkingPractice.supports(12,7));
     }
 
+    @Test public void newDailyThingsVariantIsValid(){
+        LearningGame game=new LearningGame(new Random(1));game.configure(19,6,1);
+        assertEquals(6,game.variant());assertEquals(6,LearningGame.maxVariant(19));
+        assertTrue(game.round().answers.size()>=3);
+    }
     @Test(expected=IllegalArgumentException.class) public void unknownNewVariantIsRejected(){
-        new LearningGame(new Random(1)).configure(19,6,1);
+        new LearningGame(new Random(1)).configure(19,7,1);
     }
 }

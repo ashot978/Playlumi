@@ -202,7 +202,7 @@ public final class PlaylumiFoundationsTest {
     }
     @Test public void catalogAgesAndExistingScoreCategoriesRemainExplicit(){
         for(int age=0;age<3;age++){
-            assertEquals(new int[]{27,46,72}[age],PlaylumiGameCatalog.entries(age).size());
+            assertEquals(new int[]{30,53,79}[age],PlaylumiGameCatalog.entries(age).size());
             assertNotNull(PlaylumiGameCatalog.find(age,"0:0:0:5"));
             assertEquals(age>=1,PlaylumiGameCatalog.find(age,"0:0:16:5")!=null);
             assertEquals(age==2,PlaylumiGameCatalog.find(age,"1:0:6:5")!=null);
@@ -210,7 +210,7 @@ public final class PlaylumiFoundationsTest {
             assertNotNull(PlaylumiGameCatalog.find(age,"2:0:3:0"));
         }
         assertEquals(2,PlaylumiLearningProfile.minimum(2,6,5));
-        assertEquals(5,LearningGame.maxVariant(0));assertEquals(5,LearningGame.maxVariant(6));assertEquals(5,LearningGame.maxVariant(16));
+        assertEquals(6,LearningGame.maxVariant(0));assertEquals(5,LearningGame.maxVariant(6));assertEquals(5,LearningGame.maxVariant(16));
         assertEquals(24,PlaylumiScores.CATEGORIES);assertEquals(24,LearningGame.GAME_NAMES.length);
     }
     @Test public void nullOrUnrelatedSolvedQuestionsHaveNoFoundationFeedback(){
