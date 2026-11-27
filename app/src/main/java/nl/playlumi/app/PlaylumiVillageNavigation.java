@@ -16,7 +16,7 @@ import android.widget.TextView;
 /** Six building targets, one parent entry and two clear destinations. */
 public final class PlaylumiVillageNavigation extends FrameLayout {
     private final View artwork;
-    private final int[] places={PlaylumiVillageHit.PARENTS,0,1,2,3,4,5,PlaylumiVillageHit.HOME,PlaylumiVillageHit.MISSIONS};
+    private final int[] places={PlaylumiVillageHit.PARENTS,0,1,2,3,4,5};
     private final Button[] targets=new Button[places.length];
     private final float[][] artBounds=new float[places.length][];
     private final int[][] targetBounds=new int[places.length][4];

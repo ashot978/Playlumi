@@ -40,7 +40,10 @@ public final class PlaylumiClockPractice {
     }
     public static LearningGame.Round shift(int level,int direction,Random r){
         int value=r.nextInt(24)*60+minute(r,level);
-        return make(direction==1?"Hoe laat is het een uur later?":"Hoe laat was het een uur eerder?",
-                "⏰ "+format(value,false),value+direction*60,false,level,r);
+        int[] jumps=level==0?new int[]{60}:level==1?new int[]{30,60,90}:new int[]{15,30,45,60,90,120};
+        int jump=jumps[r.nextInt(jumps.length)];
+        String amount=jump==120?"2 uur":jump==90?"1,5 uur":jump==60?"1 uur":jump+" minuten";
+        String question=direction==1?"Hoe laat is het "+amount+" later?":"Hoe laat was het "+amount+" eerder?";
+        return make(question,"⏰ "+format(value,false),value+direction*jump,false,level,r);
     }
 }

@@ -12,7 +12,7 @@ public final class NewWorldGames {
             "Dagelijkse dingen","Eten & drinken","Dierenwereld","Meten & vergelijken","Slim nadenken"};
     public static final String[] ICONS = {"🕒","🌦️","🧭","🏠","🥕","🦁","📏","💡"};
     public static final String[][] VARIANTS = {
-            {"Hele uren","Een uur later","Een uur eerder","Ochtend, middag, avond en nacht","Tijden vergelijken"},
+            {"Wijzerklok","Tijd vooruit","Tijd terug","Ochtend, middag, avond en nacht","Tijden vergelijken","Tijdsprongen","Dezelfde tijd 's avonds"},
             {"Welk seizoen?","Kleed je goed","Weer herkennen","Wat past bij het weer?","Seizoen kiezen"},
             {"Links of rechts","Boven of onder","Voor of achter","Waar staat het?","Richting volgen"},
             {"Wat gebruik je?","Ochtend en avond","Wat doe je eerst?","Waar hoort het?","Veilig kiezen"},
@@ -108,7 +108,7 @@ public final class NewWorldGames {
         return values.toArray(new String[0]);
     }
     public static LearningGame.Round next(int mode,int variant,int level,Random r) {
-        if(mode<FIRST || mode>=FIRST+NAMES.length || variant<0 || variant>=5 || level<0 || level>2)
+        if(mode<FIRST || mode>=FIRST+NAMES.length || variant<0 || variant>= (mode==FIRST?7:5) || level<0 || level>2)
             throw new IllegalArgumentException("game settings");
         switch(mode-FIRST) {
             case 0:return time(variant,level,r);
@@ -125,7 +125,16 @@ public final class NewWorldGames {
     private static LearningGame.Round time(int v,int lvl,Random r) {
         int base=choose(r,lvl==0?12:24);
         if(v==0)return PlaylumiClockPractice.analog(lvl,r);
-        if(v==1||v==2)return PlaylumiClockPractice.shift(lvl,v==1?1:-1,r);
+        if(v==1||v==2||v==5)return PlaylumiClockPractice.shift(lvl,v==2?-1:(v==5&&r.nextBoolean()?-1:1),r);
+        if(v==6){
+            int h=r.nextInt(12),m=(lvl==0?0:lvl==1?r.nextInt(4)*15:r.nextInt(12)*5);
+            int evening=h==0?12:h+12;
+            String answer=minute(evening*60+m);
+            String[] options={answer,minute((evening+1)*60+m),minute((evening+12)*60+m),minute(evening*60+(m+30)%60)};
+            return make("Het is "+(h==0?12:h)+" uur"+(m==0?"": " en "+m+" minuten")+
+                    " 's avonds. Welke digitale tijd hoort daarbij?",
+                    "🌆 Avond",answer,opts(answer,options,lvl==0?3:4,r),r);
+        }
         if(v==3) {
             // The 12-hour wording is ambiguous without a day part. Always show it,
             // and include the matching AM/PM distractor rather than random times.

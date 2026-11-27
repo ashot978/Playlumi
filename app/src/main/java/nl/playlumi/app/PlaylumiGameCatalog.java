@@ -40,6 +40,8 @@ public final class PlaylumiGameCatalog {
         if(a>=2){
             q(list,0,16,1,"Een uur later","Reken een uur verder, ook met minuten","◷");
             q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
+            q(list,0,16,5,"Tijdsprongen","Denk 15, 30, 45, 60, 90 of 120 minuten vooruit of terug","◷");
+            q(list,0,16,6,"Avondklok","Welke digitale tijd hoort bij dezelfde tijd 's avonds?","🌆");
             q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","2×");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TABLES,"Tafels oefenen","Vermenigvuldig met 2, 3, 4, 5 en 10","×");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.SHARING,"Eerlijk verdelen","Deel in gelijke groepjes zonder rest","÷");
@@ -59,10 +61,13 @@ public final class PlaylumiGameCatalog {
             q(list,1,ExtraGames.PICTURES,0,"Woord en plaatje","Lees het woord bij het dier","🐾");
             q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","♫");
             q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
+            q(list,1,19,0,"Voorwerpen","Herken voorwerpen uit huis en school","🏠");
+            q(list,1,20,1,"Fruitwoorden","Koppel het fruit aan het woord","🍎");
         }
         if(a>=2){
             q(list,1,PlaylumiReadingPractice.MODE,PlaylumiReadingPractice.VARIANT,"Lees en kies","Lees korte verhaaltjes en zoek wie, wat of waar","Ab");
             q(list,1,ExtraGames.SPELLING,0,"Spelling","Maak een zin af met het goed gespelde woord","Ab");
+            q(list,1,ExtraGames.SPELLING,5,"Grammatica","Kies het passende werkwoord en de juiste zinsvorm","✏");
             q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Vul de laatste letter in of zoek een woord met dezelfde eindletter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
             q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","≠");

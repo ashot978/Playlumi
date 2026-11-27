@@ -34,7 +34,7 @@ public final class PlaylumiGameShelf {
         },
         {
             {"letters","Letters","Herken letters en hun volgorde","Aa"},
-            {"woorden","Woorden","Maak en ontdek woorden","Ab"},
+            {"woorden","Woorden en spelling","Ontdek woorden, voorwerpen en zinnen","Ab"},
             {"lezen-rijmen","Lezen en rijmen","Lees een verhaal of zoek een rijm","📖"}
         },
         {

@@ -1826,15 +1826,7 @@ public class MainActivity extends Activity {
             }
             grid.addView(row,new LinearLayout.LayoutParams(-1,0,1f));
         }
-        LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER);nav.setPadding(dp(4),dp(4),dp(4),dp(4));
-        nav.setBackground(rounded(0xee3f275f,16));
-        TextView home=homeAction("⌂  Dorp",true,()->move(HOME));home.setSelected(true);
-        home.setContentDescription("Dorp, geselecteerd");
-        TextView worlds=homeAction("✦  Werelden",false,()->openLibrary(PlaylumiGameCatalog.OVERVIEW));
-        for(TextView item:new TextView[]{home,worlds}){
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1f);lp.setMargins(dp(3),0,dp(3),0);nav.addView(item,lp);
-        }
-        shell.addView(nav,new LinearLayout.LayoutParams(-1,dp(58)));
+
     }
     private LinearLayout wideHomeProfile(int width,int stars,int discovered){
         LinearLayout panel=homePanel();panel.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -2548,7 +2540,7 @@ public class MainActivity extends Activity {
     }
     private void showGameLibrary(){
         libraryFilter=availableLibraryFilter(libraryFilter);
-        showLibraryNavigation();renderLibraryContents(libraryPageIndex);
+        libraryTabs=null;renderLibraryContents(libraryPageIndex);
     }
     private void renderLibraryContents(int desiredScroll){
         root.removeAllViews();renderLibraryBody();refreshLibraryNavigation();
