@@ -37,7 +37,7 @@ public final class PlaylumiAchievements {
         m(1,7,5,"Eigen stijl","5 accessoires vrijgespeeld","🎀"),
         m(1,7,15,"Kledingkast vol magie","15 accessoires vrijgespeeld","🪄"),
         m(1,8,1,"Kunstenaar","Een tekening bewaard","🎨"),
-        m(1,9,1,"Lievelingsspel","Een favoriet bewaard","💜"),
+        m(1,9,1,"Lievelingsspel","Een spel twee keer afgerond","💜"),
         m(1,12,3,"Raketverkenner","Alle schatten van Rekenraket","🚀"),
         m(1,13,3,"Letterheld","Alle schatten van Letterhuis","📖"),
         m(1,14,3,"Vormenkampioen","Alle schatten van Vormkasteel","🏰"),

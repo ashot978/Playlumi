@@ -284,12 +284,25 @@ def emulator_day():
     return (date - datetime.date(1970, 1, 1)).days
 
 
+def assert_simple_library(label):
+    nodes = screenshot(label, expected_descriptions=("Bekijk ", "Open speelideeën"))
+    values = [value.strip().lower() for node in nodes for value in labels(node)]
+    assert not any("favoriet" in value or value.startswith("zoeken in alle spellen")
+                   or value.startswith("bekijk alle ") and "onafgemaakte spellen" in value
+                   or value.startswith("⌕ zoeken") or value.startswith("▶ verder (")
+                   for value in values), "Removed library navigation or favorite controls are still visible"
+    assert any("eerder gespeeld" in value for value in values), "Earlier played navigation disappeared"
+    assert any(value == "open speelideeën" for value in values), "Play ideas navigation disappeared"
+
+
 def start_upgrade_quiz(label, resume):
     shell(f"am force-stop {APP}")
     shell("logcat -c")
     shell(f"am start -W -n {APP}/.MainActivity --ei playlumi_ci_library 4 --ei playlumi_ci_age 2")
     time.sleep(2)
     page(44)
+    if resume:
+        assert_simple_library(label + "-simplified-library")
     prefix = ("Verder spelen " if resume else "Speel ") + "Groente herkennen"
     click(find_control(description_prefix(prefix), label + "-library"))
     page(6)
@@ -307,7 +320,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.110" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.111" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -359,7 +372,7 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.111" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.112" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -393,7 +406,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.110", "candidateVersion": "0.111",
+        "baselineVersion": "0.111", "candidateVersion": "0.112",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -403,7 +416,7 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.110 → 0.111 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.111 → 0.112 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
@@ -1497,6 +1510,7 @@ def test_play_ideas(viewport):
     launch_native_home()
     click(find_control(description_prefix("Rekenraket"), label + "-rocket", False))
     page(44)
+    assert_simple_library(label + "-simplified-rocket-library")
     click(find_control(description_prefix("Speel Getallenrace"), label + "-first-board"))
     page(45)
     for number in (1, 2, 3):
@@ -1634,7 +1648,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.110 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.111 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
