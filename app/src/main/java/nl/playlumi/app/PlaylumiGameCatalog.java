@@ -30,6 +30,7 @@ public final class PlaylumiGameCatalog {
         for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(a))
             q(list,0,m.mode,m.variant,m.title,m.description,"✦");
         if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
+        q(list,0,ExtraGames.COMPARE,PlaylumiThinkingPractice.EQUAL_GROUPS,"Evenveel","Vergelijk hoeveelheden: zoek het groepje met evenveel voorwerpen","● = ◆");
         if(a>=1){
             q(list,0,16,0,"Klokkijken","Lees hele en halve uren, kwartieren en minuten op de wijzerklok","◷");
             q(list,0,ExtraGames.SEQUENCES,0,"Getallenrij","Ontdek de sprong tussen getallen","123");
@@ -41,6 +42,7 @@ public final class PlaylumiGameCatalog {
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TABLES,"Tafels oefenen","Vermenigvuldig met 2, 3, 4, 5 en 10","×");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.SHARING,"Eerlijk verdelen","Deel in gelijke groepjes zonder rest","÷");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TO_HUNDRED,"Rekenen tot 100","Tel op en trek af met tientallen en eenheden","100");
+            q(list,0,ExtraGames.MATH,PlaylumiThinkingPractice.PLACE_VALUE,"Tientallen en eenheden","Bouw een getal tot 99 uit tientallen en losse eenheden","123");
             q(list,0,22,0,"Meten","Vergelijk centimeters en millimeters","↔");
             q(list,0,22,4,"Lengteverschil","Bereken hoeveel centimeter het verschil is","↔");
             q(list,0,16,2,"Een uur eerder","Reken een uur terug, ook met minuten","◷");
@@ -88,6 +90,7 @@ public final class PlaylumiGameCatalog {
             q(list,4,20,1,"Fruit herkennen","Welk fruit zie je?","🍎");
             q(list,4,20,2,"Groente herkennen","Ontdek de groente","🥕");
             q(list,4,19,0,"Dagelijkse dingen","Herken bekende voorwerpen","🏠");
+            q(list,4,PlaylumiThinkingPractice.DAILY_THINGS,PlaylumiThinkingPractice.AFTER,"Eerst en daarna","Denk in volgorde: wat verandert er na een stap of handeling?","→");
         }
         if(a>=2){
             q(list,4,21,2,"Dieren en hun huis","Waar woont dit dier?","🐾");

@@ -6,7 +6,7 @@ public final class PlaylumiHomeLayout {
     private PlaylumiHomeLayout(){}
     public static int mode(int width,int height){
         if(width>=1100)return EXPANDED;
-        if(width>=600||(width>=520&&width>height))return FOLD;
+        if(width>=600||(width>=360&&width>height))return FOLD;
         return PHONE;
     }
     public static int profileWidth(int width){return Math.max(180,Math.min(250,width/6));}
@@ -14,6 +14,7 @@ public final class PlaylumiHomeLayout {
     public static int worldColumns(int width,int height){
         int mode=mode(width,height);
         if(mode==EXPANDED)return 3;
+        if(width<600)return 1;
         return width>=900?3:2;
     }
     public static int artHeight(int width,int height){

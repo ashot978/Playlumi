@@ -1,7 +1,7 @@
 plugins { id 'com.android.application' }
 
 // The PKCS12 key is NEVER checked into the repository.
-// Configure both variables through GitHub Actions encrypted repository secrets.
+// Optional local signing only; CI builds unsigned releases for private offline signing.
 def releaseStorePath = System.getenv('PLAYLUMI_STORE_FILE')
 def releasePassword = System.getenv('PLAYLUMI_SIGNING_PASSWORD')
 def releaseReady = releaseStorePath != null && !releaseStorePath.isEmpty() &&
@@ -16,9 +16,9 @@ android {
         applicationId 'nl.playlumi.app'
         minSdk 23
         targetSdk 35
-        // GitHub Actions uses a monotonically increasing run number for each release.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601008
-        versionName '0.107'
+        // Reserved monotonically increasing code, pinned to the same value in CI.
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601009
+        versionName '0.108'
     }
 
     signingConfigs {

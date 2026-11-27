@@ -162,6 +162,10 @@ public final class PlaylumiVillageView extends View {
         c.drawRoundRect(65,1527,75,1552,3,3,pen);
         c.drawCircle(112,1536,6,pen);c.drawCircle(124,1550,6,pen);
         text(c,"Spellen",90,1624,28,0xfffff2d0);
+        // The central destination now opens the earned city expansion.
+        paintColor(0xff60368f);
+        c.drawRoundRect(386,1590,558,1654,19,19,pen);
+        text(c,"Stad",472,1631,29,0xfffff2d0);
     }
     private void drawDiscovered(Canvas c) {
         for(int i=0;i<PlaylumiVillageProgress.BUILDINGS;i++) {

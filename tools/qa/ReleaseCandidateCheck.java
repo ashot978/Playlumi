@@ -35,7 +35,8 @@ public final class ReleaseCandidateCheck {
             Matcher digits=Pattern.compile("\\d+").matcher(q.display);
             require(digits.find(),context+" first operand");int x=Integer.parseInt(digits.group());
             require(digits.find(),context+" second operand");int y=Integer.parseInt(digits.group());
-            int expected=variant==PlaylumiAdvancedMath.TABLES?x*y:
+            int expected=variant==PlaylumiThinkingPractice.PLACE_VALUE?x*10+y:
+                    variant==PlaylumiAdvancedMath.TABLES?x*y:
                     variant==PlaylumiAdvancedMath.SHARING?x/y:
                     variant==PlaylumiAdvancedMath.TO_HUNDRED?(q.display.contains("−")?x-y:x+y):
                     variant==2?y-x:variant==1||q.display.contains("weg")?x-y:x+y;
@@ -90,7 +91,29 @@ public final class ReleaseCandidateCheck {
             }
         }
     }
+    private static void cityGeometry(){
+        int layouts=0,plots=0;
+        for(float width:new float[]{240,300,360,411,600,673,841,1024})
+            for(float scale:new float[]{1f,1.3f,1.6f,2f}){
+                PlaylumiCityLayout layout=PlaylumiCityLayout.forWidth(width,scale);
+                require(layout.width==width&&layout.height>0,"city dimensions");
+                for(int i=0;i<PlaylumiCityLayout.SITES;i++){
+                    PlaylumiCityLayout.Plot a=layout.plot(i);
+                    require(a.left>=0&&a.top>=0&&a.right()<=layout.width+.01f&&a.bottom()<=layout.height+.01f,"city plot clipped");
+                    require(a.width>=PlaylumiCityLayout.MIN_TARGET&&a.labelHeight>=PlaylumiCityLayout.MIN_TARGET,"city target too small");
+                    for(int j=i+1;j<PlaylumiCityLayout.SITES;j++){
+                        PlaylumiCityLayout.Plot b=layout.plot(j);
+                        require(a.right()<=b.left||b.right()<=a.left||a.bottom()<=b.top||b.bottom()<=a.top,"city targets overlap");
+                    }
+                    plots++;
+                }
+                layouts++;
+            }
+        System.out.println("PASS: "+plots+" accessible city plots across "+layouts+" phone, Fold and enlarged-text layouts.");
+    }
     public static void main(String[] args){
+        cityGeometry();
+        int guidedRoutes=0;
         for(long day=20000;day<20080;day++){
             PlaylumiDailyChallenges daily=new PlaylumiDailyChallenges(day,Long.MIN_VALUE,0,0,0,0,0);
             require(daily.world(0)!=daily.world(1),"daily worlds distinct");
@@ -99,6 +122,16 @@ public final class ReleaseCandidateCheck {
                 for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age))
                     if(e.kind==PlaylumiGameCatalog.QUIZ&&e.world==daily.world(i))found=true;
                 require(found,"daily world available");
+            }
+            for(int age=0;age<3;age++)for(int goal=0;goal<PlaylumiDailyChallenges.COUNT;goal++){
+                PlaylumiGameCatalog.Entry selected=PlaylumiDailyRoutes.choose(age,daily,goal,null);
+                require(PlaylumiDailyRoutes.eligible(selected,daily,goal),"daily routes to ineligible game");
+                require(PlaylumiGameCatalog.find(age,selected.id)!=null,"daily route violates age");
+                require(selected.id.equals(PlaylumiDailyRoutes.choose(age,daily,goal,null).id),"daily route unstable");
+                PlaylumiGameCatalog.Entry resumed=PlaylumiDailyRoutes.choose(age,daily,goal,
+                        java.util.Arrays.asList("missing:route",selected.id));
+                require(resumed!=null&&selected.id.equals(resumed.id),"daily route ignored unfinished quiz");
+                guidedRoutes++;
             }
             int earned=0;
             for(int i=0;i<4;i++)earned+=daily.correct(daily.world(0),i==3);
@@ -110,6 +143,8 @@ public final class ReleaseCandidateCheck {
             PlaylumiDailyChallenges next=new PlaylumiDailyChallenges(day+1,day,4,4,1,7,1);
             require(next.completed()==0&&next.completedSets()==1,"daily reset");
         }
+        require(PlaylumiDailyRoutes.choose(0,null,0,null)==null,"missing daily data");
+        System.out.println("PASS: "+guidedRoutes+" age-correct daily quiz routes and unfinished-round selections.");
         PlaylumiWardrobe gifts=new PlaylumiWardrobe(500);
         require(gifts.buyOrEquip(PlaylumiWardrobe.OUTFITS,6)==PlaylumiWardrobe.ACHIEVEMENT_REQUIRED,"gift locked");
         require(PlaylumiCityRewards.grant(gifts,1L<<24)&&!PlaylumiCityRewards.grant(gifts,1L<<24),"gift once");

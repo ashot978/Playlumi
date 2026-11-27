@@ -107,7 +107,11 @@ public final class LearningGame {
         current=restored;
     }
     public void setHistory(QuestionHistory history) { this.history = history; }
-    public static int maxVariant(int mode){return mode==ExtraGames.MATH?PlaylumiAdvancedMath.TO_HUNDRED:4;}
+    public static int maxVariant(int mode){
+        if(mode==ExtraGames.MATH)return PlaylumiThinkingPractice.PLACE_VALUE;
+        if(mode==ExtraGames.COMPARE||mode==PlaylumiThinkingPractice.DAILY_THINGS)return 5;
+        return 4;
+    }
     public void configure(int mode, int variant, int level) {
         if (mode < 0 || mode >= GAME_NAMES.length || variant < 0 || variant > maxVariant(mode) || level < 0 || level > 2)
             throw new IllegalArgumentException("Invalid game configuration");
@@ -131,6 +135,9 @@ public final class LearningGame {
         history.remember(current);
     }
     private void generateRound() {
+        if(PlaylumiThinkingPractice.supports(mode,variant)){
+            current=PlaylumiThinkingPractice.next(mode,variant,level,random);return;
+        }
         if (mode >= NewWorldGames.FIRST) { current = NewWorldGames.next(mode, variant, level, random); return; }
         if(mode==ExtraGames.MATH){current=PlaylumiMathPractice.next(variant,level,random);return;}
         if(mode==NUMBERS && variant<=2) {current=numberRound(variant,level,random);return;}
