@@ -248,11 +248,11 @@ public final class FoundationsCheck {
     private static void catalog()throws Exception{
         for(int age=0;age<3;age++){
             List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.entries(age);
-            require(entries.size()==new int[]{27,46,72}[age],"catalog size");
+            require(entries.size()==new int[]{30,53,79}[age],"catalog size");
             Set<String> ids=new HashSet<>();List<String> legacy=new ArrayList<>();
             for(PlaylumiGameCatalog.Entry entry:entries){
                 require(ids.add(entry.id),"duplicate route");
-                if(!ODD_ID.equals(entry.id))legacy.add(entry.id+"="+entry.title);
+                if(!ODD_ID.equals(entry.id)&&!(entry.kind==PlaylumiGameCatalog.QUIZ&&PlaylumiSkillPractice.supports(entry.mode,entry.variant)))legacy.add(entry.id+"="+entry.title);
             }
             require(ids.contains(FOUNDATION_IDS[0])&&ids.contains(FOUNDATION_IDS[1])==(age>=1)&&ids.contains(FOUNDATION_IDS[2])==(age==2),"route age boundary");
             require(ids.contains(ODD_ID)&&PlaylumiGameCatalog.find(age,ODD_ID).world==4,"missing category route");

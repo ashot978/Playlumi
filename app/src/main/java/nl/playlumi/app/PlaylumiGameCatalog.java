@@ -117,6 +117,17 @@ public final class PlaylumiGameCatalog {
         g(list,1,INTERACTIVE,PlaylumiInteractive.LETTERS,"Lettertrein",a==0?"Bouw een woord met lettertegels":"Los woordraadsels op met lettertegels","🚂");
         g(list,4,INTERACTIVE,PlaylumiInteractive.HABITATS,"Dierenwereld: thuis","Breng dieren naar hun leefomgeving","🐾");
         g(list,5,INTERACTIVE,PlaylumiInteractive.MOSAIC,"Kleurmozaïek","Bouw het kleurvoorbeeld na","🔷");
+        // New independent routes; never change previously published ids.
+        int skill=PlaylumiSkillPractice.VARIANT;
+        q(list,0,LearningGame.COUNT,skill,"Eentje erbij of eraf","Tel één meer of één minder","±1");
+        q(list,2,LearningGame.SHAPES,skill,"Hoeken tellen","Ontdek hoeveel hoeken een vorm heeft","▲");
+        q(list,3,LearningGame.PATTERNS,skill,"Notenpatroon","Maak een patroon met muzieknoten af","♫");
+        if(a>=1){
+            q(list,0,LearningGame.NUMBERS,skill,"Getal ertussen","Vind het getal tussen twee buren","123");
+            q(list,1,LearningGame.LETTERS,skill,"Volgende letter","Welke letter komt hierna?","A→");
+            q(list,4,19,skill,"Waar hoort het?","Kies de passende plek in het dagelijks leven","🏠");
+            q(list,5,LearningGame.COLORS,skill,"Kleur bij het woord","Tik op de kleur bij het woord","●");
+        }
         // Stable world order, including Android 6 (API 23).
         ArrayList<Entry> grouped=new ArrayList<>();
         for(int world=0;world<6;world++)

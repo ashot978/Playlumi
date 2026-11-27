@@ -17,8 +17,8 @@ android {
         minSdk 23
         targetSdk 35
         // Reserved monotonically increasing code, pinned to the same value in CI.
-        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601015
-        versionName '0.114'
+        versionCode buildCode != null && !buildCode.isEmpty() ? Integer.parseInt(buildCode) : 601016
+        versionName '0.115'
     }
 
     signingConfigs {

@@ -2914,13 +2914,16 @@ public class MainActivity extends Activity {
                     button.setTextColor(PlaylumiMagicArt.INK);button.setTextSize(19);
                     button.setContentDescription(value);
                 }
-                if(mode==LearningGame.COLORS && game.variant()==1 && round.answerColors.get(j)!=0) {
+                if(mode==LearningGame.COLORS && (game.variant()==1||PlaylumiSkillPractice.colorChoices(mode,game.variant())) && round.answerColors.get(j)!=0) {
                     int paint=round.answerColors.get(j);
                     GradientDrawable colorPlate=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                             new int[]{mix(paint,Color.WHITE,.18f),paint,mix(paint,0xff38204b,.13f)});
                     colorPlate.setCornerRadius(dp(25));colorPlate.setStroke(dp(2),0xffffe2a1);
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),colorPlate,null));
                     button.setTextColor(PlaylumiWorldStyle.contrastingInk(paint));
+                    if(PlaylumiSkillPractice.colorChoices(mode,game.variant())){
+                        button.setText("●");button.setContentDescription(value);
+                    }
                 }
                 if(round.isRejected(j)){button.setAlpha(.52f);button.setContentDescription(value+", al geprobeerd");}
                 if(round.isSolved()&&j==round.correctIndex)markCorrectAnswer(button,value,wide);
@@ -2947,6 +2950,12 @@ public class MainActivity extends Activity {
     private void markCorrectAnswer(Button button,String value,boolean wide){
         button.setText("✓ "+value);button.setSelected(true);button.setAlpha(1f);
         button.setContentDescription(value+", goed gekozen");
+        if(game.mode()==LearningGame.COLORS&&(game.variant()==1||PlaylumiSkillPractice.colorChoices(game.mode(),game.variant()))){
+            // Keep the actual chosen color visible instead of turning every correct color green.
+            int paint=game.round().answerColors.get(game.round().correctIndex);
+            GradientDrawable selected=new GradientDrawable();selected.setColor(paint);selected.setCornerRadius(dp(25));selected.setStroke(dp(3),0xffffe2a1);
+            button.setBackground(selected);button.setTextColor(PlaylumiWorldStyle.contrastingInk(paint));return;
+        }
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x35ffffff),
                 wide?PlaylumiMagicArt.gemButton(this,3):PlaylumiMagicArt.pastel(this,3),null));
         button.setTextColor(0xff174f36);
@@ -2960,6 +2969,7 @@ public class MainActivity extends Activity {
     private void updateQuestionPicture(LearningGame.Round round){
         if(questionPicture==null)return;
         String shown=round.visibleDisplay();
+        if(round.isSolved()&&PlaylumiSkillPractice.revealsBlank(game.mode(),game.variant()))shown=shown.replace("?",round.answers.get(round.correctIndex));
         if(round.isSolved()&&game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(round.display))
             shown=shown.replace("…",round.answers.get(round.correctIndex));
         if(round.isSolved()&&((game.mode()==ExtraGames.MATH&&game.variant()!=4)||game.mode()==ExtraGames.SEQUENCES||
@@ -3071,7 +3081,7 @@ public class MainActivity extends Activity {
             answerLocked=true;sessionSolved++;lifetimeCount++;
             updateQuizFeedback(game.round());
             if(questionPattern!=null)questionPattern.complete(game.round().answers.get(game.round().correctIndex));
-            if(game.round().letterBlank()>=0 || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23||
+            if(game.round().letterBlank()>=0 || PlaylumiSkillPractice.revealsBlank(game.mode(),game.variant()) || game.mode()==ExtraGames.MATH||game.mode()==ExtraGames.SEQUENCES||game.mode()==23||
                     game.mode()==ExtraGames.SPELLING&&PlaylumiSpellingPractice.isContext(game.round().display)){
                 updateQuestionPicture(game.round());
                 if(questionPicture!=null)PlaylumiMotion.pop(questionPicture);
