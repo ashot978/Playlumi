@@ -23,7 +23,7 @@ public final class PlaylumiBuilderGrid extends LinearLayout {
         super(c);this.size=size;this.editable=editable;
         if(!PlaylumiBuilder.validBoard(board,size))throw new IllegalArgumentException("grid");
         setOrientation(VERTICAL);setGravity(Gravity.CENTER_HORIZONTAL);setPadding(dp(2),dp(2),dp(2),dp(2));
-        int gap=editable?2:1,cell=Math.min(editable?70:49,Math.max(28,(width-8-size*gap*2)/size));
+        int gap=editable?2:1,cell=Math.min(editable?70:49,Math.max(editable?28:12,(width-8-size*gap*2)/size));
         cells=new Button[size*size];
         for(int y=0;y<size;y++){
             LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.CENTER);
@@ -31,7 +31,7 @@ public final class PlaylumiBuilderGrid extends LinearLayout {
                 final int i=y*size+x;
                 Button b=new Button(c);b.setAllCaps(false);b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);
                 b.setPadding(0,0,0,0);b.setMaxLines(1);b.setGravity(Gravity.CENTER);
-                b.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));b.setTextSize(Math.max(15,Math.min(editable?29:22,cell*.50f)));
+                b.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));b.setTextSize(Math.max(editable?15:9,Math.min(editable?29:22,cell*.50f)));
                 b.setIncludeFontPadding(false);
                 LayoutParams lp=new LayoutParams(dp(cell),dp(cell));lp.setMargins(dp(gap),dp(gap),dp(gap),dp(gap));row.addView(b,lp);
                 if(editable)b.setOnClickListener(v->listener.onCell(i));
@@ -47,10 +47,11 @@ public final class PlaylumiBuilderGrid extends LinearLayout {
         if(!PlaylumiBuilder.validBoard(board,size))throw new IllegalArgumentException("board");
         for(int i=0;i<cells.length;i++){
             Button b=cells[i];char p=board.charAt(i);
-            b.setText(PlaylumiBuilder.icon(p));
+            boolean drawn=PlaylumiBuilder.rotatable(p)||p==PlaylumiBuilder.WATER||p==PlaylumiBuilder.EMPTY;
+            b.setText(drawn?"":PlaylumiBuilder.icon(p));
             int fill=PlaylumiBuilder.color(p);
             b.setTextColor(PlaylumiWorldStyle.contrastingInk(fill));
-            GradientDrawable face=new GradientDrawable();face.setColor(fill);face.setCornerRadius(dp(5));face.setStroke(dp(1),0xff8eab87);
+            PlaylumiBuilderTile face=new PlaylumiBuilderTile(p);
             b.setBackground(editable?new RippleDrawable(ColorStateList.valueOf(0x44ffffff),face,null):face);
             b.setContentDescription((editable?"Bouwvak ":"Voorbeeldvak ")+(i+1)+": "+PlaylumiBuilder.name(p));
         }

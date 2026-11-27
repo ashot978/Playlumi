@@ -108,7 +108,10 @@ public final class PlaylumiBuilder {
         List<Integer> steps=new ArrayList<>(),path=new ArrayList<>();
         int mirror=slot%4,x=0,y=0;
         for(int i=1;i<n;i++){steps.add(E);steps.add(S);}
-        Collections.shuffle(steps,r);path.add(transformed(x,y,n,mirror));
+        Collections.shuffle(steps,r);
+        // Bridge blueprints always contain at least one straight road segment.
+        if(slot>=8){steps.remove(Integer.valueOf(E));steps.remove(Integer.valueOf(E));steps.add(0,E);steps.add(0,E);}
+        path.add(transformed(x,y,n,mirror));
         for(int step:steps){if(step==E)x++;else y++;path.add(transformed(x,y,n,mirror));}
         cells[path.get(0)]=HOUSE;cells[path.get(path.size()-1)]=STATION;
         boolean bridgeUsed=false;

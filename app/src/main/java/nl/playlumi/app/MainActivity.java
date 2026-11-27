@@ -905,14 +905,14 @@ public class MainActivity extends Activity {
                 final int slot=PlaylumiBuilder.FREE+i;PlaylumiBuilder.State saved=builderState(slot);
                 LinearLayout card=personalPanel();
                 homeAdd(card,homeLabel(PlaylumiBuilder.title(slot),18,TEXT,true),0,3);
-                LinearLayout content=new LinearLayout(this);content.setGravity(Gravity.CENTER_VERTICAL);
+                LinearLayout content=new LinearLayout(this);content.setOrientation(columns==3?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);content.setGravity(Gravity.CENTER);
                 PlaylumiBuilderGrid miniature=new PlaylumiBuilderGrid(this,saved.size,Math.min(126,usable/columns-24),saved.cells(),false,null);
                 miniature.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
                 content.addView(miniature,new LinearLayout.LayoutParams(-2,-2));
                 LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);
                 homeAdd(info,homeLabel(saved.placed()==0?"Leeg bouwterrein":saved.placed()+" onderdelen",14,SUB,false),0,3);
                 if(saved.network().houses>0)homeAdd(info,homeLabel(saved.network().connected+"/"+saved.network().houses+" huizen verbonden",13,0xff27684d,false),0,1);
-                content.addView(info,new LinearLayout.LayoutParams(0,-2,1f));card.addView(content);
+                content.addView(info,columns==3?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1f));card.addView(content);
                 Button edit=tile(saved.placed()==0?"Vrij bouwen":"Open ontwerp","",0xffd5f5df,54);
                 edit.setContentDescription("Open eigen ontwerp "+(i+1));card.addView(edit,new LinearLayout.LayoutParams(-1,-2));edit.setOnClickListener(v->startBuilder(slot));
                 LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,-2,1f);cp.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(card,cp);

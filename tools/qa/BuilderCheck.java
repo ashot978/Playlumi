@@ -40,6 +40,7 @@ public final class BuilderCheck {
                 PlaylumiBuilder.State state=new PlaylumiBuilder.State(age,slot,"");
                 require(goal.equals(PlaylumiBuilder.blueprint(age,slot)),"Blueprint unstable");
                 require(checkNetwork(goal,state.size)==1&&PlaylumiBuilder.inspect(goal,state.size).complete(),"Invalid blueprint");
+                if(slot>=8)require(goal.indexOf('g')>=0||goal.indexOf('h')>=0,"Bridge plan missing bridge");
                 ArrayList<Integer> positions=new ArrayList<>();for(int i=0;i<goal.length();i++)positions.add(i);Collections.shuffle(positions,r);
                 for(int i:positions){
                     state.place(i,goal.charAt(i));
