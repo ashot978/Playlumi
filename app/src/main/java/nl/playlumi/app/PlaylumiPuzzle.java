@@ -7,7 +7,7 @@ public final class PlaylumiPuzzle {
     private static final String[] TITLES={"Getallenjacht","Woordzoeker","Sterrendoolhof","Ritmegeheugen","Sorteerfeest","Pixelpuzzel","Rekenjacht","Spiegelpuzzel","Schatkaart"};
     private static final String[] ICONS={"🔢","🔎","🏰","♫","🍎","▦","➕","◧","🗺️"};
     private static final String[] DESCRIPTIONS={"Zoek getallen op het speelbord in volgorde","Vind woorden via aangrenzende letters","Volg het doolhofpad naar de schat","Onthoud en speel een reeks dierengeluiden na","Verzamel alle voorwerpen die bij een groep horen","Herstel de verschillen tussen twee pixelplaten","Los sommen op en vind het antwoord op het bord","Herstel het spiegelbeeld","Vind schatten met letters en cijfers op een kaart"};
-    private static final String[][] WORDS={{"KAT","VIS","ZON","MUS","PEN","UIL"},{"BOEK","VORK","TUIN","STER","FLES","MELK"},{"FIETS","PLANT","RAKET","SCHIP","WOLK","BLOEM","FRUIT","KONIJN"}};
+    private static final String[][] WORDS={{"KAT","VIS","ZON","MUS","PEN","UIL"},{"BOEK","VORK","TUIN","STER","FLES","MELK"},{"FIETS","PLANT","RAKET","SCHIP","WOLK","BLOEM","FRUIT","VLUCHT"}};
     private static final String[][] GROUPS={{"🍎","🍌","🍇","🍓","🍐","🍊","🍉","🍒"},{"🐶","🐱","🐭","🐰","🐸","🐝","🦋","🐢"},{"🚗","🚌","🚲","🚂","🚁","🚀","🚢","🚕"},{"👕","👖","🧦","🧢","🧤","👗","👢","🧣"}};
     private static final String[] GROUP_NAMES={"fruit","dieren","voertuigen","kleding"};
     private static final String[] NOTES={"🐸","🐱","🐥","🦋"},PIXELS={"●","▲","■","◆","✿"};
@@ -71,7 +71,7 @@ public final class PlaylumiPuzzle {
             case SUMS:{
                 int n=level==1?4:6;b=new String[w*h];ArrayList<Integer> v=positions(level==1?18:32,r);
                 for(int i=0;i<b.length;i++)b[i]=""+(v.get(i)+1);sequence=first(positions(b.length,r),n);qs=new String[n];
-                for(int i=0;i<n;i++){int answer=Integer.parseInt(b[sequence[i]]);if(answer>1&&r.nextBoolean()){int a=1+r.nextInt(answer-1);qs[i]=a+" + "+(answer-a)+" = ?";}else{int a=1+r.nextInt(level==1?7:18);qs[i]=(answer+a)+" − "+a+" = ?";}}break;
+                for(int i=0;i<n;i++){int answer=Integer.parseInt(b[sequence[i]]);if(answer>1&&r.nextBoolean()){int a=1+r.nextInt(answer-1);qs[i]=a+" + "+(answer-a)+" = ?";}else{int a=1+r.nextInt(level==1?Math.max(1,20-answer):18);qs[i]=(answer+a)+" − "+a+" = ?";}}break;
             }
             case SYMMETRY:{
                 any=true;w=4;h=level==1?3:4;b=new String[w*h];ref=new String[b.length];
