@@ -46,6 +46,21 @@ public final class PlaylumiLayout {
     public static int libraryColumns(int widthDp){
         return widthDp>=900?3:widthDp>=600?2:1;
     }
+    /** Prefer one readable card to a clipped multi-column layout at enlarged system text. */
+    public static int libraryGameColumns(int contentWidth,float fontScale){
+        int columns=libraryColumns(contentWidth);
+        if(fontScale>=1.2f)return Math.max(1,columns-1);
+        return columns;
+    }
+    public static int libraryWorldColumns(int contentWidth,float fontScale){
+        if(contentWidth<320||(fontScale>=1.2f&&contentWidth<520))return 1;
+        return contentWidth>=600&&fontScale<1.2f?3:2;
+    }
+    public static int libraryBannerArtWidth(int widthDp){
+        return widthDp>=900?196:widthDp>=600?156:widthDp>=360?112:88;
+    }
+    public static int libraryBannerArtHeight(int widthDp){return widthDp>=600?86:66;}
+    public static int libraryNavHeight(){return 60;}
     public static int librarySidePadding(int widthDp){
         if(widthDp<600)return 8;
         return Math.max(12,(widthDp-1320)/2);

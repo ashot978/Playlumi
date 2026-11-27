@@ -37,4 +37,10 @@ public class PlaylumiWorldStyleTest {
         assertEquals(156f,PlaylumiWorldStyle.swatchDiameter(600,200),.01f);
         assertEquals(124.8f,PlaylumiWorldStyle.swatchDiameter(160,300),.01f);
     }
+    @Test public void colorAnswersUseReadableTextOnBrightAndDarkColors(){
+        assertEquals(0xff160e22,PlaylumiWorldStyle.contrastingInk(0xffffff00));
+        assertEquals(0xff160e22,PlaylumiWorldStyle.contrastingInk(0xffffffff));
+        assertEquals(0xffffffff,PlaylumiWorldStyle.contrastingInk(0xff172049));
+        assertEquals(0xffffffff,PlaylumiWorldStyle.contrastingInk(0xff000000));
+    }
 }

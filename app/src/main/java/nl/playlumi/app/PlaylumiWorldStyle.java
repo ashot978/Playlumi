@@ -25,5 +25,15 @@ public final class PlaylumiWorldStyle {
     }
     public static int plateTop(int world){return blend(deep(world),accent(world),.55f);}
     public static int plateMiddle(int world){return blend(deep(world),accent(world),.32f);}
+    private static double linear(int value){
+        double v=value/255.0;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);
+    }
+    public static double luminance(int color){
+        return .2126*linear((color>>16)&255)+.7152*linear((color>>8)&255)+.0722*linear(color&255);
+    }
+    public static int contrastingInk(int color){
+        double l=luminance(color),dark=luminance(0xff160e22);
+        return (l+.05)/(dark+.05)>=1.05/(l+.05)?0xff160e22:0xffffffff;
+    }
     public static float swatchDiameter(float width,float height){return Math.max(0,Math.min(width,height)*.78f);}
 }

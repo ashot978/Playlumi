@@ -90,4 +90,16 @@ public final class PlaylumiLayoutTest {
         assertEquals(2,PlaylumiLayout.centeredAnswerColumns(4));
         assertTrue(PlaylumiLayout.centeredAnswerHeight(700,6)>=50);
     }
+    @Test public void compactLibraryKeepsTextReadableAndSpaceForGames(){
+        assertEquals(1,PlaylumiLayout.libraryWorldColumns(310,1f));
+        assertEquals(2,PlaylumiLayout.libraryWorldColumns(344,1f));
+        assertEquals(1,PlaylumiLayout.libraryWorldColumns(344,1.3f));
+        assertEquals(3,PlaylumiLayout.libraryWorldColumns(900,1f));
+        assertEquals(2,PlaylumiLayout.libraryWorldColumns(900,1.3f));
+        assertEquals(2,PlaylumiLayout.libraryGameColumns(900,1.3f));
+        assertEquals(1,PlaylumiLayout.libraryGameColumns(650,1.3f));
+        assertTrue(PlaylumiLayout.libraryBannerArtWidth(320)<320/3);
+        assertTrue(PlaylumiLayout.libraryBannerArtHeight(360)<=72);
+        assertTrue(PlaylumiLayout.libraryNavHeight()>=48);
+    }
 }

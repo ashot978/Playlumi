@@ -5,7 +5,7 @@ public final class PlaylumiPremiumLayout {
     private static final String[] EMBLEMS={"123","🎨","Aa","◇","🔢","●◆●","Ab","✎","A…Z","🐾","♫","⚖","＋","↗","↔","✦","◷","☀","➜","🏠","🍎","🐾","📏","💡"};
     private PlaylumiPremiumLayout(){}
     public static int quizBannerHeight(int height,boolean wide){
-        return height<500?50:height<690?60:wide?84:74;
+        return height<500?50:height<690?54:wide?78:62;
     }
     public static boolean showAchievement(int filter,boolean earned){
         return filter==0||(filter==1&&earned)||(filter==2&&!earned);

@@ -908,7 +908,7 @@ public class MainActivity extends Activity {
     }
     /** A playful glossy 3D-like card, matching the purple-and-gold village. */
     private int worldTheme() {
-        if(page==LIBRARY)return PlaylumiVillageHit.PLAYGROUND;
+        if(page==LIBRARY)return PlaylumiWorldStyle.valid(libraryFilter)?libraryFilter:PlaylumiVillageHit.PLAYGROUND;
         if(page==INTERACTIVE)return PlaylumiWorldStyle.valid(villageLaunch)?villageLaunch:PlaylumiVillageHit.PLAYGROUND;
         if(page==VILLAGE_MENU || page==PLAY || page==DETAIL || page==LEVEL || page==VARIANTS ||
                 page==MINI_MENU || page==MINI_PLAY || page==MUSIC_PLAY || page==BUBBLE_PLAY ||
@@ -962,7 +962,9 @@ public class MainActivity extends Activity {
     }
     private void addPrompt(LinearLayout parent,String instruction,int size){
         LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setBackground(PlaylumiMagicArt.silkRibbon(this));row.setPadding(dp(8),dp(3),dp(8),dp(3));
+        int theme=worldTheme();
+        row.setBackground(PlaylumiWorldStyle.valid(theme)?libraryCardSurface(theme):PlaylumiMagicArt.silkRibbon(this));
+        row.setPadding(dp(9),dp(3),dp(9),dp(3));
         TextView prompt=text(instruction,size,PlaylumiMagicArt.CREAM);
         prompt.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));prompt.setPadding(dp(4),dp(5),dp(4),dp(5));prompt.setMinHeight(dp(50));
         row.addView(prompt,new LinearLayout.LayoutParams(0,-2,1f));
@@ -2217,7 +2219,13 @@ public class MainActivity extends Activity {
         filter=availableLibraryFilter(filter);
         if(moving||page!=LIBRARY||libraryFilter==filter)return;
         libraryFilter=filter;libraryScrollY=0;
-        renderLibraryContents(0);
+        if(PlaylumiWorldStyle.valid(filter)){
+            SharedPreferences discovery=getSharedPreferences("playlumi-village-"+activeProfile,MODE_PRIVATE);
+            int old=discovery.getInt("visited",0),updated=PlaylumiVillageProgress.markVisited(old,filter);
+            if(updated!=old)discovery.edit().putInt("visited",updated).apply();
+        }
+        // Refresh the complete scene when changing worlds, including its backdrop.
+        showPage();
     }
     private static final String[] LIBRARY_TAB_LABELS={"Dorp","Werelden"};
     private static final String[] LIBRARY_TAB_ICONS={"⌂","✦"};
@@ -2228,7 +2236,8 @@ public class MainActivity extends Activity {
             TextView tab=libraryTabs[i];
             boolean selected=LIBRARY_TAB_FILTERS[i]==libraryFilter||(i==1&&libraryFilter>=0);
             String label=LIBRARY_TAB_LABELS[i];
-            tab.setText(LIBRARY_TAB_ICONS[i]+"\n"+label);
+            boolean rail=PlaylumiLayout.libraryRail(getResources().getConfiguration().screenWidthDp);
+            tab.setText(LIBRARY_TAB_ICONS[i]+(rail?"\n":"  ")+label);
             tab.setSelected(selected);tab.setTextColor(selected?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
             tab.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),
                     selected?PlaylumiMagicArt.creamPlate(this):rounded(0xff573785,13),null));
@@ -2250,21 +2259,42 @@ public class MainActivity extends Activity {
         line.addView(info,new LinearLayout.LayoutParams(-2,-2));
         addWidget(line,7,4);
     }
-    private void libraryWorldStrip(){
-        android.widget.HorizontalScrollView strip=new android.widget.HorizontalScrollView(this);
-        strip.setHorizontalScrollBarEnabled(false);
-        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-        for(int w=0;w<6;w++){
-            final int index=w;
-            boolean selected=libraryFilter==w;
-            TextView chip=text(PlaylumiWorldStyle.NAMES[w],14,selected?PlaylumiMagicArt.INK:PlaylumiMagicArt.CREAM);
-            chip.setPadding(dp(11),dp(7),dp(11),dp(7));chip.setMinHeight(dp(48));
-            chip.setBackground(selected?PlaylumiMagicArt.creamPlate(this):libraryCardSurface(w));
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,-2);lp.setMargins(dp(3),0,dp(3),0);row.addView(chip,lp);
-            libraryClick(chip,"Open "+PlaylumiWorldStyle.NAMES[w],()->libraryFilter(index));
-            if(selected)strip.post(()->strip.smoothScrollTo(Math.max(0,chip.getLeft()-dp(8)),0));
-        }
-        strip.addView(row);addWidget(strip,2,5);
+    private void libraryWorldHeader(int world,int width){
+        LinearLayout banner=new LinearLayout(this);banner.setGravity(Gravity.CENTER_VERTICAL);
+        banner.setBackground(libraryCardSurface(world));banner.setPadding(dp(7),dp(6),dp(7),dp(6));
+        banner.setMinimumHeight(dp(PlaylumiLayout.libraryBannerArtHeight(width)+12));
+        View art=PlaylumiMagicArt.hero(this,world);
+        art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        banner.addView(art,new LinearLayout.LayoutParams(dp(PlaylumiLayout.libraryBannerArtWidth(width)),dp(PlaylumiLayout.libraryBannerArtHeight(width))));
+        LinearLayout words=new LinearLayout(this);words.setOrientation(LinearLayout.VERTICAL);
+        words.setGravity(Gravity.CENTER_VERTICAL);words.setPadding(dp(12),0,dp(4),0);
+        TextView subtitle=homeLabel(PlaylumiWorldStyle.SUBTITLES[world],16,PlaylumiMagicArt.CREAM,true);
+        subtitle.setMaxLines(3);words.addView(subtitle,new LinearLayout.LayoutParams(-1,-2));
+        TextView ageLabel=homeLabel("✦ "+AGES[PlaylumiRocketCurriculum.level(age)],13,PlaylumiMagicArt.GOLD,false);
+        ageLabel.setPadding(0,dp(4),0,0);words.addView(ageLabel,new LinearLayout.LayoutParams(-1,-2));
+        banner.addView(words,new LinearLayout.LayoutParams(0,-2,1f));
+        addWidget(banner,1,6);
+    }
+    private View libraryWorldCard(int world,int width){
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),libraryCardSurface(world),null));
+        card.setPadding(dp(5),dp(5),dp(5),dp(7));
+        View art=PlaylumiMagicArt.hero(this,world);
+        art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(art,new LinearLayout.LayoutParams(-1,dp(PlaylumiLayout.libraryWorldArtHeight(width))));
+        TextView title=homeLabel(PlaylumiWorldStyle.NAMES[world],17,PlaylumiMagicArt.CREAM,true);
+        title.setGravity(Gravity.CENTER);title.setMinHeight(dp(34));title.setMaxLines(2);
+        title.setPadding(dp(2),dp(4),dp(2),0);card.addView(title,new LinearLayout.LayoutParams(-1,-2));
+        int games=PlaylumiGameCatalog.filter(age,world,java.util.Collections.emptySet()).size();
+        int treasures=PlaylumiCollection.unlocked(collectionProgress(world));
+        TextView info=text(games+(games==1?" spel":" spellen")+"  ·  ✦ "+treasures+"/3",13,PlaylumiMagicArt.GOLD);
+        info.setPadding(dp(2),dp(2),dp(2),dp(4));card.addView(info,new LinearLayout.LayoutParams(-1,-2));
+        TextView action=text("▶ Ontdek",14,PlaylumiMagicArt.INK);
+        action.setTypeface(Typeface.DEFAULT,Typeface.BOLD);action.setBackground(PlaylumiMagicArt.creamPlate(this));
+        action.setMinHeight(dp(36));action.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,-2);ap.setMargins(dp(2),dp(2),dp(2),0);card.addView(action,ap);
+        libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[world]+" "+games+" spellen",()->libraryFilter(world));
+        return card;
     }
     private void showLibraryNavigation(){
         final int width=getResources().getConfiguration().screenWidthDp;
@@ -2275,7 +2305,7 @@ public class MainActivity extends Activity {
         libraryTabs=new TextView[LIBRARY_TAB_FILTERS.length];
         for(int i=0;i<LIBRARY_TAB_FILTERS.length;i++){
             final int filter=LIBRARY_TAB_FILTERS[i];
-            TextView tab=text("",width<360?11:13,PlaylumiMagicArt.CREAM);
+            TextView tab=text("",width<360?14:16,PlaylumiMagicArt.CREAM);
             tab.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
             tab.setPadding(dp(2),dp(2),dp(2),dp(2));tab.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams lp=rail?new LinearLayout.LayoutParams(-1,dp(68)):new LinearLayout.LayoutParams(0,-1,1f);
@@ -2287,11 +2317,11 @@ public class MainActivity extends Activity {
         refreshLibraryNavigation();
         FrameLayout.LayoutParams scrollParams=new FrameLayout.LayoutParams(-1,-1);
         if(rail)scrollParams.leftMargin=dp(PlaylumiLayout.LIBRARY_RAIL_WIDTH+14);
-        else scrollParams.bottomMargin=dp(74);
+        else scrollParams.bottomMargin=dp(PlaylumiLayout.libraryNavHeight()+6);
         scroller.setLayoutParams(scrollParams);
         FrameLayout.LayoutParams navParams=rail?
                 new FrameLayout.LayoutParams(dp(PlaylumiLayout.LIBRARY_RAIL_WIDTH),-1,Gravity.START|Gravity.CENTER_VERTICAL):
-                new FrameLayout.LayoutParams(-1,dp(68),Gravity.BOTTOM);
+                new FrameLayout.LayoutParams(-1,dp(PlaylumiLayout.libraryNavHeight()),Gravity.BOTTOM);
         int pad=dp(rail?8:PlaylumiLayout.librarySidePadding(width));
         navParams.setMargins(pad,rail?dp(8):0,pad,dp(3));stage.addView(nav,navParams);
     }
@@ -2317,32 +2347,25 @@ public class MainActivity extends Activity {
     }
     private void renderLibraryBody(){
         header(libraryFilter>=0?PlaylumiWorldStyle.NAMES[libraryFilter]:"Werelden","");
-        addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
         java.util.Set<String> played=librarySet("library_played");
         final int width=getResources().getConfiguration().screenWidthDp;
-        final int columns=PlaylumiLayout.libraryColumns(PlaylumiLayout.libraryContentWidth(width));
+        final float fontScale=getResources().getConfiguration().fontScale;
+        final int columns=PlaylumiLayout.libraryGameColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
-            Button daily=tile("☀ Daguitdagingen",dailyChallenges().completed()+"/3 vandaag",0xffffe4bd,72);
-            addTile(daily,3);daily.setOnClickListener(v->move(DAILY));
+            addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
             librarySection("Onze speelwerelden","6 avonturen");
-            int worldColumns=PlaylumiLayout.libraryContentWidth(width)>=600?3:2;
+            int worldColumns=PlaylumiLayout.libraryWorldColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
             for(int start=0;start<6;start+=worldColumns){
-                LinearLayout row=new LinearLayout(this);
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
                 for(int i=start;i<Math.min(start+worldColumns,6);i++){
-                    final int worldIndex=i;
-                    LinearLayout card=libraryPanel();card.setBackground(libraryCardSurface(worldIndex));
-                    card.addView(PlaylumiMagicArt.hero(this,worldIndex),new LinearLayout.LayoutParams(-1,dp(PlaylumiLayout.libraryWorldArtHeight(width))));
-                    TextView title=text(PlaylumiWorldStyle.NAMES[worldIndex],16,PlaylumiMagicArt.CREAM);
-                    title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setMinHeight(dp(28));card.addView(title);
-                    int n=PlaylumiGameCatalog.filter(age,worldIndex,java.util.Collections.emptySet()).size();
-                    card.addView(text(n+(n==1?" spel":" spellen")+"  ›",14,PlaylumiMagicArt.GOLD));
-                    card.addView(text("✦ "+PlaylumiCollection.unlocked(collectionProgress(worldIndex))+"/3 schatten",12,0xfff2e2ff));
-                    libraryClick(card,"Open "+PlaylumiWorldStyle.NAMES[worldIndex]+" "+n+" spellen",()->libraryFilter(worldIndex));
+                    View card=libraryWorldCard(i,width);
                     LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
                     lp.setMargins(dp(4),dp(4),dp(4),dp(4));row.addView(card,lp);
                 }
                 root.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
+            Button daily=tile("☀ Daguitdagingen",dailyChallenges().completed()+"/3 vandaag",0xffffe4bd,72);
+            addTile(daily,7);daily.setOnClickListener(v->move(DAILY));
             Button missions=tile("Missies","Speel je bestaande avonturen",COLORS[3],64);
             addTile(missions,7);missions.setOnClickListener(v->{
                 libraryReturn=false;villageLaunch=PlaylumiVillageView.MISSIONS;
@@ -2350,81 +2373,71 @@ public class MainActivity extends Activity {
             });
             return;
         }
-        if(libraryFilter>=0){
-            View art=PlaylumiMagicArt.hero(this,libraryFilter);
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(width>=600?140:94));
-            lp.setMargins(dp(4),dp(2),dp(4),dp(6));root.addView(art,lp);
-            addText(PlaylumiWorldStyle.SUBTITLES[libraryFilter],15,PlaylumiMagicArt.CREAM,2,4);
-            libraryWorldStrip();
-        }
+        libraryWorldHeader(libraryFilter,width);
         java.util.List<PlaylumiGameCatalog.Entry> entries=PlaylumiGameCatalog.filter(age,libraryFilter,java.util.Collections.emptySet());
         librarySection("Kies een spel",entries.size()+(entries.size()==1?" spel":" spellen"));
         if(entries.isEmpty()){
             addText("Kies een nieuw avontuur.",17,PlaylumiMagicArt.CREAM,12,8);
-            Button discover=tile("Ontdek de werelden","",COLORS[2],64);addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.OVERVIEW));
+            Button discover=tile("Ontdek de werelden","",COLORS[2],64);
+            addTile(discover,4);discover.setOnClickListener(v->libraryFilter(PlaylumiGameCatalog.OVERVIEW));
             return;
         }
-        for(int w=0;w<6;w++){
-            java.util.List<PlaylumiGameCatalog.Entry> group=new ArrayList<>();
-            for(PlaylumiGameCatalog.Entry e:entries)if(e.world==w)group.add(e);
-            if(group.isEmpty())continue;
-            if(libraryFilter<0)librarySection(PlaylumiWorldStyle.NAMES[w],group.size()+(group.size()==1?" spel":" spellen"));
-            for(int first=0;first<group.size();first+=columns){
-                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
-                int n=Math.min(columns,group.size()-first);
-                for(int j=0;j<n;j++){
-                    View card=libraryGameCard(group.get(first+j),played,columns>1);
-                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
-                    lp.setMargins(dp(4),dp(3),dp(4),dp(3));row.addView(card,lp);
-                }
-                for(int j=n;j<columns;j++)row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));
-                root.addView(row,new LinearLayout.LayoutParams(-1,-2));
+        for(int first=0;first<entries.size();first+=columns){
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
+            int n=Math.min(columns,entries.size()-first);
+            for(int j=0;j<n;j++){
+                View card=libraryGameCard(entries.get(first+j),played,columns>1);
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1f);
+                lp.setMargins(dp(4),dp(3),dp(4),dp(3));row.addView(card,lp);
             }
+            for(int j=n;j<columns;j++)row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1f));
+            root.addView(row,new LinearLayout.LayoutParams(-1,-2));
         }
     }
     private View libraryGameCard(PlaylumiGameCatalog.Entry entry,java.util.Set<String> played,boolean wide){
         LinearLayout card=new LinearLayout(this);card.setOrientation(wide?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(8),dp(7),dp(8),dp(7));
-        card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x25ffffff),libraryCardSurface(entry.world),null));
-        card.setMinimumHeight(dp(wide?138:82));
+        card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(9),dp(8),dp(9),dp(8));
+        card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff),libraryCardSurface(entry.world),null));
+        card.setMinimumHeight(dp(wide?138:78));
         org.json.JSONObject snapshot=libraryResume(entry);
         boolean resume=snapshot!=null;
         boolean completed=completedRoutes().contains(entry.id)&&PlaylumiCompletion.eligible(entry);
         LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
-        TextView icon=text(entry.icon,wide?29:25,PlaylumiMagicArt.INK);
-        icon.setBackground(PlaylumiMagicArt.gemButton(this,entry.world));icon.setIncludeFontPadding(false);
-        heading.addView(icon,new LinearLayout.LayoutParams(dp(wide?49:46),dp(wide?49:46)));
+        TextView icon=text(entry.icon,entry.icon.length()>3?18:26,PlaylumiWorldStyle.deep(entry.world));
+        icon.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        icon.setBackground(rounded(PlaylumiWorldStyle.pale(entry.world),16));icon.setIncludeFontPadding(false);
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        heading.addView(icon,new LinearLayout.LayoutParams(dp(wide?50:46),dp(wide?50:46)));
         LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);labels.setGravity(Gravity.CENTER_VERTICAL);
-        labels.setPadding(dp(8),0,dp(3),0);
-        TextView name=text(entry.title,17,PlaylumiMagicArt.CREAM);name.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        labels.setPadding(dp(10),0,dp(5),0);
+        TextView name=homeLabel(entry.title,17,PlaylumiMagicArt.CREAM,true);
         name.setGravity(Gravity.START);labels.addView(name,new LinearLayout.LayoutParams(-1,-2));
         int playedRounds=roundsPlayed(entry);
-        if(playedRounds>0){
-            TextView marker=homeLabel(PlaylumiCompletion.mastery(playedRounds)+" · "+playedRounds+(playedRounds==1?" ronde":" rondes"),12,0xffc9ffdc,true);
-            labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
-        }
+        String progress=resume?"Ronde "+snapshot.optInt("count",0)+"/"+snapshot.optInt("total",SESSION_ROUNDS):
+                playedRounds>0?PlaylumiCompletion.mastery(playedRounds)+" · "+playedRounds+(playedRounds==1?" ronde":" rondes"):"";
         if(!wide){
-            TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);labels.addView(description);
+            TextView description=homeLabel(entry.description,13,0xfff2e4ff,false);
+            description.setPadding(0,dp(3),0,0);labels.addView(description,new LinearLayout.LayoutParams(-1,-2));
+        }
+        if(!progress.isEmpty()){
+            TextView marker=homeLabel(progress,12,0xffc9ffdc,true);
+            marker.setPadding(0,dp(2),0,0);labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
         }
         heading.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
         if(wide){
             card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
-            TextView description=text(entry.description,13,0xfff2e4ff);description.setGravity(Gravity.START);
-            description.setMinLines(2);description.setPadding(dp(3),dp(4),dp(3),0);
+            TextView description=homeLabel(entry.description,13,0xfff2e4ff,false);
+            description.setMinLines(2);description.setPadding(dp(3),dp(5),dp(3),dp(4));
             card.addView(description,new LinearLayout.LayoutParams(-1,-2));
+            TextView play=text("▶ Spelen",15,PlaylumiMagicArt.INK);
+            play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);play.setBackground(PlaylumiMagicArt.creamPlate(this));
+            play.setMinHeight(dp(36));play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(4),0,0);card.addView(play,lp);
         }else{
             card.addView(heading,new LinearLayout.LayoutParams(0,-2,1f));
-        }
-        String resumeLabel=resume?"▶ Verder "+snapshot.optInt("count",0)+"/"+snapshot.optInt("total",SESSION_ROUNDS):"▶ Spelen";
-        TextView play=text(resume?resumeLabel:played.contains(entry.id)?"▶ Opnieuw spelen":"▶ Spelen",wide?15:13,PlaylumiMagicArt.INK);
-        play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        play.setBackground(PlaylumiMagicArt.creamPlate(this));play.setPadding(dp(6),dp(3),dp(6),dp(3));play.setMinHeight(dp(34));
-        if(wide){
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(38));lp.setMargins(0,dp(4),0,0);card.addView(play,lp);
-        }else{
-            // Keep the title readable on narrow devices; the whole tile launches the game.
-            TextView action=text(resume?resumeLabel:played.contains(entry.id)?"▶ Opnieuw spelen":"▶ Spelen",12,PlaylumiMagicArt.GOLD);
-            action.setGravity(Gravity.START);labels.addView(action);
+            TextView play=text("▶",20,PlaylumiMagicArt.GOLD);
+            play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            card.addView(play,new LinearLayout.LayoutParams(dp(28),dp(42)));
         }
         libraryClick(card,(resume?"Verder spelen ":"Speel ")+entry.title+(completed?", opnieuw spelen":""),()->launchCatalog(entry,resume));
         if(resume)card.setOnLongClickListener(v->{
@@ -2907,7 +2920,7 @@ public class MainActivity extends Activity {
                             new int[]{mix(paint,Color.WHITE,.18f),paint,mix(paint,0xff38204b,.13f)});
                     colorPlate.setCornerRadius(dp(25));colorPlate.setStroke(dp(2),0xffffe2a1);
                     button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x38ffffff),colorPlate,null));
-                    button.setTextColor(Color.WHITE);
+                    button.setTextColor(PlaylumiWorldStyle.contrastingInk(paint));
                 }
                 if(round.isRejected(j)){button.setAlpha(.52f);button.setContentDescription(value+", al geprobeerd");}
                 if(round.isSolved()&&j==round.correctIndex)markCorrectAnswer(button,value,wide);

@@ -28,7 +28,7 @@ public final class PlaylumiGameCatalog {
         int a=PlaylumiRocketCurriculum.level(age);
         ArrayList<Entry> list=new ArrayList<>();
         for(PlaylumiRocketCurriculum.Mission m:PlaylumiRocketCurriculum.missions(a))
-            q(list,0,m.mode,m.variant,m.title,m.description,"✦");
+            q(list,0,m.mode,m.variant,m.title,m.description,PlaylumiPremiumLayout.emblem(m.mode,m.variant));
         if(a==0)q(list,0,LearningGame.COUNT,2,"Stippen tellen","Tel de stippen","●");
         q(list,0,PlaylumiFocusedCounting.MODE,PlaylumiFocusedCounting.VARIANT,"Tel de vormen","Tel alleen de gevraagde vorm tussen de andere vormen","● ▲");
         q(list,0,ExtraGames.COMPARE,PlaylumiThinkingPractice.EQUAL_GROUPS,"Evenveel","Vergelijk hoeveelheden: zoek het groepje met evenveel voorwerpen","● = ◆");
@@ -40,7 +40,7 @@ public final class PlaylumiGameCatalog {
         if(a>=2){
             q(list,0,16,1,"Een uur later","Reken een uur verder, ook met minuten","◷");
             q(list,0,16,3,"Tijd van de dag","Ochtend, middag, avond of nacht? Zet om naar de 24-uursklok","◷");
-            q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","✦");
+            q(list,0,ExtraGames.MATH,3,"Verdubbelen","Tel twee gelijke getallen op","2×");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TABLES,"Tafels oefenen","Vermenigvuldig met 2, 3, 4, 5 en 10","×");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.SHARING,"Eerlijk verdelen","Deel in gelijke groepjes zonder rest","÷");
             q(list,0,ExtraGames.MATH,PlaylumiAdvancedMath.TO_HUNDRED,"Rekenen tot 100","Tel op en trek af met tientallen en eenheden","100");
@@ -57,7 +57,7 @@ public final class PlaylumiGameCatalog {
             q(list,1,LearningGame.WORDS,0,"Woorden maken","Vul de ontbrekende letter in","Ab");
             q(list,1,ExtraGames.FIRST_LAST,0,"Beginletter","Vul de eerste letter in of zoek een woord met dezelfde beginletter","A");
             q(list,1,ExtraGames.PICTURES,0,"Woord en plaatje","Lees het woord bij het dier","🐾");
-            q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","✦");
+            q(list,1,ExtraGames.RHYMES,0,"Rijmen","Zoek een rijmwoord","♫");
             q(list,1,ExtraGames.PICTURES,1,"Plaatje zoeken","Vind het dier bij het woord","🐾");
         }
         if(a>=2){
@@ -65,7 +65,7 @@ public final class PlaylumiGameCatalog {
             q(list,1,ExtraGames.SPELLING,0,"Spelling","Maak een zin af met het goed gespelde woord","Ab");
             q(list,1,ExtraGames.FIRST_LAST,1,"Eindletter","Vul de laatste letter in of zoek een woord met dezelfde eindletter","Z");
             q(list,1,ExtraGames.OPPOSITES,0,"Tegenstellingen","Vind het tegenovergestelde","↔");
-            q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","✦");
+            q(list,1,ExtraGames.RHYMES,1,"Wat rijmt niet?","Ontdek welk woord anders klinkt","≠");
             q(list,1,LearningGame.LETTERS,4,"Vorige letter","Welke letter komt hiervoor?","Aa");
         }
         g(list,2,MINI,PlaylumiMiniChallenge.DRAG,"Sleep de vormen","Breng vormen naar hun poort","◆");
@@ -77,7 +77,7 @@ public final class PlaylumiGameCatalog {
             q(list,2,18,1,"Boven of onder","Waar staat de ster?","↕");
         }
         if(a>=2){
-            q(list,2,23,0,"Slim nadenken","Ontdek wisselende sprongen in een getallenreeks","✦");
+            q(list,2,23,0,"Slim nadenken","Ontdek wisselende sprongen in een getallenreeks","↗");
             q(list,2,LearningGame.SHAPES,4,"Vorm bij het woord","Kies de vorm die bij het woord past","◆");
         }
         g(list,3,MUSIC,0,"Speel het deuntje","Speel "+(a+2)+" tonen na","♪");
@@ -88,7 +88,7 @@ public final class PlaylumiGameCatalog {
         g(list,4,BUBBLES,0,"Bellenfeest","Prik de zeepbellen","○");
         g(list,4,STARS,0,"Vang de sterren","Verzamel alleen gouden sterren","★");
         q(list,4,21,1,"Dierenwereld","Herken de dieren","🐾");
-        q(list,4,ExtraGames.CATEGORIES,0,"Wat hoort erbij?","Zoek het passende plaatje","✦");
+        q(list,4,ExtraGames.CATEGORIES,0,"Wat hoort erbij?","Zoek het passende plaatje","◆");
         q(list,4,PlaylumiOddOneOut.MODE,PlaylumiOddOneOut.VARIANT,"Wat hoort er niet bij?","Zoek het plaatje buiten de genoemde groep","≠");
         if(a>=1){
             q(list,4,20,1,"Fruit herkennen","Welk fruit zie je?","🍎");
@@ -98,7 +98,7 @@ public final class PlaylumiGameCatalog {
         }
         if(a>=2){
             q(list,4,21,2,"Dieren en hun huis","Waar woont dit dier?","🐾");
-            q(list,4,19,4,"Veilig kiezen","Wat is een veilige keuze?","✦");
+            q(list,4,19,4,"Veilig kiezen","Wat is een veilige keuze?","✓");
             q(list,4,21,3,"Dierenbaby’s","Hoe heet het jong?","🐣");
         }
         q(list,5,LearningGame.COLORS,0,"Kleuren herkennen","Welke kleur zie je?","●");
@@ -107,7 +107,7 @@ public final class PlaylumiGameCatalog {
         if(a>=1){
             q(list,5,17,2,"Weer herkennen","Ontdek het weer","☀");
             q(list,5,17,0,"Seizoenen","Welk seizoen zie je?","✿");
-            q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Langere reeksen met afwisselende kleurengroepjes","✦");
+            q(list,5,LearningGame.PATTERNS,4,"Kleurenpatronen","Langere reeksen met afwisselende kleurengroepjes","●◆");
         }
         if(a>=2){
             q(list,5,17,3,"Weer en spullen","Wat past bij het weer?","☂");
