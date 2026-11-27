@@ -91,6 +91,31 @@ public final class ReleaseCandidateCheck {
         }
     }
     public static void main(String[] args){
+        for(long day=20000;day<20080;day++){
+            PlaylumiDailyChallenges daily=new PlaylumiDailyChallenges(day,Long.MIN_VALUE,0,0,0,0,0);
+            require(daily.world(0)!=daily.world(1),"daily worlds distinct");
+            for(int age=0;age<3;age++)for(int i=0;i<2;i++){
+                boolean found=false;
+                for(PlaylumiGameCatalog.Entry e:PlaylumiGameCatalog.entries(age))
+                    if(e.kind==PlaylumiGameCatalog.QUIZ&&e.world==daily.world(i))found=true;
+                require(found,"daily world available");
+            }
+            int earned=0;
+            for(int i=0;i<4;i++)earned+=daily.correct(daily.world(0),i==3);
+            for(int i=0;i<4;i++)earned+=daily.correct(daily.world(1),false);
+            require(earned==70&&daily.completed()==3&&daily.completedSets()==1,"daily reward total");
+            require(daily.correct(daily.world(0),true)==0,"daily reward duplicate");
+            PlaylumiDailyChallenges restored=new PlaylumiDailyChallenges(day-1,day,4,4,1,7,1);
+            require(restored.correct(daily.world(0),true)==0&&restored.day==day,"daily rollback");
+            PlaylumiDailyChallenges next=new PlaylumiDailyChallenges(day+1,day,4,4,1,7,1);
+            require(next.completed()==0&&next.completedSets()==1,"daily reset");
+        }
+        PlaylumiWardrobe gifts=new PlaylumiWardrobe(500);
+        require(gifts.buyOrEquip(PlaylumiWardrobe.OUTFITS,6)==PlaylumiWardrobe.ACHIEVEMENT_REQUIRED,"gift locked");
+        require(PlaylumiCityRewards.grant(gifts,1L<<24)&&!PlaylumiCityRewards.grant(gifts,1L<<24),"gift once");
+        require(gifts.stars()==500&&gifts.buyOrEquip(PlaylumiWardrobe.OUTFITS,6)==PlaylumiWardrobe.EQUIPPED,"gift equip");
+        require(PlaylumiCompletion.nextRoundCount(2,8,8)==3&&PlaylumiCompletion.nextRoundCount(2,7,8)==2,"replay count");
+        System.out.println("PASS: 80 calendar challenge cycles, 480 age/world availability checks, city gifts and replay counts.");
         LearningGame game=new LearningGame(RNG);
         for(int age=0;age<3;age++){
             Set<String> ids=new HashSet<>();

@@ -14,19 +14,22 @@ public final class PlaylumiRoomView extends FrameLayout {
     private final PlaylumiRoom room;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     public PlaylumiRoomView(Context context,PlaylumiRoom room,int avatar) {
+        this(context,room,avatar,null);
+    }
+    public PlaylumiRoomView(Context context,PlaylumiRoom room,int avatar,PlaylumiWardrobe wardrobe) {
         super(context);
         this.room=room;
         setWillNotDraw(false);
-        setContentDescription("De eigen kamer van jouw maatje, met gekozen inrichting");
+        setContentDescription("De eigen kamer van Lumi, met gekozen inrichting");
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.WINDOW][room.selected(PlaylumiRoom.WINDOW)],
                 54,Gravity.TOP|Gravity.LEFT,32,30);
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.FURNITURE][room.selected(PlaylumiRoom.FURNITURE)],
                 60,Gravity.BOTTOM|Gravity.LEFT,12,37);
         addEmoji(PlaylumiRoom.ICONS[PlaylumiRoom.DECOR][room.selected(PlaylumiRoom.DECOR)],
                 54,Gravity.BOTTOM|Gravity.RIGHT,16,45);
-        PlaylumiAvatar friend=new PlaylumiAvatar(context,avatar);
+        PlaylumiAvatar friend=new PlaylumiAvatar(context,avatar,wardrobe);
         friend.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES);
-        friend.setContentDescription("Jouw maatje in de kamer");
+        friend.setContentDescription("Lumi in de kamer");
         LayoutParams starParams=new LayoutParams(dp(202),dp(225),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
         starParams.bottomMargin=dp(11);
         addView(friend,starParams);

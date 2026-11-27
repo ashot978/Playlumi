@@ -8,6 +8,18 @@ import java.util.Set;
 public final class PlaylumiCompletion {
     private PlaylumiCompletion(){}
     public static String key(int age){return "library_completed_v1_"+PlaylumiRocketCurriculum.level(age);}
+    public static String roundsKey(int age,String route){return "library_rounds_v1_"+PlaylumiRocketCurriculum.level(age)+"_"+route;}
+    public static int nextRoundCount(int previous,int done,int total){
+        int safe=Math.max(0,previous);
+        return total>0&&done==total&&safe<Integer.MAX_VALUE?safe+1:safe;
+    }
+    public static String mastery(int rounds){
+        return rounds>=20?"Diamant":rounds>=12?"Goud":rounds>=6?"Zilver":rounds>=3?"Brons":rounds>=1?"Beginner":"";
+    }
+    public static int nextMastery(int rounds){
+        for(int goal:new int[]{1,3,6,12,20})if(rounds<goal)return goal;
+        return 20;
+    }
     public static boolean eligible(PlaylumiGameCatalog.Entry entry){
         return entry!=null&&entry.kind!=PlaylumiGameCatalog.DRAW;
     }

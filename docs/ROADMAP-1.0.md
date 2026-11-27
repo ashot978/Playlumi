@@ -1,6 +1,6 @@
 # Playlumi — 0.99 release candidate and roadmap to 1.0
 
-Status: 0.106 / build 601007. Test build, not a production launch. Future builds use 0.107, 0.108, etc., and strictly increasing Android version codes.
+Status: 0.107 / build 601008. Test build, not a production launch. Future builds use 0.108, 0.109, etc., and strictly increasing Android version codes.
 
 ## 0.99: release candidate
 - [x] Review age-specific catalogue and check existing quiz generators for obvious copy-answer or ambiguous prompts.
@@ -124,7 +124,16 @@ Status: 0.106 / build 601007. Test build, not a production launch. Future builds
 - [x] Read only the quiz-specific insets; wait for the actual inset event.
 - [x] Verify the zero-answer snapshot has been persisted before force-stop, and compare saved questions and choices after reopening.
 - [x] Keep all existing learning, wallet, rejection and continuation checks.
-- [ ] Full 0.106 release CI, signature and independent phone/Fold acceptance.
+- [x] 0.106 release CI, unit tests, lint and independent phone/Fold acceptance passed (45909894600, 45909894635).
+
+## 0.107: Lumi's city, daily challenges and replay
+- [x] Restore the original hero ID 0 as Lumi, a golden star with existing wardrobe and owned items. Legacy avatar choice remains stored; no new character chooser.
+- [x] Three optional local-calendar challenges: four correct quiz answers in each of two rotating worlds and one completed quiz round. Automatic earned-star bonuses, once per goal, with a full-set bonus. Per-profile state saved with quiz answers and wallet; no login penalty or expiry of earned items.
+- [x] Persist actual replay counts per age and route; label games as playable again and show five mastery tiers. Legacy completion marks remain intact; no invented historical round counts.
+- [x] City hub with seven permanent landmark/achievement rewards that unlock existing outfits and friends. Keep previously owned items. Reconnect the friend park and room with Lumi's outfit.
+- [x] Daily and city entry points on phone and wide home, plus daily shortcut in the library.
+- [ ] Full build, new engine checks, emulator checks and offline signature.
+- [ ] Next: dedicated illustrated city expansion, original new costume art, content packs, further mastery rewards and optional weekly challenges. No notifications, lost rewards, paid streak recovery, or Play Store publication without approval.
 
 ## Remaining acceptance checks
 - [ ] Test update from 0.98.1 without losing stars, achievements, favourites or unfinished rounds.

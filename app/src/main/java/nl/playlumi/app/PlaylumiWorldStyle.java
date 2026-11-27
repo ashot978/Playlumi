@@ -4,9 +4,9 @@ package nl.playlumi.app;
 public final class PlaylumiWorldStyle {
     public static final String[] NAMES={"Rekenraket","Letterhuis","Vormkasteel","Muziekstudio","Speelplein","Kleurentuin"};
     public static final String[] SUBTITLES={"Op missie tussen de sterren!","Ontdek de magie van letters.","Open de poorten van het vormenrijk.","Maak muziek met je dierenvriendjes.","Kies je volgende speelavontuur.","Maak de wereld kleurrijk!"};
-    // Preserve saved IDs 1..3. The retired Lumi ID 0 maps to Fenna.
-    public static final int FIRST_AVATAR=1;
-    public static final String[] AVATAR_NAMES={"","Fenna","Milo","Nova"};
+    // Lumi is the fixed protagonist. Keep old IDs valid for historical artwork.
+    public static final int LUMI=0,FIRST_AVATAR=0;
+    public static final String[] AVATAR_NAMES={"Lumi","Fenna","Milo","Nova"};
     public static final int PRIMARY_ON_DARK=0xfffff5dc,SECONDARY_ON_DARK=0xffffebbf;
     private static final int[] ACCENT={0xff3657b5,0xff9b4775,0xff7151b4,0xff7041ac,0xff14807e,0xff2b8458};
     private static final int[] DEEP={0xff21316d,0xff59274f,0xff432371,0xff3e236f,0xff174f61,0xff194f42};

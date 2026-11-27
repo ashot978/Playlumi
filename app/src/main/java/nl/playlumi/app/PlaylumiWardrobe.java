@@ -46,7 +46,7 @@ public final class PlaylumiWardrobe {
             0xffffd557,0xffffabd8,0xff91e3ad,0xffc2a2ef,0xff8dd7f6,
             0xffff8c8a,0xff7c8eca
     };
-    public static final int PURCHASED=2,EQUIPPED=1,NOT_ENOUGH=0;
+    public static final int PURCHASED=2,EQUIPPED=1,NOT_ENOUGH=0,ACHIEVEMENT_REQUIRED=-1;
     private final int[] ownedMasks=new int[SLOTS];
     private final int[] selected=new int[SLOTS];
     private int stars,allTimeStars;
@@ -78,6 +78,15 @@ public final class PlaylumiWardrobe {
         selected[slot]=(worn>=0 && worn<OPTIONS && owned(slot,worn))?worn:0;
     }
     public void earnAnswer(){add(STARS_FOR_ANSWER);}
+    public void earnChallengeStars(int earned){
+        if(earned<0||earned>70)throw new IllegalArgumentException("challenge reward");
+        add(earned);
+    }
+    public boolean grant(int slot,int item){
+        check(slot,item);
+        if(owned(slot,item))return false;
+        ownedMasks[slot]|=1<<item;return true;
+    }
     public void earnAdventureBonus(){add(PlaylumiAdventure.BONUS);}
     public void earnStoryBonus(){add(15);}
     public void earnCreativeBonus(){add(9);}
@@ -102,6 +111,7 @@ public final class PlaylumiWardrobe {
     public int buyOrEquip(int slot,int item){
         check(slot,item);
         if(owned(slot,item)){selected[slot]=item;return EQUIPPED;}
+        if(PlaylumiCityRewards.forItem(slot,item)!=null)return ACHIEVEMENT_REQUIRED;
         int cost=price(slot,item);
         if(stars<cost)return NOT_ENOUGH;
         stars-=cost;

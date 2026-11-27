@@ -72,6 +72,23 @@ public final class PlaylumiAvatar extends View {
             }
         }
         switch(choice) {
+            case 0:
+                if(item(outfit,PlaylumiWardrobe.OUTFITS)==2)
+                    polygon(c,p,0xffd63e70,29,43,71,43,87,89,50,80,13,89);
+                Path star=new Path();
+                for(int n=0;n<10;n++){
+                    double angle=-Math.PI/2+n*Math.PI/5;
+                    float r=n%2==0?39:21;
+                    float sx=50+(float)Math.cos(angle)*r,sy=50+(float)Math.sin(angle)*r;
+                    if(n==0)star.moveTo(sx,sy);else star.lineTo(sx,sy);
+                }
+                star.close();
+                p.setColor(0xffa96c20);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setStrokeJoin(Paint.Join.ROUND);
+                c.drawPath(star,p);p.setStyle(Paint.Style.FILL);
+                p.setShader(new LinearGradient(0,15,0,88,0xfffff4a0,0xffffb52c,Shader.TileMode.CLAMP));
+                c.drawPath(star,p);p.setShader(null);
+                oval(c,p,43,31,51,39,0x99ffffff);
+                break;
             case 1:
                 polygon(c,p,0xffa44a37,22,45,19,16,40,32);
                 polygon(c,p,0xffa44a37,78,45,81,16,60,32);

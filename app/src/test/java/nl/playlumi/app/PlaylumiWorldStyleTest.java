@@ -11,12 +11,12 @@ public class PlaylumiWorldStyleTest {
         }
         assertFalse(PlaylumiWorldStyle.valid(6));
     }
-    @Test public void retiredLumiMigratesWithoutChangingOtherAvatarIds(){
-        assertEquals(1,PlaylumiWorldStyle.FIRST_AVATAR);
-        assertEquals(1,PlaylumiWorldStyle.safeAvatar(0));
-        for(int i=1;i<4;i++)assertEquals(i,PlaylumiWorldStyle.safeAvatar(i));
-        assertEquals(1,PlaylumiWorldStyle.safeAvatar(-1));
-        assertEquals(1,PlaylumiWorldStyle.safeAvatar(4));
+    @Test public void lumiReturnsWithoutRenumberingLegacyAvatars(){
+        assertEquals(0,PlaylumiWorldStyle.LUMI);
+        assertEquals("Lumi",PlaylumiWorldStyle.AVATAR_NAMES[0]);
+        for(int i=0;i<4;i++)assertEquals(i,PlaylumiWorldStyle.safeAvatar(i));
+        assertEquals(0,PlaylumiWorldStyle.safeAvatar(-1));
+        assertEquals(0,PlaylumiWorldStyle.safeAvatar(4));
     }
     private static double channel(int value){
         double v=value/255.0;

@@ -58,6 +58,7 @@ public final class PlaylumiVillageView extends View {
     private final int avatar;
     private final int[] outfit;
     private final int playStreak;
+    private final int dailyCompleted;
     private int discovered;
     private int pressed=-1;
     private float downX,downY;
@@ -70,7 +71,11 @@ public final class PlaylumiVillageView extends View {
     public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar){this(context,listener,profile,stars,avatar,null);}
     public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit){this(context,listener,profile,stars,avatar,outfit,0);}
     public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit,int playStreak) {
+        this(context,listener,profile,stars,avatar,outfit,playStreak,0);
+    }
+    public PlaylumiVillageView(Context context,Listener listener,int profile,int stars,int avatar,int[] outfit,int playStreak,int dailyCompleted) {
         super(context);this.outfit=outfit==null?null:outfit.clone();this.playStreak=Math.max(0,playStreak);
+        this.dailyCompleted=Math.max(0,Math.min(3,dailyCompleted));
         this.listener=listener;
         this.profileNumber=Math.max(0,profile);
         this.starBalance=Math.max(0,stars);
@@ -93,7 +98,7 @@ public final class PlaylumiVillageView extends View {
     private void updateDescription() {
         setContentDescription("Magisch Playlumi-dorp met zes speelgebouwen. "+
                 PlaylumiVillageProgress.visitedCount(discovered)+
-                " gebouwen bezocht. Tik op een gebouw of op Spellen linksonder.");
+                " gebouwen bezocht. Daguitdagingen "+dailyCompleted+" van 3. Tik bovenaan op de zon of Lumi, of op een speelgebouw.");
     }
     private void paintColor(int c) {
         pen.reset();
@@ -125,8 +130,8 @@ public final class PlaylumiVillageView extends View {
         c.drawRoundRect(689,13,839,90,20,20,pen);
         text(c,"★ "+Math.min(99999,starBalance),418,65,
                 starBalance>=10000?27:35,0xffffe6a2);
-        text(c,"⚑ "+PlaylumiVillageProgress.visitedCount(discovered)+"/6",596,65,33,0xffffe6a2);
-        text(c,"Maatje",764,65,26,Color.WHITE);
+        text(c,"☀ "+dailyCompleted+"/3",596,65,33,0xffffe6a2);
+        text(c,"Lumi",764,65,29,Color.WHITE);
         // Replace the baked-in boy and level meter with the chosen, real character.
         paintColor(0xff48267c);
         c.drawRoundRect(0,93,325,238,38,38,pen);
@@ -139,7 +144,7 @@ public final class PlaylumiVillageView extends View {
         c.save();c.translate(75,166);c.scale(round[0],round[1]);
         PlaylumiAvatar.draw(c,-63,-63,126,avatar,outfit);c.restore();
         text(c,PlaylumiWorldStyle.AVATAR_NAMES[avatar],225,155,30,0xffffebbc);
-        text(c,playStreak>0?"🔥 "+playStreak+(playStreak==1?" speeldag":" dagen op rij"):"Kies je maatje",225,192,playStreak>99?17:21,Color.WHITE);
+        text(c,"De superster",225,192,23,Color.WHITE);
     }
     private void drawGameTab(Canvas c){
         // Same home artwork and original hit zone. Only the former Missions label
