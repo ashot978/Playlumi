@@ -1,7 +1,7 @@
-name: Playlumi 0.122 construction atelier and upgrade acceptance
+name: Playlumi 0.123 fixed horizontal pages and upgrade acceptance
 on:
   push:
-    branches: ['feature/playlumi-0.122']
+    branches: ['feature/playlumi-0.123']
   workflow_dispatch:
 jobs:
   quiz-ui:
@@ -39,19 +39,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build pinned 0.121 baseline with the same disposable debug key
+      - name: Build pinned 0.122 baseline with the same disposable debug key
         shell: bash
         run: |
           set -euo pipefail
-          PLAYLUMI_BASELINE_SHA=c827bd4cf24544ba9a4418753216281beaa7650f
-          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0121-baseline"
+          PLAYLUMI_BASELINE_SHA=76bb79efee76c04d249da5b7154fb34320fe3278
+          PLAYLUMI_BASELINE_DIR="$RUNNER_TEMP/playlumi-0122-baseline"
           git worktree add --detach "$PLAYLUMI_BASELINE_DIR" "$PLAYLUMI_BASELINE_SHA"
           trap 'git worktree remove --force "$PLAYLUMI_BASELINE_DIR"' EXIT
-          PLAYLUMI_BASELINE_LOG="$RUNNER_TEMP/playlumi-0121-baseline-gradle.log"
+          PLAYLUMI_BASELINE_LOG="$RUNNER_TEMP/playlumi-0122-baseline-gradle.log"
           # Dependency hosts can briefly rate-limit concurrent clean runners.
           # Retry only transient HTTP failures; compilation failures still stop the job.
           for PLAYLUMI_BASELINE_ATTEMPT in 1 2 3; do
-            if PLAYLUMI_BUILD_CODE=601022 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug 2>&1 | tee "$PLAYLUMI_BASELINE_LOG"; then
+            if PLAYLUMI_BUILD_CODE=601023 gradle --no-daemon -p "$PLAYLUMI_BASELINE_DIR" assembleDebug 2>&1 | tee "$PLAYLUMI_BASELINE_LOG"; then
               break
             fi
             if [[ "$PLAYLUMI_BASELINE_ATTEMPT" -eq 3 ]] || ! grep -Eq 'Received status code (429|500|502|503|504)' "$PLAYLUMI_BASELINE_LOG"; then
@@ -60,14 +60,14 @@ jobs:
             sleep "$((15 * PLAYLUMI_BASELINE_ATTEMPT))"
           done
           mkdir -p build/upgrade-baseline
-          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0121-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0121-debug.apk | grep -F "versionCode='601022'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0121-debug.apk | grep -F "versionName='0.121'"
+          cp "$PLAYLUMI_BASELINE_DIR/app/build/outputs/apk/debug/app-debug.apk" build/upgrade-baseline/playlumi-0122-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0122-debug.apk | grep -F "versionCode='601023'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging build/upgrade-baseline/playlumi-0122-debug.apk | grep -F "versionName='0.122'"
           printf '%s\n' "$PLAYLUMI_BASELINE_SHA" > build/upgrade-baseline/source-commit.txt
-          sha256sum build/upgrade-baseline/playlumi-0121-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
-      - name: Build debug variant of exact 0.122 source
+          sha256sum build/upgrade-baseline/playlumi-0122-debug.apk > build/upgrade-baseline/SHA256SUMS.txt
+      - name: Build debug variant of exact 0.123 source
         env:
-          PLAYLUMI_BUILD_CODE: '601023'
+          PLAYLUMI_BUILD_CODE: '601024'
         run: gradle --no-daemon assembleDebug
       - name: Enable KVM when available
         run: |
@@ -87,7 +87,7 @@ jobs:
           emulator-boot-timeout: 390
           script: |
             python3 ci/check-clean-quiz.py --viewport ${{ matrix.viewport }} --keep-viewport
-            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0121-debug.apk
+            python3 ci/check-city-progress.py --viewport ${{ matrix.viewport }} --no-install --keep-viewport --baseline-apk build/upgrade-baseline/playlumi-0122-debug.apk
       - name: Collect host diagnostics after emulator failure
         if: failure()
         shell: bash
@@ -99,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playlumi-0122-interface-acceptance-${{ matrix.viewport }}
+          name: playlumi-0123-interface-acceptance-${{ matrix.viewport }}
           path: |
             build/clean-quiz/
             build/city-progress/

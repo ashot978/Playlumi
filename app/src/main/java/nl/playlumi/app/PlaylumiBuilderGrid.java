@@ -19,11 +19,13 @@ public final class PlaylumiBuilderGrid extends LinearLayout {
     private final int size;
     private final Button[] cells;
     private final boolean editable;
+    private final int preferredCell,gapPx;
     public PlaylumiBuilderGrid(Context c,int size,int width,String board,boolean editable,Listener listener){
         super(c);this.size=size;this.editable=editable;
         if(!PlaylumiBuilder.validBoard(board,size))throw new IllegalArgumentException("grid");
-        setOrientation(VERTICAL);setGravity(Gravity.CENTER_HORIZONTAL);setPadding(dp(2),dp(2),dp(2),dp(2));
+        setOrientation(VERTICAL);setGravity(Gravity.CENTER);setPadding(dp(2),dp(2),dp(2),dp(2));
         int gap=editable?2:1,cell=Math.min(editable?70:49,Math.max(editable?28:12,(width-8-size*gap*2)/size));
+        preferredCell=dp(cell);gapPx=dp(gap);
         cells=new Button[size*size];
         for(int y=0;y<size;y++){
             LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.CENTER);
@@ -43,6 +45,19 @@ public final class PlaylumiBuilderGrid extends LinearLayout {
         refresh(board);
     }
     private int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
+    @Override protected void onMeasure(int ws,int hs){
+        int cell=preferredCell;
+        if(MeasureSpec.getMode(ws)!=MeasureSpec.UNSPECIFIED)
+            cell=Math.min(cell,(MeasureSpec.getSize(ws)-getPaddingLeft()-getPaddingRight())/size-2*gapPx);
+        if(MeasureSpec.getMode(hs)!=MeasureSpec.UNSPECIFIED)
+            cell=Math.min(cell,(MeasureSpec.getSize(hs)-getPaddingTop()-getPaddingBottom())/size-2*gapPx);
+        cell=Math.max(1,cell);
+        for(Button b:cells){
+            LayoutParams lp=(LayoutParams)b.getLayoutParams();
+            lp.width=cell;lp.height=cell;
+        }
+        super.onMeasure(ws,hs);
+    }
     public void refresh(String board){
         if(!PlaylumiBuilder.validBoard(board,size))throw new IllegalArgumentException("board");
         for(int i=0;i<cells.length;i++){

@@ -110,8 +110,12 @@ def open_quiz(label, resume):
             click(hit)
             page(6)
             return
-        shell(f"input swipe {w//2} {int(h*.78)} {w//2} {int(h*.32)} 450")
-        time.sleep(.8)
+        next_page = next((n for n in nodes if n.get("content-desc") == "Volgende inhoudspagina"
+                          and n.get("enabled") == "true"), None)
+        if next_page is None:
+            break
+        click(next_page)
+        time.sleep(.4)
     raise AssertionError("Groente herkennen not found: "+prefix)
 
 def quiz_insets():

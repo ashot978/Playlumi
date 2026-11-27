@@ -951,7 +951,6 @@ public class MainActivity extends Activity {
         int usable=Math.max(150,width-2*PlaylumiLayout.sidePadding(width)-30);
         int height=getResources().getConfiguration().screenHeightDp;
         boolean wide=width>=650&&landscapeScreen();
-        LinearLayout workspace=new LinearLayout(this);workspace.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);workspace.setGravity(Gravity.TOP);
         final LinearLayout target=personalPanel(),boardPanel=personalPanel();
         final TextView message=homeLabel("Kies een onderdeel om te beginnen.",15,TEXT,true);
         message.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -994,7 +993,7 @@ public class MainActivity extends Activity {
             // actual building grid is pinned and remains editable on every page.
         }
         homeAdd(boardPanel,current,0,3);
-        int perRow=5;
+        int perRow=wide?4:5;
         for(int start=0;start<palette.length;start+=perRow){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);
             for(int j=start;j<Math.min(start+perRow,palette.length);j++){
@@ -1044,7 +1043,7 @@ public class MainActivity extends Activity {
                 sound.good();message.setText(completed.after==12?"Meesterbouwer! Alle ontwerpen voltooid. +"+completed.bonus+" sterren!":"Bouwtekening klaar! +"+completed.bonus+" sterren. De volgende opdracht is open.");
                 PlaylumiMotion.celebrate(stage,8);
             }else{message.setText("Je ontwerp klopt! De sterren van deze opdracht heb je al verdiend.");sound.good();}
-            refresh.run();
+            refresh.run();pageDeck.reveal(message);
         });
         homeAdd(boardPanel,message,0,3);
         Button clear=tile("Maak terrein leeg","",0xfff0e2ec,52);
@@ -1327,7 +1326,7 @@ public class MainActivity extends Activity {
         row.setBackground(PlaylumiWorldStyle.valid(theme)?libraryCardSurface(theme):PlaylumiMagicArt.silkRibbon(this));
         row.setPadding(dp(9),dp(3),dp(9),dp(3));
         TextView prompt=text(instruction,size,PlaylumiMagicArt.CREAM);
-        prompt.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));prompt.setPadding(dp(4),dp(5),dp(4),dp(5));prompt.setMinHeight(dp(50));
+        prompt.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));prompt.setPadding(dp(4),dp(5),dp(4),dp(5));prompt.setMinHeight(dp(42));
         row.addView(prompt,new LinearLayout.LayoutParams(0,-2,1f));
         addWidgetIn(parent,row,0,dp(5));
     }
@@ -1684,6 +1683,7 @@ public class MainActivity extends Activity {
         // Drawing and drag games reserve gestures for the actual game; arrows still work.
         pageDeck=new PlaylumiPageDeck(this,!(page==MINI_PLAY&&miniKind==PlaylumiMiniChallenge.DRAG),gameScreen()||page==BUILDER_PLAY);
         root=pageDeck.content();
+        if(page==LIBRARY)pageDeck.setMaxBlocks(3);
         int side=PlaylumiLayout.sidePadding(
                 getResources().getConfiguration().screenWidthDp);
         if(magicScreen)side=page==LIBRARY||page==INTERACTIVE?PlaylumiLayout.librarySidePadding(getResources().getConfiguration().screenWidthDp):PlaylumiLayout.magicSidePadding(getResources().getConfiguration().screenWidthDp);
@@ -2018,7 +2018,7 @@ public class MainActivity extends Activity {
         TextView total=text(entries.size()+" spellen",13,PlaylumiMagicArt.GOLD);
         heading.addView(total,new LinearLayout.LayoutParams(-2,-2));
         heading.setPadding(dp(3),dp(3),dp(3),dp(6));worlds.addView(heading);
-        int columns=PlaylumiHomeLayout.worldColumns(width,height);
+        int columns=width>=690?3:2;
         int artHeight=Math.min(PlaylumiHomeLayout.artHeight(width,height),height<500?52:height<650?74:112);
         for(int first=0;first<6;first+=columns){
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
@@ -2809,9 +2809,7 @@ public class MainActivity extends Activity {
         final float fontScale=getResources().getConfiguration().fontScale;
         final int columns=PlaylumiLayout.libraryGameColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
         if(libraryFilter==PlaylumiGameCatalog.OVERVIEW){
-            addText("✦  "+AGES[PlaylumiRocketCurriculum.level(age)]+"  ·  Kies jouw avontuur",15,PlaylumiMagicArt.CREAM,2,6);
-            addExpeditionShortcut(true);
-            librarySection("Onze speelwerelden","6 avonturen");
+            // The six illustrated world cards are the main content, not a long introductory panel.
             int worldColumns=PlaylumiLayout.libraryWorldColumns(PlaylumiLayout.libraryContentWidth(width),fontScale);
             for(int start=0;start<6;start+=worldColumns){
                 LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);row.setBaselineAligned(false);
@@ -2822,6 +2820,7 @@ public class MainActivity extends Activity {
                 }
                 root.addView(row,new LinearLayout.LayoutParams(-1,-2));
             }
+            addExpeditionShortcut(true);
             addBuilderShortcut(true);
             Button daily=tile("☀ Daguitdagingen",dailyChallenges().completed()+"/3 vandaag",0xffffe4bd,72);
             addTile(daily,7);daily.setOnClickListener(v->move(DAILY));
@@ -2870,10 +2869,7 @@ public class MainActivity extends Activity {
         int playedRounds=roundsPlayed(entry);
         String progress=resume?"Ronde "+snapshot.optInt("count",0)+"/"+snapshot.optInt("total",SESSION_ROUNDS):
                 playedRounds>0?PlaylumiCompletion.mastery(playedRounds)+" · "+playedRounds+(playedRounds==1?" ronde":" rondes"):"";
-        if(!wide){
-            TextView description=homeLabel(entry.description,13,0xfff2e4ff,false);
-            description.setPadding(0,dp(3),0,0);labels.addView(description,new LinearLayout.LayoutParams(-1,-2));
-        }
+        // One title and only relevant saved progress; the game explains its own rules.
         if(!progress.isEmpty()){
             TextView marker=homeLabel(progress,12,0xffc9ffdc,true);
             marker.setPadding(0,dp(2),0,0);labels.addView(marker,new LinearLayout.LayoutParams(-1,-2));
@@ -2881,9 +2877,7 @@ public class MainActivity extends Activity {
         heading.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
         if(wide){
             card.addView(heading,new LinearLayout.LayoutParams(-1,-2));
-            TextView description=homeLabel(entry.description,13,0xfff2e4ff,false);
-            description.setMaxLines(2);description.setPadding(dp(3),dp(3),dp(3),dp(2));
-            card.addView(description,new LinearLayout.LayoutParams(-1,-2));
+            // No repeated description below the title.
             TextView play=text("▶ Spelen",15,PlaylumiMagicArt.INK);
             play.setTypeface(Typeface.DEFAULT,Typeface.BOLD);play.setBackground(PlaylumiMagicArt.creamPlate(this));
             play.setMinHeight(dp(36));play.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -4177,7 +4171,6 @@ public class MainActivity extends Activity {
         String miniTitle=miniKind==PlaylumiMiniChallenge.MEMORY?"Dierenmemory":
                 miniKind==PlaylumiMiniChallenge.DRAG?"Vormen slepen":PlaylumiMiniChallenge.NAMES[miniKind];
         header(miniRound>=20?"Knap gedaan!":miniTitle,miniRound>=20?"":Math.min(miniRound+1,20)+"/20");
-        addIllustratedPortal(worldTheme(),PlaylumiWorldStyle.NAMES[worldTheme()],116);
         if(miniRound>=20) {
             addWidget(completionPanel(miniTitle,miniKind==PlaylumiMiniChallenge.MEMORY?"🐾":miniKind==PlaylumiMiniChallenge.DRAG?"◆":"🎈",20,20),3,6);
             Button again=tile("🔄 Nog eens spelen!","",0xffd4f5e0,96);
@@ -5043,7 +5036,6 @@ public class MainActivity extends Activity {
     /** Ten calm rounds; progress is kept separate from existing score/rewards. */
     private void showStarCatch() {
         header("Sterren vangen",Math.min(starCatchRound+1,PlaylumiStarCatch.ROUNDS)+"/"+PlaylumiStarCatch.ROUNDS);
-        addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Vang de sterren",98);
         if(starCatchRound>=PlaylumiStarCatch.ROUNDS){
             addWidget(completionPanel("Sterren vangen","⭐",PlaylumiStarCatch.ROUNDS,PlaylumiStarCatch.ROUNDS),3,6);
             Button again=tile("🌟 Speel nog eens","",0xffd4f4e2,88);
@@ -5097,7 +5089,6 @@ public class MainActivity extends Activity {
     private void showBubblePlay() {
         if(bubbles==null)bubbles=PlaylumiBubbles.generate(Math.max(0,age),new Random());
         header("🫧 Het Bellenfeest","Ronde "+Math.min(bubbleRound+1,20)+" van 20");
-        addIllustratedPortal(PlaylumiVillageView.PLAYGROUND,"Bellenfeest",96);
         if(bubbleRound>=20) {
             addWidget(completionPanel("Bellenfeest","🫧",20,20),3,6);
             Button again=tile("🫧 Nog meer bellen!","",0xffd3f4df,99);

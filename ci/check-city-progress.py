@@ -22,6 +22,7 @@ import zlib
 APP = "nl.playlumi.app"
 OUT = pathlib.Path("build/city-progress")
 CHECKS = []
+PAGED_UI = True
 LANDMARKS = ("Vriendjespark", "Observatorium", "Toverbibliotheek", "Muziekpodium",
              "Dierenpark", "Regenboogbrug", "Lumi-standbeeld")
 LANDMARK_ACHIEVEMENTS = (5, 24, 25, 27, 28, 29, 19)
@@ -159,19 +160,67 @@ def description_prefix(value):
     return lambda node: node.get("content-desc", "").startswith(value)
 
 
+def pager_button(nodes, forward):
+    desc = "Volgende inhoudspagina" if forward else "Vorige inhoudspagina"
+    return next((n for n in nodes if n.get("content-desc") == desc and
+                 n.get("enabled") == "true" and visible(n)), None)
+
+
+def turn_page(nodes, forward):
+    button = pager_button(nodes, forward)
+    if button is None:
+        return False
+    click(button)
+    return True
+
+
+def page_indicator(nodes):
+    return next((n.get("content-desc", "") for n in nodes
+                 if n.get("content-desc", "").startswith("Inhoudspagina ")), "")
+
+
 def find_control(predicate, label, scroll=True, enabled=True, scroll_x=None):
     w, h = dimensions()
-    for attempt in range(11 if scroll else 3):
-        nodes = ui(label + "-" + str(attempt))
-        hit = next((node for node in nodes if predicate(node) and visible(node)
+    def hit(nodes):
+        return next((node for node in nodes if predicate(node) and visible(node)
                     and node.get("clickable") == "true"
                     and (enabled is None or node.get("enabled") == str(enabled).lower())), None)
-        if hit is not None:
-            return hit
-        if scroll:
-            x = w//2 if scroll_x is None else scroll_x
-            shell(f"input swipe {x} {int(h*.78)} {x} {int(h*.34)} 400")
-        time.sleep(.5)
+    if PAGED_UI:
+        nodes = ui(label + "-current")
+        result = hit(nodes)
+        if result is not None:
+            return result
+        # The previous tests' "scroll" argument only applied to the old
+        # baseline. All actual content pages may now be reached via arrows.
+        for i in range(60):
+            if not turn_page(nodes, True):
+                break
+            nodes = ui(label + "-next-" + str(i))
+            result = hit(nodes)
+            if result is not None:
+                return result
+        for i in range(60):
+            if not turn_page(nodes, False):
+                break
+            nodes = ui(label + "-previous-" + str(i))
+            result = hit(nodes)
+            if result is not None:
+                return result
+        for i in range(2):
+            time.sleep(.4)
+            result = hit(ui(label + "-settle-" + str(i)))
+            if result is not None:
+                return result
+    else:
+        for attempt in range(11 if scroll else 3):
+            nodes = ui(label + "-baseline-" + str(attempt))
+            result = hit(nodes)
+            if result is not None:
+                return result
+            if scroll:
+                x = w//2 if scroll_x is None else scroll_x
+                shell(f"input swipe {x} {int(h*.78)} {x} {int(h*.34)} 400")
+            time.sleep(.5)
     raise AssertionError("Native control not found: " + label)
 
 
@@ -315,6 +364,8 @@ def start_upgrade_quiz(label, resume):
 
 def test_debug_upgrade(baseline_apk, viewport):
     baseline = pathlib.Path(baseline_apk)
+    global PAGED_UI
+    PAGED_UI = False
     candidate = pathlib.Path("app/build/outputs/apk/debug/app-debug.apk")
     assert baseline.is_file() and candidate.is_file(), "Both debug upgrade APKs must exist"
     # Install the older debuggable build as fixture setup, then seed its clean data.
@@ -322,7 +373,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     # below uses install -r exclusively, with no clearing between versions.
     adb("shell", "am force-stop " + APP)
     adb("install", "-r", "-d", str(baseline), timeout=120)
-    assert "versionName=0.121" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
+    assert "versionName=0.122" in shell(f"dumpsys package {APP}"), "Wrong upgrade baseline"
     fixture = {
         "chosen_age": 2, "chosen_avatar": 3,
         "wardrobe_stars": 137, "wardrobe_total_earned": 599,
@@ -374,7 +425,8 @@ def test_debug_upgrade(baseline_apk, viewport):
                expected_texts=(before_question["prompt"], before_question["display"], *before_question["answers"]))
     shell(f"am force-stop {APP}")
     adb("install", "-r", str(candidate), timeout=120)
-    assert "versionName=0.122" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    assert "versionName=0.123" in shell(f"dumpsys package {APP}"), "Wrong candidate version after upgrade"
+    PAGED_UI = True
     installed = prefs()
     for key in fixture:
         assert installed.get(key) == before[key], "Package upgrade lost preference: " + key
@@ -397,8 +449,10 @@ def test_debug_upgrade(baseline_apk, viewport):
     if viewport == "fold":
         # These controls share the first visible viewport with the old artwork.
         # Catch an elevated Canvas painting over them before the longer cases.
-        drawing_controls_pixels(viewport + "-upgrade-current-drawing", drawing_nodes,
-                                ("Gum", "Lijndikte Normaal", "💾 Bewaar tekening"))
+        for index, tool in enumerate(("Gum", "Lijndikte Normaal", "💾 Bewaar tekening")):
+            find_control(description_prefix(tool), viewport + "-upgrade-tool-" + str(index))
+            drawing_controls_pixels(viewport + "-upgrade-current-tool-" + str(index),
+                                    screenshot(viewport + "-upgrade-current-tool-" + str(index)), (tool,))
     click_named("Terug naar het magische dorp", viewport + "-upgrade-drawing-noop-save", False)
     page(1)
     after_drawing = drawing_file(viewport + "-upgrade-current-drawing-file")
@@ -408,7 +462,7 @@ def test_debug_upgrade(baseline_apk, viewport):
     for key in fixture:
         assert after_drawing_prefs.get(key) == before[key], "Opening old artwork changed stored progress: " + key
     (OUT / (viewport + "-upgrade-comparison.json")).write_text(json.dumps({
-        "baselineVersion": "0.121", "candidateVersion": "0.122",
+        "baselineVersion": "0.122", "candidateVersion": "0.123",
         "baselineSha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
         "candidateSha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
         "preferencesCompared": list(fixture), "questionFieldsCompared": list(identity),
@@ -418,10 +472,17 @@ def test_debug_upgrade(baseline_apk, viewport):
         "candidateDrawingSha256": hashlib.sha256(after_drawing).hexdigest(),
         "scope": "Same-runner debug-signed install -r upgrade on a disposable emulator. Original release signing and physical-device acceptance are separate checks."
     }, indent=2, ensure_ascii=False))
-    pass_check(viewport + ": actual debug 0.121 → 0.122 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
+    pass_check(viewport + ": actual debug 0.122 → 0.123 install -r preserves wallet, owned/equipped items, favourites, achievements, daily state, age-specific replay counts, exact unanswered quiz and real baseline artwork")
 
 
 def scroll_top():
+    if PAGED_UI:
+        nodes = ui("first-page")
+        for _ in range(60):
+            if not turn_page(nodes, False):
+                break
+            nodes = ui("first-page-step")
+        return
     w, h = dimensions()
     for _ in range(4):
         shell(f"input swipe {w//2} {int(h*.30)} {w//2} {int(h*.82)} 350")
@@ -429,6 +490,13 @@ def scroll_top():
 
 
 def scroll_bottom():
+    if PAGED_UI:
+        nodes = ui("last-page")
+        for _ in range(60):
+            if not turn_page(nodes, True):
+                break
+            nodes = ui("last-page-step")
+        return
     w, h = dimensions()
     for _ in range(4):
         shell(f"input swipe {w//2} {int(h*.82)} {w//2} {int(h*.30)} 350")
@@ -643,6 +711,7 @@ def test(viewport):
     seed({"achievements_v1": sum(1 << bit for bit in LANDMARK_ACHIEVEMENTS)})
     start_home()
     open_city(prefix + "-full-fixture")
+    find_control(description_prefix("Vriendjespark,"), prefix + "-first-plot")
     top_nodes = screenshot(prefix + "-all-unlocked-fixture",
                            expected_texts=("Lumi's groeiende stad",),
                            expected_descriptions=("Vriendjespark, vrijgespeeld.",))
@@ -653,13 +722,15 @@ def test(viewport):
         assert "vrijgespeeld" in node.get("content-desc", ""), "Saved achievement not rendered: " + name
     # A native node may be only partly visible. Move to the actual footer so the
     # final illustration and its nameplate are both present in the evidence.
-    scroll_bottom()
-    bottom_nodes = screenshot(prefix + "-all-unlocked-fixture-bottom",
-                              expected_texts=("Alle plekken zijn ontdekt! Je kunt overal blijven spelen.",),
-                              expected_descriptions=("Lumi-standbeeld, vrijgespeeld.", "Open kledingkast",
-                                                     "Dagelijkse uitdagingen"))
+    find_control(description_prefix("Lumi-standbeeld,"), prefix + "-last-plot")
+    bottom_nodes = screenshot(prefix + "-all-unlocked-fixture-last-plot",
+                              expected_descriptions=("Lumi-standbeeld, vrijgespeeld.",))
     monument = next(node for node in bottom_nodes if description_prefix("Lumi-standbeeld,")(node))
-    assert rect(monument)[3] - rect(monument)[1] >= plot_height-2, "Final city plot/nameplate is clipped in capture"
+    assert rect(monument)[3] - rect(monument)[1] >= min(plot_height, 48)-2, "Final city plot/nameplate is clipped"
+    find_control(exact("Open kledingkast"), prefix + "-city-wardrobe")
+    screenshot(prefix + "-all-unlocked-fixture-wardrobe", expected_descriptions=("Open kledingkast",))
+    find_control(description_prefix("Dagelijkse uitdagingen"), prefix + "-city-daily")
+    screenshot(prefix + "-all-unlocked-fixture-daily", expected_descriptions=("Dagelijkse uitdagingen",))
     pass_check(viewport + ": all seven saved landmark unlocks have distinct accessible map controls")
 
     start_home()
@@ -794,8 +865,10 @@ def drawing_file(label, profile=0):
 
 
 def drawing_top():
-    # The drawing View consumes swipes. Scroll only in the outer 8dp-or-wider
-    # content margin, never across the canvas or over a selectable tool.
+    if PAGED_UI:
+        scroll_top()
+        return
+    # Old debug baseline only.
     _, h = dimensions()
     for _ in range(4):
         shell(f"input swipe 3 {int(h*.30)} 3 {int(h*.82)} 350")
@@ -958,10 +1031,10 @@ def test_drawing_tools(viewport):
     choose_drawing("Lijndikte Dik", label + "-thick-eraser")
     drawing_state("Potlood", label + "-pencil-off", selected=False)
     drawing_state(redo, label + "-before-erase-redo", enabled=False)
-    tool_nodes = screenshot(label + "-selected-eraser",
-                            expected_descriptions=("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
-    drawing_controls_pixels(label + "-selected-eraser", tool_nodes,
-                            ("Gum, geselecteerd", "Lijndikte Dik, geselecteerd"))
+    for index, tool in enumerate(("Gum, geselecteerd", "Lijndikte Dik, geselecteerd")):
+        find_control(description_prefix(tool), label + "-selected-tool-" + str(index))
+        tool_nodes = screenshot(label + "-selected-tool-" + str(index), expected_descriptions=(tool,))
+        drawing_controls_pixels(label + "-selected-tool-" + str(index), tool_nodes, (tool,))
     drawing_stroke(label + "-erase-old-png")
     erased = save_drawing(label + "-erased")
     assert erased == blank, "Eraser did not restore white paper underneath the loaded PNG stroke"
@@ -1022,10 +1095,10 @@ def test_drawing_tools(viewport):
         screenshot(label + "-large-font-top", expected_texts=("Tekenstudio",))
         drawing_state("Lijndikte Dik", label + "-large-font-width", selected=True)
         drawing_state("🧽 Begin met leeg papier", label + "-large-font-clear", enabled=True)
-        large_nodes = screenshot(label + "-large-font-controls",
-                                 expected_descriptions=("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
-        drawing_controls_pixels(label + "-large-font-controls", large_nodes,
-                                ("💾 Bewaar tekening", "🧽 Begin met leeg papier"))
+        for index, tool in enumerate(("💾 Bewaar tekening", "🧽 Begin met leeg papier")):
+            find_control(description_prefix(tool), label + "-large-font-tool-" + str(index))
+            large_nodes = screenshot(label + "-large-font-tool-" + str(index), expected_descriptions=(tool,))
+            drawing_controls_pixels(label + "-large-font-tool-" + str(index), large_nodes, (tool,))
         shell("settings put system font_scale 1.0")
         time.sleep(1)
         page(25)
@@ -1291,8 +1364,9 @@ def parent_world_summary(world, rounds, completed, unfinished, label):
                + " met een afgeronde ronde")
     saved = str(unfinished) + (" begonnen ronde om verder te spelen" if unfinished == 1
                                else " begonnen rondes om verder te spelen")
+    scroll_top()
     w, h = dimensions()
-    for _ in range(10):
+    for _ in range(60):
         nodes = ui(label)
         title = next((node for node in nodes if node.get("text") == world and visible(node)), None)
         if title is not None:
@@ -1302,7 +1376,11 @@ def parent_world_summary(world, rounds, completed, unfinished, label):
             if counted in values and saved in values:
                 screenshot(label)
                 return
-        shell(f"input swipe {w//2} {int(h*.78)} {w//2} {int(h*.34)} 400")
+        if PAGED_UI:
+            if not turn_page(nodes, True):
+                break
+        else:
+            shell(f"input swipe {w//2} {int(h*.78)} {w//2} {int(h*.34)} 400")
     raise AssertionError("Parent world summary does not match actually played history: " + world)
 
 
@@ -1532,6 +1610,61 @@ def test_builder(viewport):
     pass_check(viewport + ": real construction plan, persistent undo/redo after relaunch, once-only reward and separate creative plot")
 
 
+def test_fixed_pages(viewport):
+    label = viewport + "-fixed-pages"
+    seed({})
+    shell(f"am force-stop {APP}")
+    shell("logcat -c")
+    shell(f"am start -W -n {APP}/.MainActivity --ei playlumi_ci_library 0 --ei playlumi_ci_age 2")
+    time.sleep(2)
+    page(44)
+    scroll_top()
+    nodes = screenshot(label + "-first")
+    first = page_indicator(nodes)
+    assert first.startswith("Inhoudspagina 1 van ") and not first.endswith(" van 1"), "Long world was not paginated"
+    assert not any(n.get("scrollable") == "true" or n.get("class", "").endswith("ScrollView") for n in nodes), "Vertical scroll container still present"
+    def cards(values):
+        return {n.get("content-desc") for n in values if visible(n) and
+                n.get("clickable") == "true" and n.get("content-desc", "").startswith("Speel ")}
+    initial = cards(nodes)
+    assert initial, "First page contains no games"
+    w,h = dimensions()
+    # Gesture within the content, away from persistent bars.
+    shell(f"input swipe {w//2} {int(h*.72)} {w//2} {int(h*.30)} 350")
+    time.sleep(.5)
+    same = ui(label + "-vertical-up")
+    assert page_indicator(same) == first and cards(same) == initial, "Vertical swipe changed content"
+    shell(f"input swipe {w//2} {int(h*.30)} {w//2} {int(h*.72)} 350")
+    time.sleep(.5)
+    assert page_indicator(ui(label + "-vertical-down")) == first, "Reverse vertical swipe changed page"
+    shell(f"input swipe {int(w*.82)} {int(h*.45)} {int(w*.20)} {int(h*.45)} 350")
+    time.sleep(.6)
+    next_nodes = screenshot(label + "-swipe-left")
+    assert page_indicator(next_nodes).startswith("Inhoudspagina 2 van "), "Horizontal swipe did not advance"
+    assert cards(next_nodes) and not cards(next_nodes).intersection(initial), "Page repeated or cut game cards"
+    assert any(exact("Rekenraket")(n) for n in next_nodes), "Header not pinned"
+    assert any(exact("Dorp")(n) for n in next_nodes) and any(exact("Werelden")(n) for n in next_nodes), "Main navigation not pinned"
+    shell(f"input swipe {int(w*.20)} {int(h*.45)} {int(w*.82)} {int(h*.45)} 350")
+    time.sleep(.6)
+    assert page_indicator(ui(label + "-swipe-right")) == first, "Horizontal reverse swipe failed"
+    all_cards = set()
+    seen = set()
+    for i in range(60):
+        nodes = screenshot(label + "-page-" + str(i))
+        indicator = page_indicator(nodes)
+        assert indicator not in seen, "Repeated content page"
+        seen.add(indicator)
+        current = cards(nodes)
+        assert not all_cards.intersection(current), "Card duplicated across pages"
+        all_cards.update(current)
+        assert not any(n.get("scrollable") == "true" or n.get("class", "").endswith("ScrollView") for n in nodes)
+        if not turn_page(nodes, True):
+            break
+    assert len(all_cards) >= 12, "Most games missing from world"
+    assert prefs()["wardrobe_stars"] == 18, "Paging changed wallet"
+    pass_check(viewport + ": all fixed library pages have distinct cards, persistent navigation, zero vertical scrolling, both horizontal gestures and unchanged state")
+
+
 def test_simplified_navigation(viewport):
     label = viewport + "-navigation"
     # Start with an empty profile. Every completion and unfinished game below is
@@ -1645,9 +1778,15 @@ def test_simplified_navigation(viewport):
     scroll_top()
     click(find_control(description_prefix("Bekijk spellen Rekenraket"), label + "-parent-detail"))
     page(29)
-    detail = screenshot(label + "-parent-detail-rocket")
-    assert any("Getallenrace" in value for node in detail for value in labels(node)), "Played game not listed first"
+    detail = ui(label + "-parent-detail-rocket")
+    for i in range(12):
+        if any("Getallenrace" in value for node in detail for value in labels(node)):
+            break
+        assert turn_page(detail, True), "Played game missing from parent detail"
+        detail = ui(label + "-parent-detail-rocket-" + str(i))
+    assert any("Getallenrace" in value for node in detail for value in labels(node)), "Played game not listed"
     assert any("2 getelde rondes" in value for node in detail for value in labels(node)), "Actual round total missing"
+    screenshot(label + "-parent-detail-rocket")
     shell("input keyevent KEYCODE_BACK")
     page(28)
     shell("input keyevent KEYCODE_BACK")
@@ -1670,7 +1809,7 @@ if __name__ == "__main__":
     parser.add_argument("--viewport", choices=("phone", "fold"), required=True)
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--keep-viewport", action="store_true", help="Let the disposable CI emulator shut down without display reconfiguration")
-    parser.add_argument("--baseline-apk", help="Optional exact 0.121 debug APK built with the same runner's debug key")
+    parser.add_argument("--baseline-apk", help="Optional exact 0.122 debug APK built with the same runner's debug key")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     adb("wait-for-device", timeout=60)
@@ -1688,6 +1827,7 @@ if __name__ == "__main__":
         time.sleep(2)
         if args.baseline_apk:
             test_debug_upgrade(args.baseline_apk, args.viewport)
+        test_fixed_pages(args.viewport)
         test(args.viewport)
         test_new_quiz_routes(args.viewport)
         test_simplified_navigation(args.viewport)

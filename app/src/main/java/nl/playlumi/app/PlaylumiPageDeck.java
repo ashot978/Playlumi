@@ -35,12 +35,14 @@ public final class PlaylumiPageDeck extends ViewGroup {
     private View header,pendingReveal,pinned;
     private int pinnedExtent,pinnedWidth,pinnedHeight,bodyLeft;
     private boolean pinnedSide,blankGesture;
+    private int maxBlocks;
     private int headerHeight,selected,requested=-1,bodyTop,bodyHeight,contentWidth,naturalHeight;
     private int contentBottom,contentLeft,contentRight;
     private boolean laidOut,swiping;
     private float downX,downY;
     public PlaylumiPageDeck(Context context,boolean allowSwipe,boolean game){
         super(context);this.allowSwipe=allowSwipe;this.game=game;
+        maxBlocks=game?Integer.MAX_VALUE:4;
         setClipChildren(true);setClipToPadding(true);
         content=new LinearLayout(context);content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(true);content.setClipToPadding(true);addView(content,new LayoutParams(-1,-2));
@@ -64,6 +66,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
         b.setBackground(new android.graphics.drawable.ColorDrawable(0x00000000));b.setContentDescription(description);
         return b;
     }
+    public void setMaxBlocks(int limit){maxBlocks=Math.max(1,limit);requestLayout();}
     public LinearLayout content(){return content;}
     public int currentPage(){return selected;}
     public int pageCount(){return Math.max(1,pages.size());}
@@ -161,7 +164,7 @@ public final class PlaylumiPageDeck extends ViewGroup {
             View child=content.getChildAt(i);
             blocks(child,child.getTop(),measured);
         }
-        pages=PlaylumiPagePlan.pack(measured,bodyHeight,game?Integer.MAX_VALUE:4);
+        pages=PlaylumiPagePlan.pack(measured,bodyHeight,maxBlocks);
         int index=requested>=0?requested:selected;requested=-1;
         if(pendingReveal!=null){
             int y=topOf(pendingReveal);
